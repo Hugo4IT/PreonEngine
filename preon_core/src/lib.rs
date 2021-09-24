@@ -16,3 +16,10 @@ impl PreonCore {
         }
     }
 }
+
+pub trait PreonRenderer {
+    fn init(core: &PreonCore) -> Self;
+    fn start(&mut self, core: &PreonCore);
+    fn update(&mut self, core: &PreonCore);
+    fn render(&mut self, core: &PreonCore);
+}

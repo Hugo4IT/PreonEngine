@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "preon_renderer_wgpu",
-    "preon_api_renderer",
     "preon_core",
+    "preon",
     "demo"
 ]
 resolver = "2"
