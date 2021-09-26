@@ -1,9 +1,9 @@
 [package]
-name = "preon_renderer_wgpu"
+name = "preon_renderer_opengl"
 version = "0.1.0"
 edition = "2018"
 
 [dependencies]
 preon_core = { path = "../preon_core" }
-winit = "0.25.0"
-wgpu = "0.10.1"
+glfw = "0.42.0"
+gl = "0.14.0"

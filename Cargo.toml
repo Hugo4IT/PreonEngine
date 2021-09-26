@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "preon_renderer_wgpu",
+    "preon_renderer_opengl",
     "preon_core",
     "preon",
     "demo"
