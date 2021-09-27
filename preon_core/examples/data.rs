@@ -14,7 +14,7 @@ fn main() {
     data.set_i128(46, -69420);
     data.set_f32(62, -69420.666);
     data.set_f64(66, 69420.69);
-    data.set_bool(74, true);
+    data.set_bool(74, false);
     data.set_bools(75, [true, false, true, true, false, false, true, true]);
 
     let a = data.get_u8(0);

@@ -142,10 +142,19 @@ impl PreonData {
         self.raw[offset] = b
     }
     #[inline(always)]
+    #[cfg(target_endian = "little")]
     pub fn set_bools(&mut self, offset: usize, value: [bool; 8]) {
         self.raw[offset] = 0;
         for i in 0..8 {
-            self.raw[offset] = ((value[i] as u8) >> i) | self.raw[offset];
+            self.raw[offset] = self.raw[offset] | (value[i] as u8) << i;
+        }
+    }
+    #[inline(always)]
+    #[cfg(target_endian = "big")]
+    pub fn set_bools(&mut self, offset: usize, value: [bool; 8]) {
+        self.raw[offset] = 0;
+        for i in 0..8 {
+            self.raw[offset] = self.raw[offset] | (value[i] as u8) >> i;
         }
     }
 
@@ -272,6 +281,16 @@ impl PreonData {
         self.raw[offset] == 1
     }
     #[inline(always)]
+    #[cfg(target_endian = "big")]
+    pub fn get_bools(&mut self, offset: usize) -> [bool; 8] {
+        let mut result: [bool; 8] = [false; 8];
+        for i in 0..8 {
+            result[i] = (self.raw[offset] & (0b10000000 >> i)) << i == 1
+        }
+        result
+    }
+    #[inline(always)]
+    #[cfg(target_endian = "little")]
     pub fn get_bools(&mut self, offset: usize) -> [bool; 8] {
         let mut result: [bool; 8] = [false; 8];
         for i in 0..8 {
