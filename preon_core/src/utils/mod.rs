@@ -1,4 +1,4 @@
-use std::{convert::TryInto, mem::size_of};
+use std::{convert::TryInto};
 
 pub const SU8: usize = 1usize;
 pub const SU16: usize = 2usize;
@@ -62,77 +62,74 @@ impl PreonData {
     #[inline(always)]
     pub fn set_u16(&mut self, offset: usize, value: u16) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<u16>() {
+        for i in 0..SU16 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_u32(&mut self, offset: usize, value: u32) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<u32>() {
+        for i in 0..SU32 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_u64(&mut self, offset: usize, value: u64) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<u64>() {
+        for i in 0..SU64 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_u128(&mut self, offset: usize, value: u128) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<u128>() {
+        for i in 0..SU128 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_i8(&mut self, offset: usize, value: i8) {
-        let b = value.to_be_bytes();
-        for i in 0..size_of::<i8>() {
-            self.raw[i + offset] = b[i]
-        }
+        self.raw[offset] = value as u8;
     }
     #[inline(always)]
     pub fn set_i16(&mut self, offset: usize, value: i16) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<i16>() {
+        for i in 0..SI16 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_i32(&mut self, offset: usize, value: i32) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<i32>() {
+        for i in 0..SI32 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_i64(&mut self, offset: usize, value: i64) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<i64>() {
+        for i in 0..SI64 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_i128(&mut self, offset: usize, value: i128) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<i128>() {
+        for i in 0..SI128 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_f32(&mut self, offset: usize, value: f32) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<f32>() {
+        for i in 0..SF32 {
             self.raw[i + offset] = b[i]
         }
     }
     #[inline(always)]
     pub fn set_f64(&mut self, offset: usize, value: f64) {
         let b = value.to_be_bytes();
-        for i in 0..size_of::<f64>() {
+        for i in 0..SF64 {
             self.raw[i + offset] = b[i]
         }
     }
@@ -166,7 +163,7 @@ impl PreonData {
     pub fn get_u16(&self, offset: usize) -> u16 {
         u16::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<u16>())
+                .get(offset..offset + SU16)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -177,7 +174,7 @@ impl PreonData {
     pub fn get_u32(&self, offset: usize) -> u32 {
         u32::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<u32>())
+                .get(offset..offset + SU32)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -188,7 +185,7 @@ impl PreonData {
     pub fn get_u64(&self, offset: usize) -> u64 {
         u64::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<u64>())
+                .get(offset..offset + SU64)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -199,7 +196,7 @@ impl PreonData {
     pub fn get_u128(&self, offset: usize) -> u128 {
         u128::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<u128>())
+                .get(offset..offset + SU128)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -214,7 +211,7 @@ impl PreonData {
     pub fn get_i16(&self, offset: usize) -> i16 {
         i16::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i16>())
+                .get(offset..offset + SI16)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -225,7 +222,7 @@ impl PreonData {
     pub fn get_i32(&self, offset: usize) -> i32 {
         i32::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i32>())
+                .get(offset..offset + SI32)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -236,7 +233,7 @@ impl PreonData {
     pub fn get_i64(&self, offset: usize) -> i64 {
         i64::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i64>())
+                .get(offset..offset + SI64)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -247,7 +244,7 @@ impl PreonData {
     pub fn get_i128(&self, offset: usize) -> i128 {
         i128::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i128>())
+                .get(offset..offset + SI128)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -258,7 +255,7 @@ impl PreonData {
     pub fn get_f32(&self, offset: usize) -> f32 {
         f32::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i32>())
+                .get(offset..offset + SF32)
                 .unwrap()
                 .to_owned()
                 .try_into()
@@ -269,7 +266,7 @@ impl PreonData {
     pub fn get_f64(&self, offset: usize) -> f64 {
         f64::from_be_bytes(
             self.raw
-                .get(offset..offset + size_of::<i64>())
+                .get(offset..offset + SF64)
                 .unwrap()
                 .to_owned()
                 .try_into()
