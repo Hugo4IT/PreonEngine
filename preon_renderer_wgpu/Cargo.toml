@@ -1,0 +1,8 @@
+[package]
+name = "preon_renderer_wgpu"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+preon_core = { path = "../preon_core" }
+wgpu = "0.10.2"
