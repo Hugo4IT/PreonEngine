@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 preon = { path = "../preon" }
+preon_renderer_wgpu = { path = "../preon_renderer_wgpu" }

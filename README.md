@@ -4,7 +4,7 @@
 
 ## How this works
 
-> NOTE: If you just want to use PreonEngine as a UI "framework", use the `preon` crate, it contains the opengl renderer and preon_core with some helper functions for quick&easy app development. If you need a custom renderer or wish to use it inside your game, look into this:
+> NOTE: If you just want to use PreonEngine as a UI "framework", use the `preon` crate, it contains preon_core and winit with some helper functions for quick&easy app development. Just add a `preon_renderer_*` crate and you're good to go. If you need a custom renderer or wish to use it inside your game, look into this:
 
 - `preon_renderer_*` - Rendering backend, use this in combination with `preon_core` if you want to use a specific backend or for integrating it into your game engine.
 - `preon_core` - A component layout system and nothing more, you can place components and call the `layout()` function to automatically find the correct coordinates for those components. This is all backend, nothing will visually happen, no windows or rendering. You can use this if you want to use PreonEngine UI in your game. Also contains the PreonRenderer trait so you can implement your own custom renderer if you wish

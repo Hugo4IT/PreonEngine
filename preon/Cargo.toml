@@ -3,16 +3,6 @@ name = "preon"
 version = "0.1.0"
 edition = "2018"
 
-[features]
-default = [ "modern", "compat", "managed" ]
-modern = [ "wgpu", "preon_renderer_wgpu" ]
-compat = [ "gl", "preon_renderer_opengl" ]
-managed = [ "winit" ]
-
 [dependencies]
 preon_core = { path = "../preon_core" }
-gl = { version = "0.14.0", optional = true }
-preon_renderer_opengl = { path = "../preon_renderer_opengl", optional = true }
-wgpu = { version = "0.10.2", optional = true }
-preon_renderer_wgpu = { path = "../preon_renderer_wgpu", optional = true }
-winit = { version = "0.25.0", optional = true }
+winit = { version = "0.25.0" }

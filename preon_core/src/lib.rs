@@ -68,3 +68,9 @@ pub trait PreonRenderer {
 
     fn register(&mut self, core: &mut PreonCore);
 }
+
+
+pub trait Renderable<T> {}
+pub trait PreonShape {
+    fn get_renderable<T: PreonRenderer>(&self) -> dyn Renderable<T>;
+}
