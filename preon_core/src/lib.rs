@@ -13,7 +13,6 @@ pub struct PreonCore {
 
 impl PreonCore {
     pub fn init() -> Self {
-
         Self {
             type_free_functions: Vec::new(),
             init_functions: Vec::new(),
@@ -61,12 +60,12 @@ impl PreonCore {
 }
 
 pub trait PreonRenderer {
-    fn init() -> Self;
-    fn start(&mut self, core: &PreonCore);
-    fn update(&mut self, core: &PreonCore) -> bool;
-    fn render(&mut self, core: &mut PreonCore);
+    fn init(core: PreonCore) -> Self;
+    fn start(&mut self);
+    fn update(&mut self);
+    fn render(&mut self);
 
-    fn register(&mut self, core: &mut PreonCore);
+    fn register(&mut self);
 }
 
 

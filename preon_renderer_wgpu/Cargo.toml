@@ -5,4 +5,5 @@ edition = "2018"
 
 [dependencies]
 preon_core = { path = "../preon_core" }
+winit = "0.25.0"
 wgpu = "0.10.2"
