@@ -1,16 +1,15 @@
-use std::{mem::size_of, sync::mpsc::Receiver};
+use std::{sync::mpsc::Receiver};
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_core::{PreonCore, PreonRenderer, utils::{self, PreonData}};
+use preon_core::{PreonCore, PreonRenderer, utils};
 
 pub struct PreonRendererOpenGL {
     window: Window,
-    events: Receiver<(f64, WindowEvent)>,
-    render_functions: Vec<fn(&PreonData)>,
+    events: Receiver<(f64, WindowEvent)>
 }
 
-impl PreonRenderer for PreonRendererOpenGL {
-    fn init() -> Self {
+impl PreonRendererOpenGL {
+    pub fn init() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(WindowHint::ContextVersionMajor(3));
         glfw.window_hint(WindowHint::ContextVersionMinor(3));
@@ -40,16 +39,17 @@ impl PreonRenderer for PreonRendererOpenGL {
 
         PreonRendererOpenGL {
             window,
-            events,
-            render_functions: Vec::new(),
+            events
         }
     }
+}
 
+impl PreonRenderer for PreonRendererOpenGL {
     fn start(&mut self, core: &PreonCore) {
         self.window.show();
     }
 
-    fn update(&mut self, core: &PreonCore) -> bool {
+    fn update(&mut self, core: &mut PreonCore) -> bool {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -63,38 +63,13 @@ impl PreonRenderer for PreonRendererOpenGL {
         self.window.should_close()
     }
 
-    fn render(&mut self, core: &mut PreonCore) {
+    fn render(&mut self, core: &PreonCore) {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
 
-        for (index, data) in core.type_data.iter().enumerate() {
-            self.render_functions.get(index).unwrap()(data);
-        }
         
 
         self.window.swap_buffers();
-    }
-
-    fn register(&mut self, core: &mut PreonCore) {
-        core.register(|| {
-            let mut data = PreonData::new(size_of::<[u32;5]>());
-
-
-
-            data
-        }, |data| {
-
-        }, || {
-            let mut data = PreonData::new(size_of::<[u32;5]>());
-
-
-            
-            data
-        }, |data| {
-
-        }, |data| {
-            
-        });
     }
 }

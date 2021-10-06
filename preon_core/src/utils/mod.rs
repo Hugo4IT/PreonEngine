@@ -15,6 +15,11 @@ pub const SF64: usize = 8usize;
 pub const SBOOL: usize = 1usize;
 pub const SBOOLS: usize = 1usize;
 
+pub const SF_HORIZONTAL_FILL:   u8 = 0b00000001;
+pub const SF_HORIZONTAL_EXPAND: u8 = 0b00000010;
+pub const SF_VERTICAL_FILL:     u8 = 0b00000100;
+pub const SF_VERTICAL_EXPAND:   u8 = 0b00001000;
+
 #[inline(always)]
 #[cfg(target_endian = "little")]
 pub fn color(c: u32) -> (f32, f32, f32, f32) {
@@ -51,7 +56,22 @@ impl PreonData {
         Self { raw: vect }
     }
 
+    pub fn get<T>(&self, offset: usize) -> T {
+        T::from_ne_bytes(
+            self.raw
+                .get(offset..offset + u16::SI)
+                .unwrap()
+                .to_owned()
+                .try_into()
+                .unwrap(),
+        )
+    }
+
     // Sorry, couldn't get the compiler to cooperate
+
+    // I got it to cooperate but imma leave this here
+    // and just label it as "optimization"
+    // aka work i dont want to throw away because e p i c
 
     #[inline(always)]
     pub fn set_u8(&mut self, offset: usize, value: u8) {
@@ -304,4 +324,148 @@ impl PreonData {
     pub fn free(&mut self) {
         self.raw.clear();
     }
+}
+
+pub struct PreonMargin {
+    pub top: u32,
+    pub right: u32,
+    pub bottom: u32,
+    pub left: u32
+}
+
+#[inline(always)]
+pub fn m4(t: u32, r: u32, b: u32, l: u32) -> PreonMargin {
+    PreonMargin {
+        top: t,
+        right: r,
+        bottom: b,
+        left: l
+    }
+}
+
+#[inline(always)]
+pub fn m2(x: u32, y: u32) -> PreonMargin {
+    PreonMargin {
+        top: y,
+        right: x,
+        bottom: y,
+        left: x
+    }
+}
+
+#[inline(always)]
+pub fn mx(x: u32) -> PreonMargin {
+    PreonMargin {
+        top: 0,
+        right: x,
+        bottom: 0,
+        left: x
+    }
+}
+
+#[inline(always)]
+pub fn my(y: u32) -> PreonMargin {
+    PreonMargin {
+        top: y,
+        right: 0,
+        bottom: y,
+        left: 0
+    }
+}
+
+#[inline(always)]
+pub fn m(v: u32) -> PreonMargin {
+    PreonMargin {
+        top: v,
+        right: v,
+        bottom: v,
+        left: v
+    }
+}
+
+#[inline(always)]
+pub fn margin(v: u32) -> PreonMargin { m(v) }
+#[inline(always)]
+pub fn margin_x(x: u32) -> PreonMargin { mx(x) }
+#[inline(always)]
+pub fn margin_y(y: u32) -> PreonMargin { my(y) }
+#[inline(always)]
+pub fn margin_xy(x: u32, y: u32) -> PreonMargin { m2(x,y) }
+#[inline(always)]
+pub fn margin_trbl(t: u32, r: u32, b: u32, l: u32) -> PreonMargin { m4(t,r,b,l) }
+
+pub struct PreonPadding {
+    pub top: u32,
+    pub right: u32,
+    pub bottom: u32,
+    pub left: u32
+}
+
+#[inline(always)]
+pub fn p4(t: u32, r: u32, b: u32, l: u32) -> PreonPadding {
+    PreonPadding {
+        top: t,
+        right: r,
+        bottom: b,
+        left: l
+    }
+}
+
+#[inline(always)]
+pub fn p2(x: u32, y: u32) -> PreonPadding {
+    PreonPadding {
+        top: y,
+        right: x,
+        bottom: y,
+        left: x
+    }
+}
+
+#[inline(always)]
+pub fn px(x: u32) -> PreonPadding {
+    PreonPadding {
+        top: 0,
+        right: x,
+        bottom: 0,
+        left: x
+    }
+}
+
+#[inline(always)]
+pub fn py(y: u32) -> PreonPadding {
+    PreonPadding {
+        top: y,
+        right: 0,
+        bottom: y,
+        left: 0
+    }
+}
+
+#[inline(always)]
+pub fn p(v: u32) -> PreonPadding {
+    PreonPadding {
+        top: v,
+        right: v,
+        bottom: v,
+        left: v
+    }
+}
+
+#[inline(always)]
+pub fn padding(v: u32) -> PreonPadding { p(v) }
+#[inline(always)]
+pub fn padding_x(x: u32) -> PreonPadding { px(x) }
+#[inline(always)]
+pub fn padding_y(y: u32) -> PreonPadding { py(y) }
+#[inline(always)]
+pub fn padding_xy(x: u32, y: u32) -> PreonPadding { p2(x,y) }
+#[inline(always)]
+pub fn padding_trbl(t: u32, r: u32, b: u32, l: u32) -> PreonPadding { p4(t,r,b,l) }
+
+pub struct PreonLayout {
+    pub margin: PreonMargin,
+    pub padding: PreonPadding,
+    pub min_width: u32,
+    pub min_height: u32,
+    pub size_flags: u8
 }
