@@ -1,24 +1,24 @@
 use std::time::{Instant};
 
-use preon_core::utils::{PreonData};
+use preon_core::{PreonData};
 
 fn main() {
     let time = Instant::now();
 
     {
         let mut data = PreonData::new(76);
-        data.set_u8(0, 69);
-        data.set_u16(1, 420);
-        data.set_u32(3, 666);
-        data.set_u64(7, 1337);
-        data.set_u128(15, 69420);
-        data.set_i8(31, -69);
-        data.set_i16(32, -420);
-        data.set_i32(34, -666);
-        data.set_i64(38, -1337);
-        data.set_i128(46, -69420);
-        data.set_f32(62, -69420.666);
-        data.set_f64(66, 69420.69);
+        data.set_u8(0, 254);
+        data.set_u16(1, 25432);
+        data.set_u32(3, 2345);
+        data.set_u64(7, 235);
+        data.set_u128(15, 245);
+        data.set_i8(31, -45);
+        data.set_i16(32, -2345);
+        data.set_i32(34, -54);
+        data.set_i64(38, -23543);
+        data.set_i128(46, -34563);
+        data.set_f32(62, -78.736);
+        data.set_f64(66, 763.2);
         data.set_bool(74, false);
         data.set_bools(75, [true, false, true, true, false, false, true, true]);
     

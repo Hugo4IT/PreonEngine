@@ -1,7 +1,7 @@
 use std::{sync::mpsc::Receiver};
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_core::{PreonCore, PreonRenderer, utils};
+use preon_core::{PreonCore, PreonData, PreonRect, PreonRenderer, color};
 
 pub struct PreonRendererOpenGL {
     window: Window,
@@ -32,7 +32,7 @@ impl PreonRendererOpenGL {
         unsafe {
             gl::load_with(|s| window.get_proc_address(s));
 
-            let (r, g, b, a) = utils::color(0x171717FF);
+            let (r, g, b, a) = color(0x171717FF);
 
             gl::ClearColor(r, g, b, a);
         };
@@ -45,11 +45,11 @@ impl PreonRendererOpenGL {
 }
 
 impl PreonRenderer for PreonRendererOpenGL {
-    fn start(&mut self, core: &PreonCore) {
+    fn start(&mut self, _core: &PreonCore) {
         self.window.show();
     }
 
-    fn update(&mut self, core: &mut PreonCore) -> bool {
+    fn update(&mut self, _core: &mut PreonCore) -> bool {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -63,7 +63,7 @@ impl PreonRenderer for PreonRendererOpenGL {
         self.window.should_close()
     }
 
-    fn render(&mut self, core: &PreonCore) {
+    fn render(&mut self, _core: &PreonCore) {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
@@ -71,5 +71,23 @@ impl PreonRenderer for PreonRendererOpenGL {
         
 
         self.window.swap_buffers();
+    }
+}
+
+#[derive(Debug)]
+pub struct PreonGLRenderData {
+    x_pos: i32,
+    y_pos: i32,
+    width: u32,
+    height: u32
+}
+
+trait PreonRenderableComponent<PreonRendererOpenGL> {
+    fn render(&self, data: PreonGLRenderData);
+}
+
+impl PreonRenderableComponent<PreonRendererOpenGL> for PreonRect {
+    fn render(&self, data: PreonGLRenderData) {
+        println!("Trying to render a PreonRect with layout: {:?}, color: {:?} and data: {:?}", self.layout, self.color, data);
     }
 }
