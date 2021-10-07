@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fmt::{Display}, ops::{Add, Div, Mul, Sub}};
+use std::{fmt::Display, ops::{Add, Div, Mul, Sub}};
 
 pub const SU8: usize = 1usize;
 pub const SU16: usize = 2usize;
