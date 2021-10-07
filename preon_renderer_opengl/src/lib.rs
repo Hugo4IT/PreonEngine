@@ -1,7 +1,7 @@
 use std::{sync::mpsc::Receiver};
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_core::{PreonCore, PreonData, PreonRect, PreonRenderer, color};
+use preon_core::{PreonCore, PreonRect, PreonRenderer, Vector2, color};
 
 pub struct PreonRendererOpenGL {
     window: Window,
@@ -76,10 +76,8 @@ impl PreonRenderer for PreonRendererOpenGL {
 
 #[derive(Debug)]
 pub struct PreonGLRenderData {
-    x_pos: i32,
-    y_pos: i32,
-    width: u32,
-    height: u32
+    position: Vector2<i32>,
+    size: Vector2<u32>
 }
 
 trait PreonRenderableComponent<PreonRendererOpenGL> {

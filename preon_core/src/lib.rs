@@ -1,95 +1,4 @@
-use std::{convert::TryInto, ops::{Add, Div, Mul, Sub}};
-
-pub struct PreonCore {
-    pub root: PreonVertical,
-}
-
-impl PreonCore {
-    pub fn init() -> Self {
-        Self {
-            root: PreonVertical::new(),
-        }
-    }
-
-    pub fn update(&mut self) {}
-}
-
-pub trait PreonRenderer {
-    fn start(&mut self, core: &PreonCore);
-    fn update(&mut self, core: &mut PreonCore) -> bool;
-    fn render(&mut self, core: &PreonCore);
-}
-
-pub trait PreonComponent {
-    fn add_child(&mut self, new_child: Box<dyn PreonComponent>);
-    fn set_position(&mut self, position: Vector2)
-    fn layout(&mut self) -> PreonLayout;
-}
-
-// Used by PreonRenderers to make their own trait
-pub trait PreonRenderableComponent<T: PreonRenderer> {}
-
-pub struct PreonRect {
-    pub layout: PreonLayout,
-    pub color: (f32, f32, f32, f32),
-}
-
-impl PreonRect {
-    pub fn new() -> Self {
-        Self {
-            layout: PreonLayout {
-                margin: m(0),
-                padding: p(0),
-                min_width: 0,
-                min_height: 0,
-                size_flags: SF_FILL_EXPAND,
-            },
-            color: color(0xda0037ff),
-        }
-    }
-}
-
-impl PreonComponent for PreonRect {
-    fn add_child(&mut self, _new_child: Box<dyn PreonComponent>) {
-        panic!("PreonRect is not made to hold children!")
-    }
-
-    fn layout(&mut self) -> PreonLayout { self.layout }
-}
-
-pub struct PreonVertical {
-    pub layout: PreonLayout,
-    pub children: Vec<Box<dyn PreonComponent>>,
-}
-
-impl PreonVertical {
-    pub fn new() -> Self {
-        Self {
-            layout: PreonLayout {
-                margin: m(0),
-                padding: p(0),
-                min_width: 0,
-                min_height: 0,
-                size_flags: SF_FILL,
-            },
-            children: Vec::new()
-        }
-    }
-}
-
-impl PreonComponent for PreonVertical {
-    fn add_child(&mut self, new_child: Box<dyn PreonComponent>) {
-        self.children.push(new_child);
-    }
-
-    fn layout(&mut self) -> PreonLayout {
-        for child in self.children.iter_mut() {
-            child.layout();
-        }
-
-        self.layout
-    }
-}
+use std::{convert::TryInto, fmt::{Display}, ops::{Add, Div, Mul, Sub}};
 
 pub const SU8: usize = 1usize;
 pub const SU16: usize = 2usize;
@@ -118,6 +27,172 @@ pub const SF_EXPAND: u8 = SF_HORIZONTAL_EXPAND + SF_VERTICAL_EXPAND;
 pub const SF_FILL: u8 = SF_HORIZONTAL_FILL + SF_VERTICAL_FILL;
 pub const SF_FILL_EXPAND: u8 = SF_FILL + SF_EXPAND;
 
+pub struct PreonCore {
+    pub root: Box<PreonVertical>,
+    pub layout: PreonLayout,
+
+    pub on_resize: PreonEvent<Vector2<u32>>,
+
+    window_inner_size: Vector2<u32>,
+    _window_inner_size: Vector2<u32>,
+}
+
+impl PreonCore {
+    pub fn init() -> Self {
+        Self {
+            root: PreonVertical::new(),
+            layout: PreonLayout {
+                margin: m(0),
+                padding: p(0),
+                min_size: vector2(0, 0),
+                size_flags: SF_FILL,
+            },
+            on_resize: PreonEvent::new::<Vector2<u32>>(),
+            window_inner_size: vector2(0, 0),
+            _window_inner_size: vector2(0, 0)
+        }
+    }
+
+    pub fn update(&mut self) {
+        let root_layout = self.root.layout(self.layout);
+
+        self.window_inner_size = root_layout.get_min_size();
+        if self._window_inner_size != self.window_inner_size {
+            self.resize(self.window_inner_size);
+        }
+    }
+
+    pub fn resize(&mut self, new_size: Vector2<u32>) {
+        self._window_inner_size = new_size;
+    }
+}
+
+pub struct PreonEvent<U: Copy + Clone + Sized> {
+    handlers: Vec<fn(U)>
+}
+
+impl<U: Copy + Clone + Sized> PreonEvent<U> {
+    pub fn new<T>() -> Self {
+        Self {
+            handlers: Vec::new()
+        }
+    }
+
+    pub fn fire(&self, args: U) {
+        for handler in self.handlers.iter() {
+            handler(args);
+        }
+    }
+
+    pub fn subscribe(&mut self, handler: fn(U)) {
+        self.handlers.push(handler);
+    }
+}
+
+pub struct PreonRect {
+    pub layout: PreonLayout,
+    pub color: (f32, f32, f32, f32),
+}
+
+impl PreonRect {
+    pub fn new() -> Box<Self> {
+        Box::new(Self {
+            layout: PreonLayout {
+                margin: m(0),
+                padding: p(0),
+                min_size: vector2(0, 0),
+                size_flags: SF_FILL_EXPAND,
+            },
+            color: color(0xda0037ff),
+        })
+    }
+}
+
+impl PreonComponent for PreonRect {
+    fn add_child(&mut self, _new_child: Box<dyn PreonComponent>) {
+        panic!("PreonRect is not made to hold children!")
+    }
+
+    fn layout(&mut self, _parent: PreonLayout) -> PreonLayout {
+        self.layout
+    }
+}
+
+pub struct PreonVertical {
+    pub layout: PreonLayout,
+    pub children: Vec<Box<dyn PreonComponent>>,
+    pub expanding_children: u32,
+}
+
+impl PreonVertical {
+    pub fn new() -> Box<Self> {
+        Box::new(Self {
+            layout: PreonLayout {
+                margin: m(0),
+                padding: p(0),
+                min_size: vector2(0, 0),
+                size_flags: SF_FILL,
+            },
+            children: Vec::new(),
+            expanding_children: 0,
+        })
+    }
+}
+
+impl PreonComponent for PreonVertical {
+    fn add_child(&mut self, new_child: Box<dyn PreonComponent>) {
+        self.children.push(new_child);
+    }
+
+    fn layout(&mut self, _parent: PreonLayout) -> PreonLayout {
+        self.layout.min_size = vector2(0, 0);
+
+        for child in self.children.iter_mut() {
+            let child_hints = child.layout(self.layout);
+            let child_minsize = child_hints.get_min_size();
+
+            if self.layout.has_size_flag(SF_VERTICAL_FILL) {
+                if child_minsize.y > self.layout.min_size.y {
+                    self.layout.min_size.y = child_minsize.y;
+                }
+            }
+            if self.layout.has_size_flag(SF_HORIZONTAL_FILL) {
+                if child_minsize.x > self.layout.min_size.x {
+                    self.layout.min_size.x = child_minsize.x;
+                }
+            }
+        }
+
+        self.layout
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PreonLayout {
+    pub margin: PreonMargin,
+    pub padding: PreonPadding,
+    pub min_size: Vector2<u32>,
+    pub size_flags: u8,
+}
+
+impl PreonLayout {
+    #[inline(always)]
+    pub fn has_size_flag(&self, sf: u8) -> bool {
+        (self.size_flags & sf) == sf
+    }
+
+    #[inline(always)]
+    pub fn get_min_size(&self) -> Vector2<u32> {
+        vector2(
+            self.margin.left + self.margin.right,
+            self.margin.top + self.margin.bottom,
+        ) + vector2(
+            self.padding.left + self.padding.right,
+            self.padding.top + self.padding.bottom,
+        ) + self.min_size
+    }
+}
+
 #[inline(always)]
 #[cfg(target_endian = "little")]
 pub fn color(c: u32) -> (f32, f32, f32, f32) {
@@ -138,275 +213,6 @@ pub fn color(c: u32) -> (f32, f32, f32, f32) {
         f32::from((c >> 16) as u8) / 255f32,
         f32::from((c >> 24) as u8) / 255f32,
     )
-}
-
-pub struct PreonData {
-    raw: Vec<u8>,
-}
-
-impl PreonData {
-    pub fn new(size: usize) -> Self {
-        let mut vect: Vec<u8> = Vec::new();
-        for _ in 0..size {
-            vect.push(0u8);
-        }
-
-        Self { raw: vect }
-    }
-
-    // Sorry, couldn't get the compiler to cooperate
-
-    #[inline(always)]
-    pub fn set_u8(&mut self, offset: usize, value: u8) {
-        self.raw[offset] = value
-    }
-    #[inline(always)]
-    pub fn set_u16(&mut self, offset: usize, value: u16) {
-        let b = value.to_ne_bytes();
-        for i in 0..SU16 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_u32(&mut self, offset: usize, value: u32) {
-        let b = value.to_ne_bytes();
-        for i in 0..SU32 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_u64(&mut self, offset: usize, value: u64) {
-        let b = value.to_ne_bytes();
-        for i in 0..SU64 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_u128(&mut self, offset: usize, value: u128) {
-        let b = value.to_ne_bytes();
-        for i in 0..SU128 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_i8(&mut self, offset: usize, value: i8) {
-        self.raw[offset] = value as u8;
-    }
-    #[inline(always)]
-    pub fn set_i16(&mut self, offset: usize, value: i16) {
-        let b = value.to_ne_bytes();
-        for i in 0..SI16 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_i32(&mut self, offset: usize, value: i32) {
-        let b = value.to_ne_bytes();
-        for i in 0..SI32 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_i64(&mut self, offset: usize, value: i64) {
-        let b = value.to_ne_bytes();
-        for i in 0..SI64 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_i128(&mut self, offset: usize, value: i128) {
-        let b = value.to_ne_bytes();
-        for i in 0..SI128 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_f32(&mut self, offset: usize, value: f32) {
-        let b = value.to_ne_bytes();
-        for i in 0..SF32 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_f64(&mut self, offset: usize, value: f64) {
-        let b = value.to_ne_bytes();
-        for i in 0..SF64 {
-            self.raw[i + offset] = b[i]
-        }
-    }
-    #[inline(always)]
-    pub fn set_bool(&mut self, offset: usize, value: bool) {
-        self.raw[offset] = value as u8;
-    }
-    #[inline(always)]
-    #[cfg(target_endian = "little")]
-    pub fn set_bools(&mut self, offset: usize, value: [bool; 8]) {
-        self.raw[offset] = 0;
-        for index in 0..8 {
-            // Explanation (example of iteration 5 of the for-loop):
-            //    1. get bool (true) as u8 (1, 0b00000001 in binary)
-            //    2. shift to left <index> times (0b00010000),
-            //    3. byte-or with current value (0b00010000 | ob00001001 = 0b00011001)
-
-            self.raw[offset] = self.raw[offset] | (value[index] as u8) << index;
-        }
-    }
-    #[inline(always)]
-    #[cfg(target_endian = "big")]
-    pub fn set_bools(&mut self, offset: usize, value: [bool; 8]) {
-        self.raw[offset] = 0;
-        for index in 0..8 {
-            // See set_bools little endian for explanation,
-            // it's the same thing but other way for big endian
-
-            self.raw[offset] = self.raw[offset] | (value[index] as u8) >> index;
-        }
-    }
-
-    #[inline(always)]
-    pub fn get_u8(&self, offset: usize) -> u8 {
-        self.raw.get(offset).unwrap().to_owned()
-    }
-    #[inline(always)]
-    pub fn get_u16(&self, offset: usize) -> u16 {
-        u16::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SU16)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_u32(&self, offset: usize) -> u32 {
-        u32::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SU32)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_u64(&self, offset: usize) -> u64 {
-        u64::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SU64)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_u128(&self, offset: usize) -> u128 {
-        u128::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SU128)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_i8(&self, offset: usize) -> i8 {
-        self.raw.get(offset).unwrap().to_owned() as i8
-    }
-    #[inline(always)]
-    pub fn get_i16(&self, offset: usize) -> i16 {
-        i16::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SI16)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_i32(&self, offset: usize) -> i32 {
-        i32::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SI32)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_i64(&self, offset: usize) -> i64 {
-        i64::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SI64)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_i128(&self, offset: usize) -> i128 {
-        i128::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SI128)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_f32(&self, offset: usize) -> f32 {
-        f32::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SF32)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_f64(&self, offset: usize) -> f64 {
-        f64::from_ne_bytes(
-            self.raw
-                .get(offset..offset + SF64)
-                .unwrap()
-                .to_owned()
-                .try_into()
-                .unwrap(),
-        )
-    }
-    #[inline(always)]
-    pub fn get_bool(&mut self, offset: usize) -> bool {
-        self.raw[offset] == 1
-    }
-    #[inline(always)]
-    #[cfg(target_endian = "big")]
-    pub fn get_bools(&mut self, offset: usize) -> [bool; 8] {
-        let mut result: [bool; 8] = [false; 8];
-        for i in 0..8 {
-            result[i] = (self.raw[offset] & (0b10000000 >> i)) << i == 1
-        }
-        result
-    }
-    #[inline(always)]
-    #[cfg(target_endian = "little")]
-    pub fn get_bools(&mut self, offset: usize) -> [bool; 8] {
-        let mut result: [bool; 8] = [false; 8];
-        for i in 0..8 {
-            result[i] = (self.raw[offset] & (0b00000001 << i)) >> i == 1
-        }
-        result
-    }
-
-    pub fn free(&mut self) {
-        self.raw.clear();
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -567,20 +373,139 @@ pub fn padding_trbl(t: u32, r: u32, b: u32, l: u32) -> PreonPadding {
     p4(t, r, b, l)
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct PreonLayout {
-    pub margin: PreonMargin,
-    pub padding: PreonPadding,
-    pub min_width: u32,
-    pub min_height: u32,
-    pub size_flags: u8,
-}
-
-pub struct Vector2<T: > {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
     pub x: T,
-    pub y: T
+    pub y: T,
 }
 
-impl<T> Vector2<T> {
+impl<T> Add for Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    type Output = Self;
 
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
 }
+
+impl<T> Sub for Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl<T> Mul for Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
+
+impl<T> Div for Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+        }
+    }
+}
+
+pub fn vector2<T>(x: T, y: T) -> Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    Vector2 { x, y }
+}
+
+impl<T> Display for Vector2<T>
+where
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + Clone
+        + Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(x: {}, y: {})", self.x, self.y)
+    }
+}
+
+pub trait PreonRenderer {
+    fn start(&mut self, core: &PreonCore);
+    fn update(&mut self, core: &mut PreonCore) -> bool;
+    fn render(&mut self, core: &PreonCore);
+}
+
+pub trait PreonComponent {
+    fn add_child(&mut self, new_child: Box<dyn PreonComponent>);
+    fn layout(&mut self, parent: PreonLayout) -> PreonLayout;
+}
+
+// Used by PreonRenderers to make their own trait
+pub trait PreonRenderableComponent<T: PreonRenderer> {}

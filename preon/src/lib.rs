@@ -1,4 +1,4 @@
-use preon_core::{PreonCore, PreonRenderer};
+use preon_core::{PreonComponent, PreonCore, PreonRenderer};
 use preon_renderer_opengl::PreonRendererOpenGL;
 
 pub struct Preon {
@@ -20,5 +20,9 @@ impl Preon {
         while !self.renderer.update(&mut self.core) {
             self.renderer.render(&self.core);
         }
+    }
+
+    pub fn add_child(&mut self, new_child: Box<dyn PreonComponent>) {
+        self.core.root.add_child(new_child);
     }
 }
