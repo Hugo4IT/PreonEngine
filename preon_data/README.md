@@ -1,5 +1,7 @@
 # PreonData
 
+> **NOTE:** This code is unused for a reason, Rust has better ways of doing the same thing. For this reason, it is ***not*** used in PreonEngine
+
 A piece of code left over from translating my mysterious C project to Rust but never used because Rust just offered everything I needed.
 
 It contains a big amount of functions to serialize and deserialize all types listed below into bytes:

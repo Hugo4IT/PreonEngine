@@ -1,16 +1,16 @@
-use preon_core::{PreonComponent, PreonCore, PreonRenderer};
-use preon_renderer_opengl::PreonRendererOpenGL;
+use preon_engine::engine::{PreonComponent, PreonEngine, PreonRenderer};
+use preon_module_opengl::PreonRendererOpenGL;
 
 pub struct Preon {
     renderer: PreonRendererOpenGL,
-    core: PreonCore
+    core: PreonEngine,
 }
 
 impl Preon {
     pub fn new() -> Self {
         Self {
             renderer: PreonRendererOpenGL::init(),
-            core: PreonCore::init()
+            core: PreonEngine::init(),
         }
     }
 

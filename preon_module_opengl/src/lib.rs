@@ -1,11 +1,13 @@
-use std::{sync::mpsc::Receiver};
+use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_core::{PreonCore, PreonRect, PreonRenderer, Vector2, color};
+use preon_engine::engine::{
+    components::PreonRect, types::Vector2, utils, PreonEngine, PreonRenderer,
+};
 
 pub struct PreonRendererOpenGL {
     window: Window,
-    events: Receiver<(f64, WindowEvent)>
+    events: Receiver<(f64, WindowEvent)>,
 }
 
 impl PreonRendererOpenGL {
@@ -32,24 +34,21 @@ impl PreonRendererOpenGL {
         unsafe {
             gl::load_with(|s| window.get_proc_address(s));
 
-            let (r, g, b, a) = color(0x171717FF);
+            let (r, g, b, a) = utils::color(0x171717FF);
 
             gl::ClearColor(r, g, b, a);
         };
 
-        PreonRendererOpenGL {
-            window,
-            events
-        }
+        PreonRendererOpenGL { window, events }
     }
 }
 
 impl PreonRenderer for PreonRendererOpenGL {
-    fn start(&mut self, _core: &PreonCore) {
+    fn start(&mut self, _engine: &PreonEngine) {
         self.window.show();
     }
 
-    fn update(&mut self, _core: &mut PreonCore) -> bool {
+    fn update(&mut self, _engine: &mut PreonEngine) -> bool {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -63,12 +62,10 @@ impl PreonRenderer for PreonRendererOpenGL {
         self.window.should_close()
     }
 
-    fn render(&mut self, _core: &PreonCore) {
+    fn render(&mut self, _engine: &PreonEngine) {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
-
-        
 
         self.window.swap_buffers();
     }
@@ -77,7 +74,7 @@ impl PreonRenderer for PreonRendererOpenGL {
 #[derive(Debug)]
 pub struct PreonGLRenderData {
     position: Vector2<i32>,
-    size: Vector2<u32>
+    size: Vector2<u32>,
 }
 
 trait PreonRenderableComponent<PreonRendererOpenGL> {
@@ -86,6 +83,9 @@ trait PreonRenderableComponent<PreonRendererOpenGL> {
 
 impl PreonRenderableComponent<PreonRendererOpenGL> for PreonRect {
     fn render(&self, data: PreonGLRenderData) {
-        println!("Trying to render a PreonRect with layout: {:?}, color: {:?} and data: {:?}", self.layout, self.color, data);
+        println!(
+            "Trying to render a PreonRect with layout: {:?}, color: {:?} and data: {:?}",
+            self.layout, self.color, data
+        );
     }
 }

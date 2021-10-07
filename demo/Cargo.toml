@@ -5,4 +5,4 @@ edition = "2018"
 
 [dependencies]
 preon = { path = "../preon" }
-preon_core = { path = "../preon_core" }
+preon_engine = { path = "../preon_engine" }

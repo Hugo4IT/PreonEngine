@@ -1,3 +1,20 @@
+use std::convert::TryInto;
+
+pub const SU8: usize = 1usize;
+pub const SU16: usize = 2usize;
+pub const SU32: usize = 4usize;
+pub const SU64: usize = 8usize;
+pub const SU128: usize = 16usize;
+pub const SI8: usize = 1usize;
+pub const SI16: usize = 2usize;
+pub const SI32: usize = 4usize;
+pub const SI64: usize = 8usize;
+pub const SI128: usize = 16usize;
+pub const SF32: usize = 4usize;
+pub const SF64: usize = 8usize;
+pub const SBOOL: usize = 1usize;
+pub const SBOOLS: usize = 1usize;
+
 pub struct PreonData {
     raw: Vec<u8>,
 }
