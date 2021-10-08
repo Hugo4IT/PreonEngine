@@ -52,9 +52,9 @@ pub mod size {
 }
 
 pub trait PreonRenderer {
-    fn start(&mut self, engine: &PreonEngine);
-    fn update(&mut self, engine: &mut PreonEngine) -> bool;
-    fn render(&mut self, engine: &PreonEngine);
+    fn start(&mut self);
+    fn update(&mut self) -> bool;
+    fn render(&mut self);
 }
 
 pub trait PreonComponent {
@@ -69,14 +69,14 @@ pub struct PreonEngine {
     pub root: Box<PreonVertical>,
     pub layout: PreonLayout,
 
-    pub on_resize: PreonEvent<Vector2<u32>>,
+    pub on_resize: PreonEvent<Resized>,
 
     window_inner_size: Vector2<u32>,
     _window_inner_size: Vector2<u32>,
 }
 
 impl PreonEngine {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         Self {
             root: PreonVertical::new(),
             layout: PreonLayout {
@@ -102,5 +102,11 @@ impl PreonEngine {
 
     pub fn resize(&mut self, new_size: Vector2<u32>) {
         self._window_inner_size = new_size;
+        self.on_resize.fire(Resized { new_size });
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Resized {
+    pub new_size: Vector2<u32>,
 }

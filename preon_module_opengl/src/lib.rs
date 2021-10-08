@@ -1,9 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_engine::engine::{
-    components::PreonRect, types::Vector2, utils, PreonEngine, PreonRenderer,
-};
+use preon_engine::engine::{PreonEngine, PreonRenderer, Resized, components::PreonRect, events::PreonEventReceiver, types::Vector2, utils};
 
 pub struct PreonRendererOpenGL {
     window: Window,
@@ -11,7 +9,7 @@ pub struct PreonRendererOpenGL {
 }
 
 impl PreonRendererOpenGL {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(WindowHint::ContextVersionMajor(3));
         glfw.window_hint(WindowHint::ContextVersionMinor(3));
@@ -43,12 +41,18 @@ impl PreonRendererOpenGL {
     }
 }
 
+impl PreonEventReceiver<Resized> for PreonRendererOpenGL {
+    fn received(&mut self, event: Resized) {
+        println!("Hi!");
+    }
+}
+
 impl PreonRenderer for PreonRendererOpenGL {
-    fn start(&mut self, _engine: &PreonEngine) {
+    fn start(&mut self) {
         self.window.show();
     }
 
-    fn update(&mut self, _engine: &mut PreonEngine) -> bool {
+    fn update(&mut self) -> bool {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -59,10 +63,10 @@ impl PreonRenderer for PreonRendererOpenGL {
             }
         }
 
-        self.window.should_close()
+        !self.window.should_close()
     }
 
-    fn render(&mut self, _engine: &PreonEngine) {
+    fn render(&mut self) {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
