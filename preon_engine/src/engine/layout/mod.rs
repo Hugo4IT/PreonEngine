@@ -39,48 +39,9 @@ pub struct PreonMargin {
     pub left: u32,
 }
 
+/// Returns a PreonMargin with all sides set to `v`.
 #[inline(always)]
-pub fn m4(t: u32, r: u32, b: u32, l: u32) -> PreonMargin {
-    PreonMargin {
-        top: t,
-        right: r,
-        bottom: b,
-        left: l,
-    }
-}
-
-#[inline(always)]
-pub fn m2(x: u32, y: u32) -> PreonMargin {
-    PreonMargin {
-        top: y,
-        right: x,
-        bottom: y,
-        left: x,
-    }
-}
-
-#[inline(always)]
-pub fn mx(x: u32) -> PreonMargin {
-    PreonMargin {
-        top: 0,
-        right: x,
-        bottom: 0,
-        left: x,
-    }
-}
-
-#[inline(always)]
-pub fn my(y: u32) -> PreonMargin {
-    PreonMargin {
-        top: y,
-        right: 0,
-        bottom: y,
-        left: 0,
-    }
-}
-
-#[inline(always)]
-pub fn m(v: u32) -> PreonMargin {
+pub fn margin(v: u32) -> PreonMargin {
     PreonMargin {
         top: v,
         right: v,
@@ -89,25 +50,48 @@ pub fn m(v: u32) -> PreonMargin {
     }
 }
 
-#[inline(always)]
-pub fn margin(v: u32) -> PreonMargin {
-    m(v)
-}
+/// Returns a PreonMargin with the left and right sides set to `x` and top and bottom set to 0.
 #[inline(always)]
 pub fn margin_x(x: u32) -> PreonMargin {
-    mx(x)
+    PreonMargin {
+        top: 0,
+        right: x,
+        bottom: 0,
+        left: x,
+    }
 }
+
+/// Returns a PreonMargin with the top and bottom set to `x` and the right and left set to 0.
 #[inline(always)]
 pub fn margin_y(y: u32) -> PreonMargin {
-    my(y)
+    PreonMargin {
+        top: y,
+        right: 0,
+        bottom: y,
+        left: 0,
+    }
 }
+
+/// Returns a PreonMargin with the left and right set to `x` and the top and bottom set to `y`
 #[inline(always)]
 pub fn margin_xy(x: u32, y: u32) -> PreonMargin {
-    m2(x, y)
+    PreonMargin {
+        top: y,
+        right: x,
+        bottom: y,
+        left: x,
+    }
 }
+
+/// Arguments in order: Top, Right, Bottom, Left
 #[inline(always)]
 pub fn margin_trbl(t: u32, r: u32, b: u32, l: u32) -> PreonMargin {
-    m4(t, r, b, l)
+    PreonMargin {
+        top: t,
+        right: r,
+        bottom: b,
+        left: l,
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -118,48 +102,9 @@ pub struct PreonPadding {
     pub left: u32,
 }
 
+/// Returns a PreonPadding with all sides set to `v`.
 #[inline(always)]
-pub fn p4(t: u32, r: u32, b: u32, l: u32) -> PreonPadding {
-    PreonPadding {
-        top: t,
-        right: r,
-        bottom: b,
-        left: l,
-    }
-}
-
-#[inline(always)]
-pub fn p2(x: u32, y: u32) -> PreonPadding {
-    PreonPadding {
-        top: y,
-        right: x,
-        bottom: y,
-        left: x,
-    }
-}
-
-#[inline(always)]
-pub fn px(x: u32) -> PreonPadding {
-    PreonPadding {
-        top: 0,
-        right: x,
-        bottom: 0,
-        left: x,
-    }
-}
-
-#[inline(always)]
-pub fn py(y: u32) -> PreonPadding {
-    PreonPadding {
-        top: y,
-        right: 0,
-        bottom: y,
-        left: 0,
-    }
-}
-
-#[inline(always)]
-pub fn p(v: u32) -> PreonPadding {
+pub fn padding(v: u32) -> PreonPadding {
     PreonPadding {
         top: v,
         right: v,
@@ -168,23 +113,46 @@ pub fn p(v: u32) -> PreonPadding {
     }
 }
 
-#[inline(always)]
-pub fn padding(v: u32) -> PreonPadding {
-    p(v)
-}
+/// Returns a PreonPadding with the left and right sides set to `x` and top and bottom set to 0.
 #[inline(always)]
 pub fn padding_x(x: u32) -> PreonPadding {
-    px(x)
+    PreonPadding {
+        top: 0,
+        right: x,
+        bottom: 0,
+        left: x,
+    }
 }
+
+/// Returns a PreonPadding with the top and bottom set to `x` and the right and left set to 0.
 #[inline(always)]
 pub fn padding_y(y: u32) -> PreonPadding {
-    py(y)
+    PreonPadding {
+        top: y,
+        right: 0,
+        bottom: y,
+        left: 0,
+    }
 }
+
+/// Returns a PreonPadding with the left and right set to `x` and the top and bottom set to `y`
 #[inline(always)]
 pub fn padding_xy(x: u32, y: u32) -> PreonPadding {
-    p2(x, y)
+    PreonPadding {
+        top: y,
+        right: x,
+        bottom: y,
+        left: x,
+    }
 }
+
+/// Arguments in order: Top, Right, Bottom, Left
 #[inline(always)]
 pub fn padding_trbl(t: u32, r: u32, b: u32, l: u32) -> PreonPadding {
-    p4(t, r, b, l)
+    PreonPadding {
+        top: t,
+        right: r,
+        bottom: b,
+        left: l,
+    }
 }

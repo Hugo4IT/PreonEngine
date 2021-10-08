@@ -16,7 +16,7 @@ impl PreonRect {
                 margin: layout::margin(0),
                 padding: layout::padding(0),
                 min_size: utils::vector2(0),
-                size_flags: size::FILL_EXPAND,
+                size_flags: size::FIT_EXPAND,
             },
             color: utils::color(0xda0037ff),
         })
@@ -46,7 +46,7 @@ impl PreonVertical {
                 margin: layout::margin(0),
                 padding: layout::padding(0),
                 min_size: utils::vector2(0),
-                size_flags: size::FILL,
+                size_flags: size::FIT,
             },
             children: Vec::new(),
             expanding_children: 0,
@@ -66,12 +66,12 @@ impl PreonComponent for PreonVertical {
             let child_hints = child.layout(self.layout);
             let child_minsize = child_hints.get_min_size();
 
-            if self.layout.has_size_flag(size::vertical::FILL) {
+            if self.layout.has_size_flag(size::vertical::FIT) {
                 if child_minsize.y > self.layout.min_size.y {
                     self.layout.min_size.y = child_minsize.y;
                 }
             }
-            if self.layout.has_size_flag(size::horizontal::FILL) {
+            if self.layout.has_size_flag(size::horizontal::FIT) {
                 if child_minsize.x > self.layout.min_size.x {
                     self.layout.min_size.x = child_minsize.x;
                 }

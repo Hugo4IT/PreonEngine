@@ -1,27 +1,54 @@
 use self::{components::PreonVertical, events::PreonEvent, layout::PreonLayout, types::Vector2};
 
+/// All default components.
 pub mod components;
+
+/// Mini event system.
 pub mod events;
+
+/// Datatypes used for computing layout.
 pub mod layout;
+
+/// Currently only contains `Vector2<T>`.
 pub mod types;
+
+/// Tiny utility functions for cleaner or more consistent syntax.
 pub mod utils;
 
+/// Size flags shortcuts.
 pub mod size {
+    /// Only apply a specific size flag to the X axis.
     pub mod horizontal {
-        pub const FILL: u8 = 0b00000001;
+        /// Automatically resize to fit children horizontally.
+        pub const FIT: u8 = 0b00000001;
+        
+        /// Expand to horizontally fill leftover space in parent.
         pub const EXPAND: u8 = 0b00000010;
-        pub const FILL_EXPAND: u8 = FILL + EXPAND;
+        
+        /// Resize to fit children, but expand to available space.
+        pub const FILL_EXPAND: u8 = FIT + EXPAND;
     }
-
+    
+    /// Only apply a specific size flag to the Y axis.
     pub mod vertical {
-        pub const FILL: u8 = 0b00000100;
+        /// Automatically resize to fit children vertically.
+        pub const FIT: u8 = 0b00000100;
+        
+        /// Expand to vertically fill leftover space in parent.
         pub const EXPAND: u8 = 0b00001000;
-        pub const FILL_EXPAND: u8 = FILL + EXPAND;
+        
+        /// Resize to fit children, but expand to available space.
+        pub const FIT_EXPAND: u8 = FIT + EXPAND;
     }
-
+    
+    /// Automatically resize to fit children.
+    pub const FIT: u8 = horizontal::FIT + vertical::FIT;
+    
+    /// Expand to fill leftover space in parent.
     pub const EXPAND: u8 = horizontal::EXPAND + vertical::EXPAND;
-    pub const FILL: u8 = horizontal::FILL + vertical::FILL;
-    pub const FILL_EXPAND: u8 = FILL + EXPAND;
+
+    /// Resize to fit children, but expand to available space.
+    pub const FIT_EXPAND: u8 = FIT + EXPAND;
 }
 
 pub trait PreonRenderer {
@@ -56,7 +83,7 @@ impl PreonEngine {
                 margin: layout::margin(0),
                 padding: layout::padding(0),
                 min_size: utils::vector2(0),
-                size_flags: size::FILL,
+                size_flags: size::FIT,
             },
             on_resize: PreonEvent::new(),
             window_inner_size: utils::vector2(0),
