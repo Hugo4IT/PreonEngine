@@ -1,7 +1,12 @@
 use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_engine::engine::{PreonEngine, PreonRenderer, Resized, components::PreonRect, events::PreonEventReceiver, types::Vector2, utils};
+use preon_engine::engine::{
+    components::PreonRect,
+    events::{PreonWindowEvent},
+    types::Vector2,
+    utils, PreonEngine, PreonRenderer, ResizedEventData,
+};
 
 pub struct PreonRendererOpenGL {
     window: Window,
@@ -41,13 +46,16 @@ impl PreonRendererOpenGL {
     }
 }
 
-impl PreonEventReceiver<Resized> for PreonRendererOpenGL {
-    fn received(&mut self, event: Resized) {
-        println!("Hi!");
-    }
-}
-
 impl PreonRenderer for PreonRendererOpenGL {
+    fn connect_to(&mut self, engine: &mut PreonEngine) {
+        engine
+            .window_events
+            .on::<ResizedEventData>(PreonWindowEvent::Resized, |data| {
+                let new_size = data.new_size;
+                self.window.set_size(new_size.x as i32, new_size.y as i32);
+            })
+    }
+
     fn start(&mut self) {
         self.window.show();
     }

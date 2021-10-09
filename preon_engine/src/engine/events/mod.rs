@@ -1,33 +1,26 @@
-use std::ops::AddAssign;
-
-pub trait PreonEventReceiver<T: Copy + Clone + Sized> {
-    fn received(&mut self, data: T);
+pub trait PreonEventBus {
+    type Data;
+    type Target;
 }
 
-pub struct PreonEvent<T: Copy + Clone + Sized> {
-    handlers: Vec<Box<dyn PreonEventReceiver<T>>>,
+pub struct PreonEvent<T: PreonEventBus> {
+    handlers: Vec<fn(&mut T::Target, T::Data)>,
 }
 
-impl<T: Copy + Clone + Sized> AddAssign<Box<dyn PreonEventReceiver<T>>> for PreonEvent<T> {
-    fn add_assign(&mut self, rhs: Box<dyn PreonEventReceiver<T>>) {
-        self.subscribe(rhs);
-    }
-}
-
-impl<T: Copy + Clone + Sized> PreonEvent<T> {
+impl<T: PreonEventBus> PreonEvent<T> {
     pub fn new() -> Self {
         Self {
             handlers: Vec::new(),
         }
     }
 
-    pub fn fire(&mut self, data: T) {
+    pub fn emit(&mut self, data: T::Data) {
         for handler in self.handlers.iter_mut() {
-            handler.received(data);
+            handler(data);
         }
     }
 
-    pub fn subscribe(&mut self, handler: Box<dyn PreonEventReceiver<T>>) {
+    pub fn subscribe(&mut self, handler: fn(&mut T::Target, T::Data)) {
         self.handlers.push(handler);
     }
 }
