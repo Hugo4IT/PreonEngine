@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "preon_module_opengl",
+    "preon_framework",
+    "framework_demo",
     "preon_engine",
     "preon_data",
-    "preon",
-    "demo"
 ]
 resolver = "2"

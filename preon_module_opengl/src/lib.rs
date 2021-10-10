@@ -1,14 +1,15 @@
 use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_engine::engine::{PreonEngine, PreonRenderer, ResizedEventData, components::PreonRect, events::PreonEventListener, types::Vector2, utils};
+use preon_engine::{PreonComponent, PreonEngine, PreonRenderer, components::PreonRect, events::{PreonEvent, WindowEventArgs}, pipeline::PreonRenderPipeline, types::Vector2, utils};
 
 pub struct PreonRendererOpenGL {
     window: Window,
     events: Receiver<(f64, WindowEvent)>,
+    registered_handlers: Vec<usize>,
 }
 
-impl<'a> PreonRendererOpenGL {
+impl PreonRendererOpenGL {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(WindowHint::ContextVersionMajor(3));
@@ -37,31 +38,20 @@ impl<'a> PreonRendererOpenGL {
             gl::ClearColor(r, g, b, a);
         };
 
-        PreonRendererOpenGL { window, events }
-    }
-
-    pub fn on_resized(self: &'a Box<&'a mut Self>, data: ResizedEventData) {
-        self.window.set_size(data.new_size.x as i32, data.new_size.y as i32);
-        println!("Oh no");
-    }
-}
-
-impl<'a> PreonEventListener<'a, ResizedEventData> for PreonRendererOpenGL {
-    fn on_emit(&mut self, data: ResizedEventData) {
-        todo!()
+        PreonRendererOpenGL {
+            window,
+            events,
+            registered_handlers: Vec::new(),
+        }
     }
 }
 
-impl<'a> PreonRenderer<'a> for PreonRendererOpenGL {
-    fn connect_to(&'a mut self, engine: &'a mut PreonEngine) {
-        engine.on_resized.subscribe(Box::new(self));
-    }
-
+impl PreonRenderer for PreonRendererOpenGL {
     fn start(&mut self) {
         self.window.show();
     }
 
-    fn update(&mut self) -> bool {
+    fn update(&mut self, engine: &mut PreonEngine) -> bool {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.events) {
             match event {
@@ -72,33 +62,48 @@ impl<'a> PreonRenderer<'a> for PreonRendererOpenGL {
             }
         }
 
+        engine.events.pull(|event| {
+            match event {
+                PreonEvent::Window(
+                    WindowEventArgs::Resized { new_size }
+                ) => {
+                    self.window.set_size(new_size.x, new_size.y);
+                },
+                _ => {}
+            }
+        });
+
         !self.window.should_close()
     }
 
-    fn render(&mut self) {
+    fn render(&mut self, engine: &mut PreonEngine) {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
+
+        recursive_render(engine.root.get_pipeline());
 
         self.window.swap_buffers();
     }
 }
 
-#[derive(Debug)]
-pub struct PreonGLRenderData {
-    position: Vector2<i32>,
-    size: Vector2<u32>,
+fn recursive_render(pipeline: Option<PreonRenderPipeline>) {
+    if pipeline.is_some() {
+        let peepline = pipeline.unwrap();
+
+        if peepline.drawables.is_some() {
+            let mut drawweebbles = peepline.drawables.unwrap();
+            for drawable in drawweebbles.iter_mut() {}
+        }
+    }
 }
 
-trait PreonRenderableComponent<PreonRendererOpenGL> {
-    fn render(&self, data: PreonGLRenderData);
+trait PreonRenderable<PreonRendererOpenGL> {
+    fn render(&self, position: Vector2<i32>, size: Vector2<i32>);
 }
 
-impl PreonRenderableComponent<PreonRendererOpenGL> for PreonRect {
-    fn render(&self, data: PreonGLRenderData) {
-        println!(
-            "Trying to render a PreonRect with layout: {:?}, color: {:?} and data: {:?}",
-            self.layout, self.color, data
-        );
+impl PreonRenderable<PreonRendererOpenGL> for PreonRect {
+    fn render(&self, position: Vector2<i32>, size: Vector2<i32>) {
+        todo!()
     }
 }

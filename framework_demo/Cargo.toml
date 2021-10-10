@@ -1,8 +1,8 @@
 [package]
-name = "demo"
+name = "framework_demo"
 version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-preon = { path = "../preon" }
+preon_framework = { path = "../preon_framework" }
 preon_engine = { path = "../preon_engine" }
