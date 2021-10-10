@@ -1,7 +1,9 @@
 use crate::{
+    layout::{self, PreonLayout},
     pipeline::{PreonRenderPipeline, PreonShape},
-    types::Vector2,layout::{self, PreonLayout},
-    size, utils, PreonComponent,
+    size,
+    types::Vector2,
+    utils, PreonComponent,
 };
 
 pub struct PreonRect {
@@ -48,9 +50,8 @@ impl PreonComponent for PreonVertical {
             let child_layout = child.get_layout();
 
             if self.layout.has_size_flag(size::vertical::FIT) {
-                if child_layout.min_size.y
-                    + child_layout.margin.top
-                    + child_layout.margin.bottom > self.layout.min_size.y
+                if child_layout.min_size.y + child_layout.margin.top + child_layout.margin.bottom
+                    > self.layout.min_size.y
                 {
                     self.layout.min_size.y = child_layout.min_size.y
                         + child_layout.margin.top
@@ -58,9 +59,8 @@ impl PreonComponent for PreonVertical {
                 }
             }
             if self.layout.has_size_flag(size::horizontal::FIT) {
-                if child_layout.min_size.x
-                    + child_layout.margin.left
-                    + child_layout.margin.right > self.layout.min_size.x
+                if child_layout.min_size.x + child_layout.margin.left + child_layout.margin.right
+                    > self.layout.min_size.x
                 {
                     self.layout.min_size.x = child_layout.min_size.x
                         + child_layout.margin.left
@@ -68,19 +68,17 @@ impl PreonComponent for PreonVertical {
                 }
             }
 
-            current_y += child_layout.min_size.y
-            + child_layout.margin.top
-            + child_layout.margin.bottom;
+            current_y +=
+                child_layout.min_size.y + child_layout.margin.top + child_layout.margin.bottom;
         }
 
         if self.layout.min_size.x < size.x {
             self.layout.min_size.x = size.x;
         }
-        
+
         if self.layout.min_size.y < size.y {
             self.layout.min_size.y = size.y;
         }
-
 
         for child in self.children.iter_mut() {
             let child_layout = child.get_layout();
@@ -146,9 +144,7 @@ impl PreonComponent for PreonButton {
         panic!("PreonButton is not made to hold children!");
     }
 
-    fn update(&mut self, position: Vector2<i32>, size: Vector2<i32>) {
-        
-    }
+    fn update(&mut self, _position: Vector2<i32>, _size: Vector2<i32>) {}
 
     fn get_layout(&self) -> PreonLayout {
         self.layout

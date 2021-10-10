@@ -1,13 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
-
 use events::{PreonEvent, PreonEventEmitter, WindowEventArgs};
 use pipeline::PreonRenderPipeline;
 
-use self::{
-    components::PreonVertical,
-    layout::PreonLayout,
-    types::Vector2,
-};
+use self::{components::PreonVertical, layout::PreonLayout, types::Vector2};
 
 /// All default components.
 pub mod components;
@@ -121,10 +115,7 @@ impl PreonEngine {
 
     pub fn resize(&mut self, new_size: Vector2<i32>) {
         self._window_inner_size = new_size;
-        self.events.push(
-            PreonEvent::Window(
-                WindowEventArgs::Resized { new_size }
-            )
-        );
+        self.events
+            .push(PreonEvent::Window(WindowEventArgs::Resized { new_size }));
     }
 }

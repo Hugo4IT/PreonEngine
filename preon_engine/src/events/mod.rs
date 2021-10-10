@@ -3,13 +3,11 @@ use crate::types::Vector2;
 #[derive(Clone, Copy)]
 pub enum WindowEventArgs {
     Resized { new_size: Vector2<i32> },
-    Closed
+    Closed,
 }
 
 #[derive(Clone, Copy)]
-pub enum ButtonEventArgs {
-
-}
+pub enum ButtonEventArgs {}
 
 #[derive(Clone, Copy)]
 pub enum PreonEvent {
@@ -26,7 +24,7 @@ impl PreonEventEmitter {
     pub fn new() -> PreonEventEmitter {
         PreonEventEmitter {
             events: Vec::new(),
-            buffer: Vec::new()
+            buffer: Vec::new(),
         }
     }
 

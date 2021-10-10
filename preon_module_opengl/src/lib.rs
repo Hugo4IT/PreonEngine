@@ -1,7 +1,13 @@
 use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_engine::{PreonComponent, PreonEngine, PreonRenderer, components::PreonRect, events::{PreonEvent, WindowEventArgs}, pipeline::PreonRenderPipeline, types::Vector2, utils};
+use preon_engine::{
+    components::PreonRect,
+    events::{PreonEvent, WindowEventArgs},
+    pipeline::PreonRenderPipeline,
+    types::Vector2,
+    utils, PreonComponent, PreonEngine, PreonRenderer,
+};
 
 pub struct PreonRendererOpenGL {
     window: Window,
@@ -62,15 +68,11 @@ impl PreonRenderer for PreonRendererOpenGL {
             }
         }
 
-        engine.events.pull(|event| {
-            match event {
-                PreonEvent::Window(
-                    WindowEventArgs::Resized { new_size }
-                ) => {
-                    self.window.set_size(new_size.x, new_size.y);
-                },
-                _ => {}
+        engine.events.pull(|event| match event {
+            PreonEvent::Window(WindowEventArgs::Resized { new_size }) => {
+                self.window.set_size(new_size.x, new_size.y);
             }
+            _ => {}
         });
 
         !self.window.should_close()
@@ -93,7 +95,7 @@ fn recursive_render(pipeline: Option<PreonRenderPipeline>) {
 
         if peepline.drawables.is_some() {
             let mut drawweebbles = peepline.drawables.unwrap();
-            for drawable in drawweebbles.iter_mut() {}
+            for _drawable in drawweebbles.iter_mut() {}
         }
     }
 }
@@ -103,7 +105,7 @@ trait PreonRenderable<PreonRendererOpenGL> {
 }
 
 impl PreonRenderable<PreonRendererOpenGL> for PreonRect {
-    fn render(&self, position: Vector2<i32>, size: Vector2<i32>) {
+    fn render(&self, _position: Vector2<i32>, _size: Vector2<i32>) {
         todo!()
     }
 }

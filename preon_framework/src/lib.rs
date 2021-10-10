@@ -1,4 +1,7 @@
-use preon_engine::{PreonEngine, PreonRenderer, events::{PreonEvent, WindowEventArgs}};
+use preon_engine::{
+    events::{PreonEvent, WindowEventArgs},
+    PreonEngine, PreonRenderer,
+};
 use preon_module_opengl::PreonRendererOpenGL;
 
 pub struct Preon<T: PreonFramework> {
@@ -18,7 +21,9 @@ pub fn run<T: PreonFramework>() {
     let framework = T::new(&mut engine);
 
     let mut preon: Preon<T> = Preon {
-        renderer, engine, framework
+        renderer,
+        engine,
+        framework,
     };
 
     preon.renderer.start();
@@ -33,5 +38,7 @@ pub fn run<T: PreonFramework>() {
         preon.renderer.render(&mut preon.engine);
     }
 
-    preon.framework.event(&PreonEvent::Window(WindowEventArgs::Closed));
+    preon
+        .framework
+        .event(&PreonEvent::Window(WindowEventArgs::Closed));
 }
