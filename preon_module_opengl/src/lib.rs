@@ -1,19 +1,14 @@
 use std::sync::mpsc::Receiver;
 
 use glfw::{ClientApiHint, Context, SwapInterval, Window, WindowEvent, WindowHint};
-use preon_engine::engine::{
-    components::PreonRect,
-    events::{PreonWindowEvent},
-    types::Vector2,
-    utils, PreonEngine, PreonRenderer, ResizedEventData,
-};
+use preon_engine::engine::{PreonEngine, PreonRenderer, ResizedEventData, components::PreonRect, events::PreonEventListener, types::Vector2, utils};
 
 pub struct PreonRendererOpenGL {
     window: Window,
     events: Receiver<(f64, WindowEvent)>,
 }
 
-impl PreonRendererOpenGL {
+impl<'a> PreonRendererOpenGL {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(WindowHint::ContextVersionMajor(3));
@@ -44,16 +39,22 @@ impl PreonRendererOpenGL {
 
         PreonRendererOpenGL { window, events }
     }
+
+    pub fn on_resized(self: &'a Box<&'a mut Self>, data: ResizedEventData) {
+        self.window.set_size(data.new_size.x as i32, data.new_size.y as i32);
+        println!("Oh no");
+    }
 }
 
-impl PreonRenderer for PreonRendererOpenGL {
-    fn connect_to(&mut self, engine: &mut PreonEngine) {
-        engine
-            .window_events
-            .on::<ResizedEventData>(PreonWindowEvent::Resized, |data| {
-                let new_size = data.new_size;
-                self.window.set_size(new_size.x as i32, new_size.y as i32);
-            })
+impl<'a> PreonEventListener<'a, ResizedEventData> for PreonRendererOpenGL {
+    fn on_emit(&mut self, data: ResizedEventData) {
+        todo!()
+    }
+}
+
+impl<'a> PreonRenderer<'a> for PreonRendererOpenGL {
+    fn connect_to(&'a mut self, engine: &'a mut PreonEngine) {
+        engine.on_resized.subscribe(Box::new(self));
     }
 
     fn start(&mut self) {

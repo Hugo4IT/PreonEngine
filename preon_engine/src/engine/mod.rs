@@ -1,4 +1,4 @@
-use self::{components::PreonVertical, events::{PreonEvent, PreonEventBus, PreonEventData, PreonWindowEvent}, layout::PreonLayout, types::Vector2};
+use self::{components::PreonVertical, events::PreonEvent, layout::PreonLayout, types::Vector2};
 
 /// All default components.
 pub mod components;
@@ -51,8 +51,8 @@ pub mod size {
     pub const FIT_EXPAND: u8 = FIT + EXPAND;
 }
 
-pub trait PreonRenderer {
-    fn connect_to(&mut self, engine: &mut PreonEngine);
+pub trait PreonRenderer<'a> {
+    fn connect_to(&'a mut self, engine: &'a mut PreonEngine);
     fn start(&mut self);
     fn update(&mut self) -> bool;
     fn render(&mut self);
@@ -64,13 +64,13 @@ pub trait PreonComponent {
 }
 
 // Used by PreonRenderers to make their own trait
-pub trait PreonRenderableComponent<T: PreonRenderer> {}
+pub trait PreonRenderableComponent<'a, T: PreonRenderer<'a>> {}
 
 pub struct PreonEngine {
     pub root: Box<PreonVertical>,
     pub layout: PreonLayout,
 
-    pub window_events: PreonEvent<PreonWindowEvent>,
+    pub on_resized: PreonEvent<Vector2<u32>>,
 
     window_inner_size: Vector2<u32>,
     _window_inner_size: Vector2<u32>,
@@ -86,7 +86,7 @@ impl PreonEngine {
                 min_size: utils::vector2(0),
                 size_flags: size::FIT,
             },
-            window_events: PreonEvent::new(),
+            on_resized: PreonEvent::new(),
             window_inner_size: utils::vector2(0),
             _window_inner_size: utils::vector2(0),
         }
@@ -103,15 +103,7 @@ impl PreonEngine {
 
     pub fn resize(&mut self, new_size: Vector2<u32>) {
         self._window_inner_size = new_size;
-        self.window_events.emit(
-            ResizedEventData { new_size },
-        )
+        println!("It doesn't work, does it");
+        self.on_resized.emit(new_size);
     }
 }
-
-#[derive(Clone, Copy, Debug)]
-pub struct ResizedEventData {
-    pub new_size: Vector2<u32>,
-}
-
-impl PreonEventBus for ResizedEventData {}

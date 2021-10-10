@@ -8,7 +8,7 @@ pub struct Preon {
 
 impl Preon {
     pub fn new() -> Self {
-        let mut renderer = PreonRendererOpenGL::new();
+        let renderer = PreonRendererOpenGL::new();
         let engine = PreonEngine::new();
 
         Self {
