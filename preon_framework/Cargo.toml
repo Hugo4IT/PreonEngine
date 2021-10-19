@@ -1,8 +1,0 @@
-[package]
-name = "preon_framework"
-version = "0.1.0"
-edition = "2018"
-
-[dependencies]
-preon_engine = { path = "../preon_engine" }
-preon_module_opengl = { path = "../preon_module_opengl" }

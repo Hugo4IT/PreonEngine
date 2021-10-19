@@ -1,18 +1,11 @@
-use crate::types::Vector2;
+use crate::types::PreonVector;
 
-#[derive(Clone, Copy)]
-pub enum WindowEventArgs {
-    Resized { new_size: Vector2<i32> },
-    Closed,
-}
-
-#[derive(Clone, Copy)]
-pub enum ButtonEventArgs {}
-
-#[derive(Clone, Copy)]
 pub enum PreonEvent {
-    Window(WindowEventArgs),
-    Button(ButtonEventArgs),
+    WindowResized {
+        new_size: PreonVector<i32>
+    },
+    WindowClosed,
+    Button {},
 }
 
 pub struct PreonEventEmitter {

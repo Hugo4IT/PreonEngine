@@ -1,25 +1,21 @@
-use events::{PreonEvent, PreonEventEmitter, WindowEventArgs};
-use pipeline::PreonRenderPipeline;
+use components::{PreonComponent, PreonComponentStack, PreonDefaultComponents};
+use events::{PreonEvent, PreonEventEmitter};
+use rendering::PreonRenderPass;
+use types::PreonBox;
 
-use self::{components::PreonVertical, layout::PreonLayout, types::Vector2};
+use self::types::PreonVector;
 
 /// All default components.
 pub mod components;
 
+/// Traits and enums to make your own renderer
+pub mod rendering;
+
 /// Mini event system.
 pub mod events;
 
-/// Datatypes used for computing layout.
-pub mod layout;
-
 /// Currently only contains `Vector2<T>`.
 pub mod types;
-
-/// Tiny utility functions for cleaner or more consistent syntax.
-pub mod utils;
-
-/// Specify how to render this component
-pub mod pipeline;
 
 /// Size flags shortcuts.
 pub mod size {
@@ -59,63 +55,42 @@ pub mod size {
 
 pub trait PreonRenderer {
     fn start(&mut self);
-    fn update(&mut self, engine: &mut PreonEngine) -> bool;
-    fn render(&mut self, engine: &mut PreonEngine);
+    fn update(&mut self, events: &mut PreonEventEmitter) -> bool;
+    fn render(&mut self, render_pass: &mut PreonRenderPass);
 }
 
-pub trait PreonComponent {
-    fn add_child(&mut self, new_child: Box<dyn PreonComponent>);
-    fn update(&mut self, position: Vector2<i32>, size: Vector2<i32>);
-    fn get_pipeline(&self) -> Option<PreonRenderPipeline>;
-    fn get_layout(&self) -> PreonLayout;
-    fn set_id(&mut self, new_id: u32);
-    fn get_id(&self) -> u32;
-}
-
-// Used by PreonRenderers to make their own trait
-pub trait PreonRenderableComponent<T: PreonRenderer> {}
-
-pub struct PreonEngine {
-    pub root: Box<PreonVertical>,
-    pub layout: PreonLayout,
-
+pub struct PreonEngine<T: PreonComponentStack> {
+    pub root: PreonComponent<T>,
+    pub model: PreonBox,
     pub events: PreonEventEmitter,
-
-    pub window_inner_size: Vector2<i32>,
-    _window_inner_size: Vector2<i32>,
+    pub window_inner_size: PreonVector<i32>,
+    pub render_pass: PreonRenderPass,
 }
 
-impl PreonEngine {
+impl<T: PreonComponentStack> PreonEngine<T> {
     pub fn new() -> Self {
         Self {
-            root: PreonVertical::new(),
-            layout: PreonLayout {
-                margin: layout::margin(0),
-                padding: layout::padding(0),
-                min_size: utils::vector2(0),
-                size_flags: size::FIT,
-            },
+            root: PreonComponent::new(
+                T::get_default(PreonDefaultComponents::VBoxComponent)
+            ),
+            model: PreonBox::initial(),
             events: PreonEventEmitter::new(),
-            window_inner_size: utils::vector2(0),
-            _window_inner_size: utils::vector2(0),
+            window_inner_size: PreonVector::zero(),
+            render_pass: PreonRenderPass::new(),
         }
     }
 
     pub fn update(&mut self) {
-        self.root.update(utils::vector2(0), self.window_inner_size);
-        let root_layout = self.root.get_layout();
+        // self.root.update(Vector2::zero(), self.window_inner_size);
+        // let root_layout = self.root.layout;
 
-        self.window_inner_size = root_layout.min_size;
-        if self._window_inner_size != self.window_inner_size {
-            self.resize(self.window_inner_size);
-        }
+        // self.window_inner_size = root_layout.min_size;
 
         self.events.flip();
+        self.render_pass.flip();
     }
 
-    pub fn resize(&mut self, new_size: Vector2<i32>) {
-        self._window_inner_size = new_size;
-        self.events
-            .push(PreonEvent::Window(WindowEventArgs::Resized { new_size }));
+    pub fn resize(&mut self, new_size: PreonVector<i32>) {
+        self.events.push(PreonEvent::WindowResized { new_size });
     }
 }
