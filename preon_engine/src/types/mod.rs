@@ -255,6 +255,14 @@ impl PreonColor {
             panic!("Please only use PreonColor::from_hex() with a hex string of 3, 4, 6 or 8 characters long (excluding # or 0x)");
         }
     }
+
+    pub fn into_f32_tuple(&self) -> (f32, f32, f32, f32) {
+        (self.r, self.g, self.b, self.a)
+    }
+
+    pub fn into_f64_tuple(&self) -> (f64, f64, f64, f64) {
+        (self.r as f64, self.g as f64, self.b as f64, self.a as f64)
+    }
 }
 
 impl Display for PreonColor {

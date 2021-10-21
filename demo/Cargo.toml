@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-preon_module_opengl = { path = "../preon_module_opengl" }
+preon_module_wgpu = { path = "../preon_module_wgpu" }
 preon_engine = { path = "../preon_engine" }

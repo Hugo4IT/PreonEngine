@@ -1,5 +1,5 @@
-use preon_engine::{PreonEngine, PreonRenderer, components::{PreonComponentStack, PreonDefaultComponents}, rendering::{PreonRenderPass, PreonShape}, types::{PreonColor, PreonVector}};
-use preon_module_opengl::PreonRendererOpenGL;
+use preon_engine::{PreonEngine, components::{PreonComponentStack, PreonDefaultComponents}};
+use preon_module_wgpu::preon;
 
 pub enum MyComponentStack {
     Defaults(PreonDefaultComponents)
@@ -12,21 +12,22 @@ impl PreonComponentStack for MyComponentStack {
 }
 
 fn main() {
-    let mut engine: PreonEngine<MyComponentStack> = PreonEngine::new();
-    let mut renderer = PreonRendererOpenGL::new();
-    let mut pass = PreonRenderPass::new();
+    let engine = PreonEngine::<MyComponentStack>::new();
+    preon::run(engine);
 
-    renderer.start();
-    while renderer.update(&mut engine.events) {
-        engine.update();
+    // let mut pass = PreonRenderPass::new();
 
-        pass.push(PreonShape::Rect {
-            position: PreonVector::new(0, 0),
-            size: PreonVector::new(0, 0),
-            color: PreonColor::from_hex("#da0037")
-        });
-        pass.flip();
+    // renderer.start();
+    // while renderer.update(&mut engine.events) {
+    //     engine.update();
 
-        renderer.render(&mut pass);
-    }
+    //     pass.push(PreonShape::Rect {
+    //         position: PreonVector::new(0, 0),
+    //         size: PreonVector::new(0, 0),
+    //         color: PreonColor::from_hex("#da0037")
+    //     });
+    //     pass.flip();
+
+    //     renderer.render(&mut pass);
+    // }
 }
