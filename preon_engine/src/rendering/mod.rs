@@ -1,8 +1,8 @@
-use crate::{events::PreonEventEmitter, types::{PreonColor, PreonVector}};
+use crate::{events::{PreonEvent, PreonEventEmitter}, types::{PreonColor, PreonVector}};
 
 pub trait PreonRenderer {
     fn start(&mut self);
-    fn update(&mut self, events: &mut PreonEventEmitter);
+    fn update(&mut self, events: &mut PreonEventEmitter<PreonEvent>);
     fn render(&mut self, render_pass: &mut PreonRenderPass);
 }
 
@@ -25,7 +25,7 @@ impl PreonRenderPass {
     pub fn new() -> PreonRenderPass {
         PreonRenderPass {
             pass: Vec::new(),
-            buffer: Vec::new(),
+            buffer: Vec::new()
         }
     }
 

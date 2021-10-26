@@ -1,5 +1,5 @@
 use components::{PreonComponent, PreonCustomComponentStack};
-use events::{PreonEvent, PreonEventEmitter};
+use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
 use rendering::PreonRenderPass;
 use types::PreonBox;
 
@@ -61,8 +61,9 @@ pub mod size {
 pub struct PreonEngine<T: PreonCustomComponentStack> {
     pub tree: PreonComponent<T>,
     pub model: PreonBox,
-    pub events: PreonEventEmitter,
+    pub events: PreonEventEmitter<PreonEvent>,
     pub window_inner_size: PreonVector<i32>,
+    pub _window_inner_size: PreonVector<i32>,
     pub render_pass: PreonRenderPass,
 }
 
@@ -71,39 +72,33 @@ impl<T: PreonCustomComponentStack> PreonEngine<T> {
         Self {
             tree,
             model: PreonBox::initial(),
-            events: PreonEventEmitter::new(),
+            events: PreonEventEmitter::new_with_initial(PreonEvent::WindowOpened),
             window_inner_size: PreonVector::zero(),
+            _window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
         }
     }
 
-    pub fn update(&mut self, ) -> bool {
-        
+    pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {
+        if user_events.len() > 0 || self.events.len() > 0 {
+            T::layout(&mut self.tree);
 
-        self.events.flip();
-        self.render_pass.flip();
-
-        self.events.len() > 0
-    }
-
-    fn handle_component<F>(&mut self, component: PreonComponent<T>, custom: &mut F)
-    where
-        F: FnMut(&mut T, &Option<Vec<PreonComponent<T>>>) + 'static
-    {
-        if let Some(children) = component.children {
-            for child in children.iter() {
-                self.handle_component(child, custom);
+            self.window_inner_size = self.tree.get_size().1;
+            if self._window_inner_size != self.window_inner_size {
+                self.resize(self.window_inner_size);
             }
-        }
 
-        match component.data {
-            PreonComponentStack::Custom(mut c) => custom(&mut c, &component.children),
-            PreonComponentStack::RectComponent { color } => todo!(),
-            PreonComponentStack::VBoxComponent => todo!(),
+            self.events.flip();
+            self.render_pass.flip();
+
+            true
+        } else {
+            false
         }
     }
 
     pub fn resize(&mut self, new_size: PreonVector<i32>) {
+        self._window_inner_size = new_size;
         self.events.push(PreonEvent::WindowResized { new_size });
     }
 }
