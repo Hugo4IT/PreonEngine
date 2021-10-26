@@ -415,7 +415,7 @@ impl Add<PreonBorder> for PreonVector<i32> {
     type Output = PreonVector<i32>;
 
     fn add(self, rhs: PreonBorder) -> Self::Output {
-        PreonVector::new(rhs.x() + self.x, rhs.y() + self.y)
+        PreonVector::new(self.x + rhs.x(), self.y + rhs.y())
     }
 }
 
@@ -423,7 +423,7 @@ impl Sub<PreonBorder> for PreonVector<i32> {
     type Output = PreonVector<i32>;
 
     fn sub(self, rhs: PreonBorder) -> Self::Output {
-        PreonVector::new(rhs.x() - self.x, rhs.y() - self.y)
+        PreonVector::new(self.x - rhs.x(), self.y - rhs.y())
     }
 }
 

@@ -1,9 +1,9 @@
+use std::any::Any;
+
 use components::{PreonComponent, PreonCustomComponentStack};
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
 use rendering::PreonRenderPass;
 use types::PreonBox;
-
-use crate::components::PreonComponentStack;
 
 use self::types::PreonVector;
 
@@ -62,31 +62,33 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
     pub tree: PreonComponent<T>,
     pub model: PreonBox,
     pub events: PreonEventEmitter<PreonEvent>,
-    pub window_inner_size: PreonVector<i32>,
-    pub _window_inner_size: PreonVector<i32>,
+    pub window_inner_size: PreonVector<u32>,
     pub render_pass: PreonRenderPass,
 }
 
-impl<T: PreonCustomComponentStack> PreonEngine<T> {
+impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn new(tree: PreonComponent<T>) -> Self {
         Self {
             tree,
             model: PreonBox::initial(),
             events: PreonEventEmitter::new_with_initial(PreonEvent::WindowOpened),
             window_inner_size: PreonVector::zero(),
-            _window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
         }
+    }
+
+    pub fn start(&mut self) {
+        T::layout(&mut self.tree);
+        T::render(&mut self.tree, &mut self.render_pass);
+
+        let s = self.tree.get_outer_size();
+        self.resize(PreonVector::new(s.x as u32, s.y as u32), true);
     }
 
     pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {
         if user_events.len() > 0 || self.events.len() > 0 {
             T::layout(&mut self.tree);
-
-            self.window_inner_size = self.tree.get_size().1;
-            if self._window_inner_size != self.window_inner_size {
-                self.resize(self.window_inner_size);
-            }
+            T::render(&mut self.tree, &mut self.render_pass);
 
             self.events.flip();
             self.render_pass.flip();
@@ -97,8 +99,12 @@ impl<T: PreonCustomComponentStack> PreonEngine<T> {
         }
     }
 
-    pub fn resize(&mut self, new_size: PreonVector<i32>) {
-        self._window_inner_size = new_size;
-        self.events.push(PreonEvent::WindowResized { new_size });
+    pub fn resize(&mut self, new_size: PreonVector<u32>, auto: bool) {
+        if new_size != self.window_inner_size {
+            self.window_inner_size = new_size;
+        }
+        if auto {
+            self.events.push(PreonEvent::WindowResized(new_size, true));
+        }
     }
 }

@@ -26,10 +26,9 @@ impl Display for PreonButtonState {
 #[derive(Debug, Copy, Clone)]
 pub enum PreonEvent {
     WindowOpened,
-    WindowResized {
-        new_size: PreonVector<i32>
-    },
+    WindowResized(PreonVector<u32>, bool),
     WindowClosed,
+    ForceUpdate,
     Button(u32, PreonButtonState),
 }
 

@@ -1,7 +1,6 @@
-use std::{iter, mem::size_of, num::NonZeroU64};
+use std::mem::size_of;
 
-use log::debug;
-use preon_engine::{events::{PreonEvent, PreonEventEmitter}, rendering::{PreonRenderer, PreonShape}, types::PreonVector};
+use preon_engine::{events::{PreonEvent, PreonEventEmitter}, rendering::{PreonRenderPass, PreonRenderer, PreonShape}};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -102,8 +101,14 @@ const RECT_VERTICES: &[Vertex] = &[
 const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 
 pub mod preon {
-    use preon_engine::{PreonEngine, components::PreonCustomComponentStack, events::{PreonEvent, PreonEventEmitter}, rendering::{PreonRenderer, PreonShape}, types::{PreonColor, PreonVector}};
-    use winit::{dpi::LogicalSize, event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
+    use preon_engine::{
+        components::PreonCustomComponentStack,
+        events::{PreonEvent, PreonEventEmitter},
+        rendering::{PreonRenderer, PreonShape},
+        types::{PreonColor, PreonVector},
+        PreonEngine,
+    };
+    use winit::{dpi::{LogicalSize, PhysicalSize}, event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
     use crate::PreonRendererWGPU;
 
@@ -111,9 +116,11 @@ pub mod preon {
     pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
     where
         T: PreonCustomComponentStack + 'static,
-        F: FnMut(PreonEvent) + 'static
+        F: FnMut(PreonEvent) + 'static,
     {
+        engine.start();
         env_logger::init();
+
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
             .with_min_inner_size(LogicalSize::new(20, 2))
@@ -136,14 +143,17 @@ pub mod preon {
                     let do_render = engine.update(&mut user_events);
                     engine.events.pull(|e| {
                         callback(e);
+                        match e {
+                            PreonEvent::WindowResized(size, auto) => if auto { window.set_inner_size(PhysicalSize::new(size.x, size.y)) },
+                            _ => {}
+                        }
                     });
 
                     wgpu.update(&mut engine.events);
                     if do_render {
                         wgpu.render(&mut engine.render_pass);
                     }
-                }
-                Event::MainEventsCleared => window.request_redraw(),
+                },
                 Event::WindowEvent {
                     ref event,
                     window_id,
@@ -153,13 +163,12 @@ pub mod preon {
                         *control_flow = ControlFlow::Exit;
                     }
                     WindowEvent::Resized(physical_size) => {
-                        engine.resize(PreonVector::<i32>::new(physical_size.width as i32, physical_size.height as i32));
+                        engine.resize(PreonVector::new(physical_size.width, physical_size.height), false);
                         wgpu.resize(*physical_size);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        engine.resize(PreonVector::<i32>::new(new_inner_size.width as i32, new_inner_size.height as i32));
+                        engine.resize(PreonVector::new(new_inner_size.width, new_inner_size.height), false);
                         wgpu.resize(**new_inner_size);
-
                     }
                     WindowEvent::ModifiersChanged(modifier) => {
                         ctrl = modifier.ctrl();
@@ -257,7 +266,8 @@ impl PreonRendererWGPU {
                 .request_device(
                     &wgpu::DeviceDescriptor {
                         features: wgpu::Features::empty(),
-                        limits: wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
+                        limits: wgpu::Limits::downlevel_webgl2_defaults()
+                            .using_resolution(adapter.limits()),
                         label: None,
                     },
                     None,
@@ -438,11 +448,11 @@ impl PreonRendererWGPU {
 impl PreonRenderer for PreonRendererWGPU {
     fn start(&mut self) {}
 
-    fn update(&mut self, _: &mut PreonEventEmitter<PreonEvent>) {
+    fn update(&mut self, events: &mut PreonEventEmitter<PreonEvent>) {
         
     }
 
-    fn render(&mut self, pass: &mut preon_engine::rendering::PreonRenderPass) {
+    fn render(&mut self, pass: &mut PreonRenderPass) {
         let previous_size = self.rect_instances.len();
 
         self.rect_instances = Vec::with_capacity(pass.len());
@@ -483,7 +493,6 @@ impl PreonRenderer for PreonRendererWGPU {
                 bytemuck::cast_slice(self.rect_instances.as_slice()),
             );
         }
-
 
         let res: Result<(), wgpu::SurfaceError> = {
             let output = self.surface.get_current_texture().unwrap();
