@@ -30,10 +30,6 @@ impl Vector2Able for u128 {}
 impl Vector2Able for f32 {}
 impl Vector2Able for f64 {}
 
-// pub trait Normalizable {
-//     fn normalized(&self) -> Self;
-// }
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PreonVector<T: Vector2Able> {
     pub x: T,
@@ -184,6 +180,7 @@ impl<T: Vector2Able> Display for PreonVector<T> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreonColor {
     pub r8: u8,
     pub g8: u8,
@@ -202,9 +199,9 @@ impl PreonColor {
             g8: (g * 255.0f32) as u8,
             b8: (b * 255.0f32) as u8,
             a8: (a * 255.0f32) as u8,
-            r,
-            g,
-            b,
+            r: r.powf(2.2f32),
+            g: g.powf(2.2f32),
+            b: b.powf(2.2f32),
             a,
         }
     }
@@ -215,10 +212,16 @@ impl PreonColor {
             g8: g,
             b8: b,
             a8: a,
-            r: r as f32 / 255.0f32,
-            g: g as f32 / 255.0f32,
-            b: b as f32 / 255.0f32,
-            a: a as f32 / 255.0f32,
+            r: (r as f32 / 255.0f32).powf(2.2f32),
+            g: (g as f32 / 255.0f32).powf(2.2f32),
+            b: (b as f32 / 255.0f32).powf(2.2f32),
+            a: (|| -> f32 {
+                if a != 255 {
+                    a as f32 / 255.0f32
+                } else {
+                    1.0f32
+                }
+            })(),
         }
     }
 
@@ -226,34 +229,114 @@ impl PreonColor {
         let cleaned = hex.replace("#", "").replace("0x", "");
         if cleaned.len() <= 4usize {
             PreonColor::from_rgba8(
-                u8::from_str_radix(&cleaned[0..0], 16).unwrap(),
-                u8::from_str_radix(&cleaned[1..1], 16).unwrap(),
-                u8::from_str_radix(&cleaned[2..2], 16).unwrap(),
-                (|c: &str, l| -> u8 {
-                    if l == 4 {
-                        u8::from_str_radix(&c[3..3], 16).unwrap()
+                {
+                    let c = u8::from_str_radix(&cleaned[0..1], 16).unwrap();
+                    if cfg!(target_endian = "little") {
+                        c | c << 4
+                    } else {
+                        c | c >> 4
+                    }
+                },
+                {
+                    let c = u8::from_str_radix(&cleaned[1..2], 16).unwrap();
+                    if cfg!(target_endian = "little") {
+                        c | c << 4
+                    } else {
+                        c | c >> 4
+                    }
+                },
+                {
+                    let c = u8::from_str_radix(&cleaned[2..3], 16).unwrap();
+                    if cfg!(target_endian = "little") {
+                        c | c << 4
+                    } else {
+                        c | c >> 4
+                    }
+                },
+                {
+                    if cleaned.len() == 4 {
+                        let c = u8::from_str_radix(&cleaned[3..4], 16).unwrap();
+                        if cfg!(target_endian = "little") {
+                            c | c << 4
+                        } else {
+                            c | c >> 4
+                        }
                     } else {
                         255
                     }
-                })(cleaned.as_str(), cleaned.len()),
+                },
             )
         } else if cleaned.len() == 6 || cleaned.len() == 8 {
             PreonColor::from_rgba8(
-                u8::from_str_radix(&cleaned[0..1], 16).unwrap(),
-                u8::from_str_radix(&cleaned[2..3], 16).unwrap(),
-                u8::from_str_radix(&cleaned[4..5], 16).unwrap(),
-                (|c: &str, l| -> u8 {
-                    if l == 8 {
-                        u8::from_str_radix(&c[6..7], 16).unwrap()
+                u8::from_str_radix(&cleaned[0..2], 16).unwrap(),
+                u8::from_str_radix(&cleaned[2..4], 16).unwrap(),
+                u8::from_str_radix(&cleaned[4..6], 16).unwrap(),
+                {
+                    if cleaned.len() == 8 {
+                        u8::from_str_radix(&cleaned[6..8], 16).unwrap()
                     } else {
                         255
                     }
-                })(cleaned.as_str(), cleaned.len()),
+                },
             )
         } else {
             PreonColor::from_rgba8(255, 0, 0, 255);
             panic!("Please only use PreonColor::from_hex() with a hex string of 3, 4, 6 or 8 characters long (excluding # or 0x)");
         }
+    }
+
+    pub fn lighten(&mut self, amount: f32) {
+        let Self {
+            r,
+            g,
+            b,
+            r8,
+            g8,
+            b8,
+            ..
+        } = self.lightened(amount);
+        self.r = r;
+        self.g = g;
+        self.b = b;
+        self.r8 = r8;
+        self.b8 = b8;
+        self.g8 = g8;
+    }
+
+    pub fn lightened(&self, amount: f32) -> PreonColor {
+        PreonColor::from_rgba8(
+            (self.r8 as f32 * (1.0f32 + amount)) as u8,
+            (self.g8 as f32 * (1.0f32 + amount)) as u8,
+            (self.b8 as f32 * (1.0f32 + amount)) as u8,
+            self.a8,
+        )
+    }
+
+    pub fn darken(&mut self, amount: f32) {
+        let Self {
+            r,
+            g,
+            b,
+            r8,
+            g8,
+            b8,
+            ..
+        } = self.darkened(amount);
+        self.r = r;
+        self.g = g;
+        self.b = b;
+        self.r8 = r8;
+        self.b8 = b8;
+        self.g8 = g8;
+    }
+
+    pub fn darkened(&self, amount: f32) -> PreonColor {
+        PreonColor::from_rgba8(
+            (self.r8 as f32 * (1.0f32 - amount)) as u8,
+            (self.g8 as f32 * (1.0f32 - amount)) as u8,
+            (self.b8 as f32 * (1.0f32 - amount)) as u8,
+            self.a8,
+        )
     }
 
     pub fn into_f32_tuple(&self) -> (f32, f32, f32, f32) {
@@ -270,7 +353,7 @@ impl Display for PreonColor {
         write!(
             f,
             "R: {}, G: {}, B: {}, A: {}
-        R8: {}, G8: {}, B8: {}, A8: {}",
+            R8: {}, G8: {}, B8: {}, A8: {}",
             self.r, self.g, self.b, self.a, self.r8, self.g8, self.b8, self.a8
         )
     }
@@ -312,6 +395,19 @@ impl PreonBorder {
 
     pub fn y(&self) -> i32 {
         self.top + self.bottom
+    }
+}
+
+impl Display for PreonBorder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            " ___{:2}___  \
+            \n |      |  \
+            \n{:2}     {:2} \
+            \n |__{:2}__|",
+            self.top, self.left, self.right, self.bottom
+        )
     }
 }
 
@@ -370,6 +466,20 @@ impl PreonCorners {
     }
 }
 
+impl Display for PreonCorners {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:2}______{:2} \
+            \n |      |     \
+            \n |      |     \
+            \n |______|     \
+            \n{:2}      {:2}",
+            self.top_left, self.top_right, self.bottom_left, self.bottom_right
+        )
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct PreonBox {
     pub margin: PreonBorder,
@@ -392,5 +502,15 @@ impl PreonBox {
 
     pub fn has_flag(&self, flag: u8) -> bool {
         (self.size_flags & flag) == flag
+    }
+}
+
+impl Display for PreonBox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Margin:\n\n{}\n\nPadding:\n\n{}\n\nBorder:\n\n{}\n\nSizeFlags: {:08b}\nMinSize: {}",
+            self.margin, self.padding, self.border, self.size_flags, self.min_size
+        )
     }
 }

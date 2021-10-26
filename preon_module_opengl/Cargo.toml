@@ -1,9 +1,0 @@
-[package]
-name = "preon_module_opengl"
-version = "0.1.0"
-edition = "2018"
-
-[dependencies]
-preon_engine = { path = "../preon_engine" }
-glfw = "0.42.0"
-gl = "0.14.0"

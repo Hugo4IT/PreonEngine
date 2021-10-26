@@ -1,80 +1,238 @@
-use std::iter;
+use std::{iter, mem::size_of, num::NonZeroU64};
 
-use preon_engine::{PreonRenderer, types::PreonColor};
-use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
+use log::debug;
+use preon_engine::{
+    events::PreonEvent,
+    rendering::{PreonRenderer, PreonShape},
+};
+use wgpu::util::DeviceExt;
+use winit::{dpi::PhysicalSize, window::Window};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+    position: [f32; 2],
+}
+
+impl Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x2,
+            }],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct TransformationUniform {
+    transformation: [f32; 2],
+}
+
+impl TransformationUniform {
+    fn new(size_x: f32, size_y: f32) -> Self {
+        let mut new_self = Self {
+            transformation: [1.0, 1.0],
+        };
+
+        new_self.resize(size_x, size_y);
+        new_self
+    }
+
+    fn resize(&mut self, size_x: f32, size_y: f32) {
+        self.transformation = [2.0f32 / size_x, 2.0f32 / size_y];
+    }
+
+    fn raw(&self) -> [f32; 2] {
+        self.transformation
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct RectInstance {
+    radius: [f32; 4],
+    dimensions: [f32; 4],
+    color: [f32; 4],
+}
+
+impl RectInstance {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: size_of::<RectInstance>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
+        }
+    }
+}
+
+const RECT_VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, -1.0],
+    },
+    Vertex {
+        position: [1.0, -1.0],
+    },
+    Vertex {
+        position: [1.0, 0.0],
+    },
+];
+
+const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 
 pub mod preon {
-    use preon_engine::{PreonEngine, PreonRenderer, components::PreonComponentStack};
-    use winit::{event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
+    use preon_engine::{PreonEngine, components::PreonCustomComponentStack, events::PreonEvent, rendering::{PreonRenderer, PreonShape}, types::{PreonColor, PreonVector}};
+    use winit::{dpi::LogicalSize, event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
     use crate::PreonRendererWGPU;
 
     /// Initialize winit and run your app, this is sufficient for simple apps, if you plan on building something advanced you should consider starting it yourself so you can have a little more control over individual events.
-    pub fn run<T: PreonComponentStack + 'static>(mut engine: PreonEngine<T>) {
+    pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
+    where
+        T: PreonCustomComponentStack + 'static,
+        F: FnMut(PreonEvent) + 'static,
+    {
         env_logger::init();
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new().build(&event_loop).unwrap();
+        let window = WindowBuilder::new()
+            .with_min_inner_size(LogicalSize::new(2, 2))
+            .with_max_inner_size(LogicalSize::new(1000000, 1000000))
+            .with_visible(false)
+            .build(&event_loop)
+            .unwrap();
+
         let mut wgpu = PreonRendererWGPU::new(&window);
+        wgpu.start();
+
+        window.set_visible(true);
 
         let (mut ctrl, mut shift, mut logo, mut alt) = (false, false, false, false);
-    
+
         event_loop.run(move |event, _, control_flow| match event {
             Event::RedrawRequested(_) => {
+                engine.render_pass.push(PreonShape::Rect {
+                    position: PreonVector::new(50, 50),
+                    size: PreonVector::new(700, 500),
+                    color: PreonColor::from_hex("#da0037"),
+                });
+
+                engine.render_pass.push(PreonShape::Rect {
+                    position: PreonVector::new(100, 100),
+                    size: PreonVector::new(100, 200),
+                    color: PreonColor::from_hex("#444"),
+                });
+
+                let do_render = engine.update() || true;
+                engine.events.pull(|e| {
+                    callback(e);
+                });
+
                 wgpu.update(&mut engine.events);
-                wgpu.render(&mut engine.render_pass);
-            },
+                if do_render {
+                    wgpu.render(&mut engine.render_pass);
+                }
+            }
             Event::MainEventsCleared => window.request_redraw(),
             Event::WindowEvent {
                 ref event,
-                window_id
-            } if window_id == window.id() => if !wgpu.winit_event(event) {
-                match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(physical_size) => wgpu.resize(*physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => wgpu.resize(**new_inner_size),
-                    WindowEvent::ModifiersChanged(modifier) => {
-                        ctrl = modifier.ctrl();
-                        shift = modifier.shift();
-                        logo = modifier.logo();
-                        alt = modifier.alt();
+                window_id,
+            } if window_id == window.id() => match event {
+                WindowEvent::CloseRequested => {
+                    callback(PreonEvent::WindowClosed);
+                    *control_flow = ControlFlow::Exit;
+                }
+                WindowEvent::Resized(physical_size) => {
+                    let size = physical_size.to_logical(window.scale_factor());
+                    engine.events.push(PreonEvent::WindowResized {
+                        new_size: PreonVector::new(size.width, size.height),
+                    });
+                    wgpu.resize(*physical_size);
+                }
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    let size = new_inner_size.to_logical(window.scale_factor());
+                    engine.events.push(PreonEvent::WindowResized {
+                        new_size: PreonVector::new(size.width, size.height),
+                    });
+                    wgpu.resize(**new_inner_size);
+                }
+                WindowEvent::ModifiersChanged(modifier) => {
+                    ctrl = modifier.ctrl();
+                    shift = modifier.shift();
+                    logo = modifier.logo();
+                    alt = modifier.alt();
+                }
+                #[cfg(target_os = "linux")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Q),
+                            ..
+                        },
+                    ..
+                } => {
+                    if ctrl && !shift && !logo && !alt {
+                        callback(PreonEvent::WindowClosed);
+                        *control_flow = ControlFlow::Exit;
                     }
-                    #[cfg(target_os = "linux")]
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
+                }
+                #[cfg(target_os = "macos")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
                             state: ElementState::Pressed,
                             virtual_keycode: Some(VirtualKeyCode::Q),
                             ..
                         },
-                        ..
-                    } => if ctrl && !shift && !logo && !alt {
+                    ..
+                } => {
+                    if logo && !shift && !ctrl && !alt {
+                        callback(&PreonEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
-                    },
-                    #[cfg(target_os = "macos")]
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Q),
-                            ..
-                        },
-                        ..
-                    } => if logo && !shift && !ctrl && !alt {
-                        *control_flow = ControlFlow::Exit;
-                    },
-                    #[cfg(target_os = "windows")]
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
+                    }
+                }
+                #[cfg(target_os = "windows")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
                             state: ElementState::Pressed,
                             virtual_keycode: Some(VirtualKeyCode::F4),
                             ..
                         },
-                        ..
-                    } => if alt && !ctrl && !shift && !logo {
+                    ..
+                } => {
+                    if alt && !ctrl && !shift && !logo {
+                        callback(&PreonEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
-                    },
-                    _ => {},
+                    }
                 }
+                _ => {}
             },
-            _ => {},
+            _ => {}
         });
     }
 }
@@ -85,30 +243,43 @@ pub struct PreonRendererWGPU {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: PhysicalSize<u32>,
+    render_pipeline: wgpu::RenderPipeline,
+    rect_vertex_buffer: wgpu::Buffer,
+    rect_index_buffer: wgpu::Buffer,
+    rect_transform_buffer: wgpu::Buffer,
+    rect_transform_uniform: TransformationUniform,
+    rect_transform_bind_group: wgpu::BindGroup,
+    rect_transform_bind_group_layout: wgpu::BindGroupLayout,
+    rect_instances: Vec<RectInstance>,
+    rect_instance_buffer: wgpu::Buffer,
 }
 
 impl PreonRendererWGPU {
     pub fn new(window: &Window) -> Self {
         let task = async {
             let size = window.inner_size();
-            let instance = wgpu::Instance::new(wgpu::Backends::all());
+            let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
+            let instance = wgpu::Instance::new(backend);
             let surface = unsafe { instance.create_surface(window) };
-            let adapter = instance.request_adapter(
-                &wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::default(),
-                    compatible_surface: Some(&surface),
-                    force_fallback_adapter: false,
-                },
-            ).await.unwrap();
+            let adapter = wgpu::util::initialize_adapter_from_env_or_default(
+                &instance,
+                backend,
+                Some(&surface),
+            )
+            .await
+            .expect("No suitable graphics adapters found.");
 
-            let (device, queue) = adapter.request_device(
-                &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
-                    label: None,
-                },
-                None,
-            ).await.unwrap();
+            let (device, queue) = adapter
+                .request_device(
+                    &wgpu::DeviceDescriptor {
+                        features: wgpu::Features::empty(),
+                        limits: wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
+                        label: None,
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
 
             let config = wgpu::SurfaceConfiguration {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -119,13 +290,149 @@ impl PreonRendererWGPU {
             };
             surface.configure(&device, &config);
 
-            (surface, device, queue, config, size)
+            let rect_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Rect Vertex Buffer"),
+                contents: bytemuck::cast_slice(RECT_VERTICES),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+            let rect_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Rect Index Buffer"),
+                contents: bytemuck::cast_slice(RECT_INDICES),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+
+            let rect_transform_uniform = TransformationUniform::new(1.0, 1.0);
+
+            let rect_transform_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Rect Transform Uniform"),
+                    contents: bytemuck::cast_slice(&rect_transform_uniform.raw()),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
+
+            let rect_transform_bind_group_layout =
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Rect Transform Bind Group Layout"),
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(size_of::<[f32; 2]>() as _),
+                        },
+                        count: None,
+                    }],
+                });
+
+            let rect_transform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Rect Transform Bind Group"),
+                layout: &rect_transform_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: rect_transform_buffer.as_entire_binding(),
+                }],
+            });
+
+            let rect_instances: Vec<RectInstance> = Vec::new();
+            let rect_instance_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Rect Instances"),
+                    contents: bytemuck::cast_slice(rect_instances.as_slice()),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                });
+
+            let rect_vert_shader = wgpu::include_wgsl!("shaders/rect_shader.vert.wgsl");
+            let rect_vert_module = device.create_shader_module(&rect_vert_shader);
+            let rect_frag_shader = wgpu::include_wgsl!("shaders/rect_shader.frag.wgsl");
+            let rect_frag_module = device.create_shader_module(&rect_frag_shader);
+
+            let render_pipeline_layout =
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Render Pipeline Layout"),
+                    bind_group_layouts: &[&rect_transform_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+            let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &rect_vert_module,
+                    entry_point: "main",
+                    buffers: &[Vertex::desc(), RectInstance::desc()],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &rect_frag_module,
+                    entry_point: "main",
+                    targets: &[config.format.into()],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    clamp_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+            });
+
+            (
+                surface,
+                device,
+                queue,
+                config,
+                size,
+                render_pipeline,
+                rect_vertex_buffer,
+                rect_index_buffer,
+                rect_transform_buffer,
+                rect_transform_uniform,
+                rect_transform_bind_group,
+                rect_transform_bind_group_layout,
+                rect_instance_buffer,
+            )
         };
 
-        let (surface, device, queue, config, size) = pollster::block_on(task);
+        let (
+            surface,
+            device,
+            queue,
+            config,
+            size,
+            render_pipeline,
+            rect_vertex_buffer,
+            rect_index_buffer,
+            rect_transform_buffer,
+            rect_transform_uniform,
+            rect_transform_bind_group,
+            rect_transform_bind_group_layout,
+            rect_instance_buffer,
+        ) = pollster::block_on(task);
 
         Self {
-            surface, device, queue, config, size
+            surface,
+            device,
+            queue,
+            config,
+            size,
+            render_pipeline,
+            rect_vertex_buffer,
+            rect_index_buffer,
+            rect_transform_buffer,
+            rect_transform_uniform,
+            rect_transform_bind_group,
+            rect_transform_bind_group_layout,
+            rect_instances: Vec::new(),
+            rect_instance_buffer,
         }
     }
 
@@ -137,64 +444,121 @@ impl PreonRendererWGPU {
             self.surface.configure(&self.device, &self.config);
         }
     }
-
-    pub fn winit_event(&mut self, event: &WindowEvent) -> bool {
-        false
-    }
 }
 
 impl PreonRenderer for PreonRendererWGPU {
-    fn start(&mut self) {
-        todo!()
-    }
+    fn start(&mut self) {}
 
-    fn update(&mut self, events: &mut preon_engine::events::PreonEventEmitter) -> bool {
-        false
+    fn update(&mut self, events: &mut preon_engine::events::PreonEventEmitter) {
+        events.pull(|e| match e {
+            PreonEvent::WindowResized { new_size } => {
+                self.rect_transform_uniform
+                    .resize(new_size.x as f32, new_size.y as f32);
+                self.queue.write_buffer(
+                    &self.rect_transform_buffer,
+                    0,
+                    bytemuck::cast_slice(&self.rect_transform_uniform.raw()),
+                );
+            }
+            _ => {}
+        });
     }
 
     fn render(&mut self, render_pass: &mut preon_engine::rendering::PreonRenderPass) {
+        let previous_size = self.rect_instances.len();
+
+        self.rect_instances = Vec::with_capacity(render_pass.len());
+        render_pass.pull(|s| match s {
+            PreonShape::Rect {
+                color,
+                position,
+                size,
+            } => {
+                self.rect_instances.push(RectInstance {
+                    radius: [0.0, 0.0, 0.0, 0.0],
+                    dimensions: [
+                        position.x as f32,
+                        position.y as f32,
+                        size.x as f32,
+                        size.y as f32,
+                    ],
+                    color: {
+                        let (r, g, b, a) = color.into_f32_tuple();
+                        [r, g, b, a]
+                    },
+                });
+            }
+            _ => {}
+        });
+
+        if previous_size != self.rect_instances.len() {
+            self.rect_instance_buffer =
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("New Rect Instance Buffer"),
+                        contents: bytemuck::cast_slice(self.rect_instances.as_slice()),
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    });
+        } else {
+            self.queue.write_buffer(
+                &self.rect_instance_buffer,
+                0,
+                bytemuck::cast_slice(self.rect_instances.as_slice()),
+            );
+        }
+
+
         let res: Result<(), wgpu::SurfaceError> = {
             let output = self.surface.get_current_texture().unwrap();
-            let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let mut encoder = self.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor {
+            let view = output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("Render Encoder"),
-                }
-            );
-    
-            let (r, g, b, a) = PreonColor::from_hex("#171717").into_f64_tuple();
-    
+                });
+
             {
-                let _render_pass = encoder.begin_render_pass(
-                    &wgpu::RenderPassDescriptor {
-                        label: Some("Render Pass"),
-                        color_attachments: &[
-                            wgpu::RenderPassColorAttachment {
-                                view: &view,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(
-                                        wgpu::Color { r, g, b, a }
-                                    ),
-                                    store: true,
-                                }
-                            }
-                        ],
-                        depth_stencil_attachment: None,
-                    }
-                );
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.006022458,
+                                g: 0.006022458,
+                                b: 0.006022458,
+                                a: 1.0,
+                            }),
+                            store: true,
+                        },
+                    }],
+                    depth_stencil_attachment: None,
+                });
+
+                render_pass.set_vertex_buffer(1, self.rect_instance_buffer.slice(..));
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.set_bind_group(0, &self.rect_transform_bind_group, &[]);
+                render_pass.set_vertex_buffer(0, self.rect_vertex_buffer.slice(..));
+                render_pass
+                    .set_index_buffer(self.rect_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..7, 0, 0..self.rect_instances.len() as u32);
             }
-            
-            self.queue.submit(iter::once(encoder.finish()));
+
+            self.queue.submit(Some(encoder.finish()));
             output.present();
 
             Ok(())
         };
 
         match res {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
-            Err(wgpu::SurfaceError::OutOfMemory) => panic!("Out of memory, press F to pay respects to the pregnancy test running this app"),
+            Err(wgpu::SurfaceError::OutOfMemory) => panic!(
+                "Out of memory, press F to pay respects to the pregnancy test running this app"
+            ),
             Err(e) => eprintln!("{:?}", e),
         }
     }

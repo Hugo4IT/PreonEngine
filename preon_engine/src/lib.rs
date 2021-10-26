@@ -1,20 +1,25 @@
-use components::{PreonComponent, PreonComponentStack, PreonDefaultComponents};
+use components::{PreonComponent, PreonCustomComponentStack};
 use events::{PreonEvent, PreonEventEmitter};
 use rendering::PreonRenderPass;
 use types::PreonBox;
+
+use crate::components::PreonComponentStack;
 
 use self::types::PreonVector;
 
 /// All default components.
 pub mod components;
 
-/// Traits and enums to make your own renderer
+/// Traits and enums to make your own renderer.
 pub mod rendering;
 
 /// Mini event system.
 pub mod events;
 
-/// Currently only contains `Vector2<T>`.
+/// Basically default values for components.
+pub mod theme;
+
+/// All Preon* utility structs like PreonVector<T>, PreonColor and PreonBox.
 pub mod types;
 
 /// Size flags shortcuts.
@@ -53,26 +58,18 @@ pub mod size {
     pub const FIT_EXPAND: u8 = FIT + EXPAND;
 }
 
-pub trait PreonRenderer {
-    fn start(&mut self);
-    fn update(&mut self, events: &mut PreonEventEmitter) -> bool;
-    fn render(&mut self, render_pass: &mut PreonRenderPass);
-}
-
-pub struct PreonEngine<T: PreonComponentStack> {
-    pub root: PreonComponent<T>,
+pub struct PreonEngine<T: PreonCustomComponentStack> {
+    pub tree: PreonComponent<T>,
     pub model: PreonBox,
     pub events: PreonEventEmitter,
     pub window_inner_size: PreonVector<i32>,
     pub render_pass: PreonRenderPass,
 }
 
-impl<T: PreonComponentStack> PreonEngine<T> {
-    pub fn new() -> Self {
+impl<T: PreonCustomComponentStack> PreonEngine<T> {
+    pub fn new(tree: PreonComponent<T>) -> Self {
         Self {
-            root: PreonComponent::new(
-                T::get_default(PreonDefaultComponents::VBoxComponent)
-            ),
+            tree,
             model: PreonBox::initial(),
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
@@ -80,14 +77,30 @@ impl<T: PreonComponentStack> PreonEngine<T> {
         }
     }
 
-    pub fn update(&mut self) {
-        // self.root.update(Vector2::zero(), self.window_inner_size);
-        // let root_layout = self.root.layout;
-
-        // self.window_inner_size = root_layout.min_size;
+    pub fn update(&mut self, ) -> bool {
+        
 
         self.events.flip();
         self.render_pass.flip();
+
+        self.events.len() > 0
+    }
+
+    fn handle_component<F>(&mut self, component: PreonComponent<T>, custom: &mut F)
+    where
+        F: FnMut(&mut T, &Option<Vec<PreonComponent<T>>>) + 'static
+    {
+        if let Some(children) = component.children {
+            for child in children.iter() {
+                self.handle_component(child, custom);
+            }
+        }
+
+        match component.data {
+            PreonComponentStack::Custom(mut c) => custom(&mut c, &component.children),
+            PreonComponentStack::RectComponent { color } => todo!(),
+            PreonComponentStack::VBoxComponent => todo!(),
+        }
     }
 
     pub fn resize(&mut self, new_size: PreonVector<i32>) {

@@ -1,30 +1,27 @@
 use crate::types::{PreonBox, PreonColor};
 
-pub struct PreonComponent<T: PreonComponentStack> {
-    children: Vec<T>,
-    model: PreonBox,
-    in_stack: T,
+#[derive(Debug, Clone)]
+pub struct PreonComponent<T: PreonCustomComponentStack> {
+    pub children: Option<Vec<PreonComponent<T>>>,
+    pub model: PreonBox,
+    pub data: PreonComponentStack<T>,
 }
 
-impl<T: PreonComponentStack> PreonComponent<T> {
-    pub fn new(component: T) -> PreonComponent<T> {
+impl<T: PreonCustomComponentStack> PreonComponent<T> {
+    pub fn new(component: PreonComponentStack<T>) -> PreonComponent<T> {
         PreonComponent {
-            children: Vec::new(),
+            children: Some(Vec::new()),
             model: PreonBox::initial(),
-            in_stack: component,
+            data: component,
         }
     }
 }
 
-pub trait PreonComponentStack {
-    fn get_default(c: PreonDefaultComponents) -> Self;
-}
+pub trait PreonCustomComponentStack {}
 
-pub enum PreonDefaultComponents {
+#[derive(Debug, Clone)]
+pub enum PreonComponentStack<T: PreonCustomComponentStack> {
+    Custom(T),
     RectComponent { color: PreonColor },
     VBoxComponent
-}
-
-impl PreonComponentStack for PreonDefaultComponents {
-    fn get_default(c: PreonDefaultComponents) -> Self { c }
 }

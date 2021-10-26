@@ -1,33 +1,39 @@
-use preon_engine::{PreonEngine, components::{PreonComponentStack, PreonDefaultComponents}};
+use preon_engine::{PreonEngine, components::{PreonComponent, PreonComponentStack, PreonCustomComponentStack}, events::PreonEvent, size, types::{PreonBorder, PreonBox, PreonColor, PreonVector}};
 use preon_module_wgpu::preon;
 
 pub enum MyComponentStack {
-    Defaults(PreonDefaultComponents)
 }
 
-impl PreonComponentStack for MyComponentStack {
-    fn get_default(c: PreonDefaultComponents) -> Self {
-        Self::Defaults(c)
-    }
-}
+impl PreonCustomComponentStack for MyComponentStack {}
 
 fn main() {
-    let engine = PreonEngine::<MyComponentStack>::new();
-    preon::run(engine);
-
-    // let mut pass = PreonRenderPass::new();
-
-    // renderer.start();
-    // while renderer.update(&mut engine.events) {
-    //     engine.update();
-
-    //     pass.push(PreonShape::Rect {
-    //         position: PreonVector::new(0, 0),
-    //         size: PreonVector::new(0, 0),
-    //         color: PreonColor::from_hex("#da0037")
-    //     });
-    //     pass.flip();
-
-    //     renderer.render(&mut pass);
-    // }
+    preon::run(PreonEngine::<MyComponentStack>::new(
+        PreonComponent {
+            data: PreonComponentStack::VBoxComponent,
+            model: PreonBox {
+                margin: PreonBorder::from_single(8),
+                padding: PreonBorder::from_xy(16, 8),
+                border: PreonBorder::zero(),
+                size_flags: size::FIT,
+                min_size: PreonVector::new(320, 240)
+            },
+            children: Some(vec![
+                PreonComponent {
+                    children: None,
+                    data: PreonComponentStack::RectComponent {
+                        color: PreonColor::from_hex("#da0037"),
+                    },
+                    model: PreonBox::initial()
+                }
+            ]),
+        }
+    ), |e| match e {
+        PreonEvent::WindowClosed => {
+            println!("Press F to pay respect for a lost fellow");
+        },
+        PreonEvent::Button(id, state) => {
+            println!("Button {} fired event {}", id, state);
+        },
+        _ => {}
+    });
 }

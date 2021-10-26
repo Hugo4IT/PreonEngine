@@ -1,5 +1,12 @@
-use crate::types::{PreonColor, PreonVector};
+use crate::{events::PreonEventEmitter, types::{PreonColor, PreonVector}};
 
+pub trait PreonRenderer {
+    fn start(&mut self);
+    fn update(&mut self, events: &mut PreonEventEmitter);
+    fn render(&mut self, render_pass: &mut PreonRenderPass);
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum PreonShape {
     Rect {
         position: PreonVector<i32>,
@@ -8,6 +15,7 @@ pub enum PreonShape {
     }
 }
 
+#[derive(Debug)]
 pub struct PreonRenderPass {
     pass: Vec<PreonShape>,
     buffer: Vec<PreonShape>
@@ -25,17 +33,17 @@ impl PreonRenderPass {
         self.buffer.push(shape);
     }
 
-    pub fn pull<F: FnMut(&PreonShape)>(&mut self, mut handler: F) {
+    pub fn pull<F: FnMut(PreonShape)>(&mut self, mut handler: F) {
         let mut pass = self.pass.iter();
         while let Some(item) = pass.next() {
-            handler(item);
+            handler(*item);
         }
     }
 
     pub fn flip(&mut self) {
-        self.pass.clear();
-        for item in self.buffer.drain(..) {
-            self.pass.push(item);
-        }
+        self.pass = self.buffer.drain(..).collect();
     }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize { self.pass.len() }
 }

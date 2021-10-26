@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "preon_module_opengl",
     "preon_module_wgpu",
     "preon_engine",
     "preon_data",
