@@ -26,15 +26,17 @@ impl Display for PreonButtonState {
 #[derive(Debug, Copy, Clone)]
 pub enum PreonEvent {
     WindowOpened,
-    WindowResized(PreonVector<u32>, bool),
+    WindowResized(PreonVector<u32>),
     WindowClosed,
-    ForceUpdate,
     Button(u32, PreonButtonState),
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum PreonUserEvent {
-    MouseMove(i32, i32)
+    WindowResized(PreonVector<u32>),
+    WindowOpened,
+    MouseMove(PreonVector<i32>),
+    ForceLayoutUpdate
 }
 
 #[derive(Debug)]
@@ -51,18 +53,11 @@ impl<T: Copy + Clone> PreonEventEmitter<T> {
         }
     }
 
-    pub fn new_with_initial(initial: T) -> PreonEventEmitter<T> {
-        PreonEventEmitter {
-            events: vec![initial],
-            buffer: Vec::new()
-        }
-    }
-
     pub fn push(&mut self, event: T) {
         self.buffer.push(event);
     }
 
-    pub fn pull<F: FnMut(T)>(&mut self, mut handler: F) {
+    pub fn pull<F: FnMut(T)>(&self, mut handler: F) {
         let mut events = self.events.iter();
         while let Some(item) = events.next() {
             handler(*item);

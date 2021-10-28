@@ -77,10 +77,10 @@ pub trait PreonCustomComponentStack {
                 f
             }).collect::<Vec<PreonComponent<T>>>());
         }
- 
+
         match component.data {
             PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
-            PreonComponentStack::RectComponent { color } => {},
+            PreonComponentStack::RectComponent { .. } => {},
             PreonComponentStack::VBoxComponent => if component.children.is_some() {
                 let mut heights = 0;
                 let mut width = 0;

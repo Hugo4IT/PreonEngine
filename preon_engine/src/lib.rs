@@ -71,7 +71,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
         Self {
             tree,
             model: PreonBox::initial(),
-            events: PreonEventEmitter::new_with_initial(PreonEvent::WindowOpened),
+            events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
         }
@@ -80,14 +80,21 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn start(&mut self) {
         T::layout(&mut self.tree);
         T::render(&mut self.tree, &mut self.render_pass);
-
-        let s = self.tree.get_outer_size();
-        self.resize(PreonVector::new(s.x as u32, s.y as u32), true);
     }
 
     pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {
         if user_events.len() > 0 || self.events.len() > 0 {
-            T::layout(&mut self.tree);
+            let mut update_layout = false;
+
+            user_events.pull(|f| match f {
+                PreonUserEvent::WindowResized(s) => self.resize(s),
+                PreonUserEvent::ForceLayoutUpdate => update_layout = true,
+                _ => {}
+            });
+
+            if update_layout {
+                T::layout(&mut self.tree);
+            }
             T::render(&mut self.tree, &mut self.render_pass);
 
             self.events.flip();
@@ -99,12 +106,10 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
         }
     }
 
-    pub fn resize(&mut self, new_size: PreonVector<u32>, auto: bool) {
+    pub fn resize(&mut self, new_size: PreonVector<u32>) {
         if new_size != self.window_inner_size {
             self.window_inner_size = new_size;
-        }
-        if auto {
-            self.events.push(PreonEvent::WindowResized(new_size, true));
+            self.events.push(PreonEvent::WindowResized(new_size));
         }
     }
 }

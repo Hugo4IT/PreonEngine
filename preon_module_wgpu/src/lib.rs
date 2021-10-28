@@ -101,13 +101,7 @@ const RECT_VERTICES: &[Vertex] = &[
 const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 
 pub mod preon {
-    use preon_engine::{
-        components::PreonCustomComponentStack,
-        events::{PreonEvent, PreonEventEmitter},
-        rendering::{PreonRenderer, PreonShape},
-        types::{PreonColor, PreonVector},
-        PreonEngine,
-    };
+    use preon_engine::{PreonEngine, components::PreonCustomComponentStack, events::{PreonEvent, PreonEventEmitter, PreonUserEvent}, rendering::{PreonRenderer, PreonShape}, types::{PreonColor, PreonVector}};
     use winit::{dpi::{LogicalSize, PhysicalSize}, event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
     use crate::PreonRendererWGPU;
@@ -136,24 +130,21 @@ pub mod preon {
 
         let (mut ctrl, mut shift, mut logo, mut alt) = (false, false, false, false);
         let mut user_events = PreonEventEmitter::new();
+        user_events.push(PreonUserEvent::WindowOpened);
 
         event_loop.run(move |event, _, control_flow| {
             match event {
                 Event::RedrawRequested(_) => {
-                    let do_render = engine.update(&mut user_events);
-                    engine.events.pull(|e| {
-                        callback(e);
-                        match e {
-                            PreonEvent::WindowResized(size, auto) => if auto { window.set_inner_size(PhysicalSize::new(size.x, size.y)) },
-                            _ => {}
-                        }
-                    });
+                    user_events.flip();
 
-                    wgpu.update(&mut engine.events);
-                    if do_render {
+                    if engine.update(&mut user_events) {
+                        engine.events.pull(|e| callback(e));
+
+                        wgpu.update(&mut engine.events);
                         wgpu.render(&mut engine.render_pass);
                     }
                 },
+                Event::RedrawEventsCleared => *control_flow = ControlFlow::Wait,
                 Event::WindowEvent {
                     ref event,
                     window_id,
@@ -163,12 +154,16 @@ pub mod preon {
                         *control_flow = ControlFlow::Exit;
                     }
                     WindowEvent::Resized(physical_size) => {
-                        engine.resize(PreonVector::new(physical_size.width, physical_size.height), false);
                         wgpu.resize(*physical_size);
+                        user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
+                            physical_size.width, physical_size.height
+                        )));
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        engine.resize(PreonVector::new(new_inner_size.width, new_inner_size.height), false);
                         wgpu.resize(**new_inner_size);
+                        user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
+                            new_inner_size.width, new_inner_size.height
+                        )));
                     }
                     WindowEvent::ModifiersChanged(modifier) => {
                         ctrl = modifier.ctrl();
@@ -225,8 +220,6 @@ pub mod preon {
                 },
                 _ => {}
             }
-
-            user_events.flip();
         });
     }
 }
@@ -280,7 +273,7 @@ impl PreonRendererWGPU {
                 format: surface.get_preferred_format(&adapter).unwrap(),
                 width: size.width,
                 height: size.height,
-                present_mode: wgpu::PresentMode::Fifo,
+                present_mode: wgpu::PresentMode::Immediate,
             };
             surface.configure(&device, &config);
 
@@ -449,7 +442,7 @@ impl PreonRenderer for PreonRendererWGPU {
     fn start(&mut self) {}
 
     fn update(&mut self, events: &mut PreonEventEmitter<PreonEvent>) {
-        
+
     }
 
     fn render(&mut self, pass: &mut PreonRenderPass) {
