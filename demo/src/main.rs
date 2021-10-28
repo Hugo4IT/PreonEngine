@@ -39,17 +39,17 @@ fn main() {
                 padding: PreonBorder::from_xy(16, 8),
                 border: PreonBorder::zero(),
                 size_flags: size::FIT,
-                min_size: PreonVector::new(320, 240),
+                min_size: PreonVector::new(640, 480),
             },
             children: Some(vec![
                 PreonComponent {
                     children: None,
                     data: PreonComponentStack::RectComponent {
-                        color: PreonColor::from_hex("#da0037"),
+                        color: PreonColor::from_hex("#87CA3C"),
                     },
                     model: PreonBox {
                         margin: PreonBorder::zero(),
-                        padding: PreonBorder::from_xy(16, 8),
+                        padding: PreonBorder::from_xy(160, 8),
                         border: PreonBorder::zero(),
                         size_flags: size::FIT,
                         min_size: PreonVector::new(120, 60)
