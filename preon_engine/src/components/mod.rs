@@ -24,7 +24,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
     }
 
     pub fn get_inner_size(&self) -> PreonVector<i32> {
-        PreonVector::new({ self.inner_size.x.max(self.model.min_size.x) }, {
+        PreonVector::new(self.inner_size.x.max(self.model.min_size.x), {
             self.inner_size.y.max(self.model.min_size.y)
         }) + self.model.border
     }
