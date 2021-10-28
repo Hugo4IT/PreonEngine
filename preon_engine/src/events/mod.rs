@@ -13,13 +13,17 @@ pub enum PreonButtonState {
 
 impl Display for PreonButtonState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            PreonButtonState::MouseEnter => "MouseEnter",
-            PreonButtonState::MouseExit => "MouseExit",
-            PreonButtonState::MouseDown => "MouseDown",
-            PreonButtonState::MouseUp => "MouseUp",
-            PreonButtonState::Pressed => "Pressed",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                PreonButtonState::MouseEnter => "MouseEnter",
+                PreonButtonState::MouseExit => "MouseExit",
+                PreonButtonState::MouseDown => "MouseDown",
+                PreonButtonState::MouseUp => "MouseUp",
+                PreonButtonState::Pressed => "Pressed",
+            }
+        )
     }
 }
 
@@ -36,7 +40,7 @@ pub enum PreonUserEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
     MouseMove(PreonVector<i32>),
-    ForceLayoutUpdate
+    ForceLayoutUpdate,
 }
 
 #[derive(Debug)]
@@ -69,5 +73,7 @@ impl<T: Copy + Clone> PreonEventEmitter<T> {
     }
 
     #[inline(always)]
-    pub fn len(&self) -> usize { self.events.len() }
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
 }

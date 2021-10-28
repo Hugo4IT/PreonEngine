@@ -1,6 +1,9 @@
 use std::mem::size_of;
 
-use preon_engine::{events::{PreonEvent, PreonEventEmitter}, rendering::{PreonRenderPass, PreonRenderer, PreonShape}};
+use preon_engine::{
+    events::{PreonEvent, PreonEventEmitter},
+    rendering::{PreonRenderPass, PreonRenderer, PreonShape},
+};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -101,8 +104,19 @@ const RECT_VERTICES: &[Vertex] = &[
 const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 
 pub mod preon {
-    use preon_engine::{PreonEngine, components::PreonCustomComponentStack, events::{PreonEvent, PreonEventEmitter, PreonUserEvent}, rendering::{PreonRenderer, PreonShape}, types::{PreonColor, PreonVector}};
-    use winit::{dpi::{LogicalSize, PhysicalSize}, event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
+    use preon_engine::{
+        components::PreonCustomComponentStack,
+        events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
+        rendering::PreonRenderer,
+        types::PreonVector,
+        PreonEngine,
+    };
+    use winit::{
+        dpi::LogicalSize,
+        event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        window::WindowBuilder,
+    };
 
     use crate::PreonRendererWGPU;
 
@@ -132,94 +146,94 @@ pub mod preon {
         let mut user_events = PreonEventEmitter::new();
         user_events.push(PreonUserEvent::WindowOpened);
 
-        event_loop.run(move |event, _, control_flow| {
-            match event {
-                Event::RedrawRequested(_) => {
-                    user_events.flip();
+        event_loop.run(move |event, _, control_flow| match event {
+            Event::RedrawRequested(_) => {
+                user_events.flip();
 
-                    if engine.update(&mut user_events) {
-                        engine.events.pull(|e| callback(e));
+                if engine.update(&mut user_events) {
+                    engine.events.pull(|e| callback(e));
 
-                        wgpu.update(&mut engine.events);
-                        wgpu.render(&mut engine.render_pass);
-                    }
-                },
-                Event::RedrawEventsCleared => *control_flow = ControlFlow::Wait,
-                Event::WindowEvent {
-                    ref event,
-                    window_id,
-                } if window_id == window.id() => match event {
-                    WindowEvent::CloseRequested => {
+                    wgpu.update(&mut engine.events);
+                    wgpu.render(&mut engine.render_pass);
+                }
+            }
+            Event::RedrawEventsCleared => *control_flow = ControlFlow::Wait,
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == window.id() => match event {
+                WindowEvent::CloseRequested => {
+                    callback(PreonEvent::WindowClosed);
+                    *control_flow = ControlFlow::Exit;
+                }
+                WindowEvent::Resized(physical_size) => {
+                    wgpu.resize(*physical_size);
+                    user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
+                        physical_size.width,
+                        physical_size.height,
+                    )));
+                }
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    wgpu.resize(**new_inner_size);
+                    user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
+                        new_inner_size.width,
+                        new_inner_size.height,
+                    )));
+                }
+                WindowEvent::ModifiersChanged(modifier) => {
+                    ctrl = modifier.ctrl();
+                    shift = modifier.shift();
+                    logo = modifier.logo();
+                    alt = modifier.alt();
+                }
+                #[cfg(target_os = "linux")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Q),
+                            ..
+                        },
+                    ..
+                } => {
+                    if ctrl && !shift && !logo && !alt {
                         callback(PreonEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
                     }
-                    WindowEvent::Resized(physical_size) => {
-                        wgpu.resize(*physical_size);
-                        user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
-                            physical_size.width, physical_size.height
-                        )));
+                }
+                #[cfg(target_os = "macos")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Q),
+                            ..
+                        },
+                    ..
+                } => {
+                    if logo && !shift && !ctrl && !alt {
+                        callback(&PreonEvent::WindowClosed);
+                        *control_flow = ControlFlow::Exit;
                     }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        wgpu.resize(**new_inner_size);
-                        user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
-                            new_inner_size.width, new_inner_size.height
-                        )));
+                }
+                #[cfg(target_os = "windows")]
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::F4),
+                            ..
+                        },
+                    ..
+                } => {
+                    if alt && !ctrl && !shift && !logo {
+                        callback(&PreonEvent::WindowClosed);
+                        *control_flow = ControlFlow::Exit;
                     }
-                    WindowEvent::ModifiersChanged(modifier) => {
-                        ctrl = modifier.ctrl();
-                        shift = modifier.shift();
-                        logo = modifier.logo();
-                        alt = modifier.alt();
-                    }
-                    #[cfg(target_os = "linux")]
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Q),
-                                ..
-                            },
-                        ..
-                    } => {
-                        if ctrl && !shift && !logo && !alt {
-                            callback(PreonEvent::WindowClosed);
-                            *control_flow = ControlFlow::Exit;
-                        }
-                    }
-                    #[cfg(target_os = "macos")]
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Q),
-                                ..
-                            },
-                        ..
-                    } => {
-                        if logo && !shift && !ctrl && !alt {
-                            callback(&PreonEvent::WindowClosed);
-                            *control_flow = ControlFlow::Exit;
-                        }
-                    }
-                    #[cfg(target_os = "windows")]
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::F4),
-                                ..
-                            },
-                        ..
-                    } => {
-                        if alt && !ctrl && !shift && !logo {
-                            callback(&PreonEvent::WindowClosed);
-                            *control_flow = ControlFlow::Exit;
-                        }
-                    }
-                    _ => {}
-                },
+                }
                 _ => {}
-            }
+            },
+            _ => {}
         });
     }
 }
@@ -441,9 +455,7 @@ impl PreonRendererWGPU {
 impl PreonRenderer for PreonRendererWGPU {
     fn start(&mut self) {}
 
-    fn update(&mut self, events: &mut PreonEventEmitter<PreonEvent>) {
-
-    }
+    fn update(&mut self, _events: &mut PreonEventEmitter<PreonEvent>) {}
 
     fn render(&mut self, pass: &mut PreonRenderPass) {
         let previous_size = self.rect_instances.len();

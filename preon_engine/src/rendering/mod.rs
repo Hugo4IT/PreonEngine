@@ -1,4 +1,7 @@
-use crate::{events::{PreonEvent, PreonEventEmitter}, types::{PreonColor, PreonVector}};
+use crate::{
+    events::{PreonEvent, PreonEventEmitter},
+    types::{PreonColor, PreonVector},
+};
 
 pub trait PreonRenderer {
     fn start(&mut self);
@@ -12,20 +15,20 @@ pub enum PreonShape {
         position: PreonVector<i32>,
         size: PreonVector<i32>,
         color: PreonColor,
-    }
+    },
 }
 
 #[derive(Debug)]
 pub struct PreonRenderPass {
     pass: Vec<PreonShape>,
-    buffer: Vec<PreonShape>
+    buffer: Vec<PreonShape>,
 }
 
 impl PreonRenderPass {
     pub fn new() -> PreonRenderPass {
         PreonRenderPass {
             pass: Vec::new(),
-            buffer: Vec::new()
+            buffer: Vec::new(),
         }
     }
 
@@ -45,5 +48,7 @@ impl PreonRenderPass {
     }
 
     #[inline(always)]
-    pub fn len(&self) -> usize { self.pass.len() }
+    pub fn len(&self) -> usize {
+        self.pass.len()
+    }
 }

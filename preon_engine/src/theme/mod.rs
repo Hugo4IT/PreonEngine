@@ -1,4 +1,2 @@
 #[derive(Debug, Copy, Clone)]
-pub struct PreonTheme {
-
-}
+pub struct PreonTheme {}
