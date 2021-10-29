@@ -32,6 +32,14 @@ PreonEngine is designed with fully custom brand designs in mind, no need to foll
 
 While this crate is mainly focussed on a good and fast user experience, which means sacrifices must be made, PreonEngine also offers a stunning developer experience. PreonEngine is designed to fit any code-style, this is the reason why I call it the Preon**Engine**, unlike a framework which has a format or shiny new programming language you need to learn and adapt to, this engine is a functional-first solution to UI: Initialize at desired time <`let ui = preon::init()`>, add any wanted components wherever in your code you are with a single function <`preon::add_component(ui, ...)`>, and start the engine to open the window and start the main loop <`preon::start(ui)`> (optional, you can call the `update` and `render` functions manually if you dont want you program halted)
 
+### Debugging
+
+To enter debug mode, append `--features preon_engine/debug` to your `cargo` command:
+
+```bash
+cargo run --features preon_engine/debug
+```
+
 ## Examples
 
 ### Creating a window, entering a render loop

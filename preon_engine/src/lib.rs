@@ -78,8 +78,8 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     }
 
     pub fn start(&mut self) {
-        T::layout(&mut self.tree);
-        T::render(&mut self.tree, &mut self.render_pass);
+        // T::layout(&mut self.tree);
+        // T::render(&mut self.tree, &mut self.render_pass);
     }
 
     pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {
@@ -87,12 +87,22 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
             let mut update_layout = false;
 
             user_events.pull(|f| match f {
-                PreonUserEvent::WindowResized(s) => self.resize(s),
-                PreonUserEvent::ForceLayoutUpdate => update_layout = true,
+                PreonUserEvent::WindowResized(s) => {
+                    self.resize(s);
+                    update_layout = true
+                }
+                PreonUserEvent::ForceLayoutUpdate | PreonUserEvent::WindowOpened => {
+                    update_layout = true
+                }
                 _ => {}
             });
 
             if update_layout {
+                self.tree.set_outer_position(PreonVector::zero());
+                self.tree.set_outer_size(PreonVector::new(
+                    self.window_inner_size.x as i32,
+                    self.window_inner_size.y as i32
+                ));
                 T::layout(&mut self.tree);
             }
             T::render(&mut self.tree, &mut self.render_pass);

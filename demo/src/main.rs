@@ -1,15 +1,8 @@
 use std::any::Any;
 
-use preon_engine::{
-    components::{
+use preon_engine::{PreonEngine, components::{
         PreonComponent, PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack,
-    },
-    events::PreonEvent,
-    rendering::PreonRenderPass,
-    size,
-    types::{PreonBorder, PreonBox, PreonColor, PreonVector},
-    PreonEngine,
-};
+    }, events::PreonEvent, rendering::PreonRenderPass, size, types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector}};
 use preon_module_wgpu::preon;
 
 #[derive(Debug, Copy, Clone)]
@@ -26,7 +19,7 @@ impl PreonCustomComponentStack for MyComponentStack {
                 let comp: &MyComponentStack =
                     (d as &dyn Any).downcast_ref::<MyComponentStack>().unwrap();
                 match comp {
-                    MyComponentStack::Boi => {}
+                    MyComponentStack::Boi => { println!("Handle 'Boi' layout") }
                 }
             }
             _ => {}
@@ -39,7 +32,9 @@ impl PreonCustomComponentStack for MyComponentStack {
         _pass: &mut PreonRenderPass,
     ) {
         match stage {
-            _ => {}
+            PreonComponentRenderStage::Background { .. } => { /* Render here */ }
+            PreonComponentRenderStage::Border { .. } => { /* Render here */ }
+            PreonComponentRenderStage::Foreground { .. } => { /* Render here */ }
         }
     }
 }
@@ -47,25 +42,78 @@ impl PreonCustomComponentStack for MyComponentStack {
 fn main() {
     preon::run(
         PreonEngine::<MyComponentStack>::new(PreonComponent {
-            data: PreonComponentStack::VBoxComponent,
+            data: PreonComponentStack::VBoxComponent {
+                align: PreonAlignment::Start,
+                cross_align: PreonAlignment::Center
+            },
             model: PreonBox {
                 margin: PreonBorder::from_single(8),
                 padding: PreonBorder::from_xy(16, 8),
-                border: PreonBorder::zero(),
-                size_flags: size::FIT,
-                min_size: PreonVector::new(640, 480),
+                ..Default::default()
             },
             children: Some(vec![PreonComponent {
                 children: None,
                 data: PreonComponentStack::RectComponent {
-                    color: PreonColor::from_hex("#87CA3C"),
+                    color: PreonColor::from_hex("#da0037"),
                 },
                 model: PreonBox {
-                    margin: PreonBorder::zero(),
-                    padding: PreonBorder::from_xy(160, 8),
-                    border: PreonBorder::zero(),
-                    size_flags: size::FIT,
-                    min_size: PreonVector::new(120, 60),
+                    margin: PreonBorder::new(0, 0, 8, 0),
+                    padding: PreonBorder::from_xy(16, 8),
+                    min_size: PreonVector::new(240, 60),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            PreonComponent {
+                children: None,
+                data: PreonComponentStack::RectComponent {
+                    color: PreonColor::from_hex("#da0037"),
+                },
+                model: PreonBox {
+                    margin: PreonBorder::new(0, 0, 8, 0),
+                    padding: PreonBorder::from_xy(16, 8),
+                    min_size: PreonVector::new(120, 120),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            PreonComponent {
+                children: None,
+                data: PreonComponentStack::RectComponent {
+                    color: PreonColor::from_hex("#da0037"),
+                },
+                model: PreonBox {
+                    margin: PreonBorder::new(0, 0, 8, 0),
+                    padding: PreonBorder::from_xy(16, 8),
+                    min_size: PreonVector::new(0, 120),
+                    size_flags: size::vertical::FIT | size::horizontal::EXPAND,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            PreonComponent {
+                children: None,
+                data: PreonComponentStack::RectComponent {
+                    color: PreonColor::from_hex("#da0037"),
+                },
+                model: PreonBox {
+                    margin: PreonBorder::new(0, 0, 8, 0),
+                    padding: PreonBorder::from_xy(16, 8),
+                    min_size: PreonVector::new(120, 0),
+                    size_flags: size::vertical::EXPAND | size::horizontal::FIT,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            PreonComponent {
+                children: None,
+                data: PreonComponentStack::RectComponent {
+                    color: PreonColor::from_hex("#da0037"),
+                },
+                model: PreonBox {
+                    padding: PreonBorder::from_xy(16, 8),
+                    size_flags: size::EXPAND,
+                    ..Default::default()
                 },
                 ..Default::default()
             }]),

@@ -377,24 +377,49 @@ impl PreonBorder {
         }
     }
 
+    #[inline(always)]
     pub fn from_xy(x: i32, y: i32) -> PreonBorder {
         PreonBorder::new(y, x, y, x)
     }
 
+    #[inline(always)]
     pub fn from_single(value: i32) -> PreonBorder {
         PreonBorder::new(value, value, value, value)
     }
 
+    #[inline(always)]
     pub fn zero() -> PreonBorder {
         PreonBorder::from_single(0)
     }
 
+    #[inline(always)]
     pub fn x(&self) -> i32 {
         self.left + self.right
     }
 
+    #[inline(always)]
     pub fn y(&self) -> i32 {
         self.top + self.bottom
+    }
+
+    #[inline(always)]
+    pub fn top_left(&self) -> PreonVector<i32> {
+        PreonVector::new(self.left, self.top)
+    }
+
+    #[inline(always)]
+    pub fn top_right(&self) -> PreonVector<i32> {
+        PreonVector::new(self.right, self.top)
+    }
+
+    #[inline(always)]
+    pub fn bottom_left(&self) -> PreonVector<i32> {
+        PreonVector::new(self.left, self.bottom)
+    }
+
+    #[inline(always)]
+    pub fn bottom_right(&self) -> PreonVector<i32> {
+        PreonVector::new(self.right, self.bottom)
     }
 }
 
@@ -495,13 +520,19 @@ impl PreonBox {
             margin: PreonBorder::zero(),
             padding: PreonBorder::zero(),
             border: PreonBorder::zero(),
-            size_flags: size::EXPAND,
+            size_flags: size::FIT,
             min_size: PreonVector::zero(),
         }
     }
 
     pub fn has_flag(&self, flag: u8) -> bool {
         (self.size_flags & flag) == flag
+    }
+}
+
+impl Default for PreonBox {
+    fn default() -> Self {
+        Self::initial()
     }
 }
 
@@ -512,5 +543,19 @@ impl Display for PreonBox {
             "Margin:\n\n{}\n\nPadding:\n\n{}\n\nBorder:\n\n{}\n\nSizeFlags: {:08b}\nMinSize: {}",
             self.margin, self.padding, self.border, self.size_flags, self.min_size
         )
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PreonAlignment {
+    Start,
+    Center,
+    End,
+    Spread,
+}
+
+impl Default for PreonAlignment {
+    fn default() -> Self {
+        Self::Start
     }
 }
