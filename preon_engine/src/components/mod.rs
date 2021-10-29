@@ -197,8 +197,84 @@ pub trait PreonCustomComponentStack {
             PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
             PreonComponentStack::RectComponent { .. } => {}
             PreonComponentStack::VBoxComponent { align, cross_align } => {
-                println!("Layout VBoxComponent");
+                if component.children.is_some() {
+                    let mut children = component.children.take().unwrap();
 
+                    let mut height = 0;
+                    let mut width = 0;
+                    let mut expanding_children = 0;
+                    let mut leftover_height = 0;
+
+                    // Gather some data on the children
+                    children.iter().for_each(|child| {
+                        let s = child.get_outer_size();
+                        height += s.y;
+                        width = width.max(s.x);
+                        if child.model.has_flag(size::vertical::EXPAND) {
+                            expanding_children += 1;
+                        } else {
+                            leftover_height += s.y;
+                        }
+                    });
+
+                    let position = component.get_content_position();
+                    let mut size = component.get_content_size();
+
+                    if component.model.has_flag(size::horizontal::FIT) && size.x < width {
+                        component.set_content_size_x(width);
+                    }
+                    if component.model.has_flag(size::vertical::FIT) && size.y < height {
+                        component.set_content_size_y(height);
+                    }
+
+                    size = component.get_content_size();
+
+                    // Correctly position everything
+                    let mut y = 0;
+
+                    children.iter_mut().for_each(|child| {
+                        if child.model.has_flag(size::vertical::EXPAND) {
+                            child.set_outer_size_y((size.y - leftover_height) / expanding_children);
+                        }
+                        if child.model.has_flag(size::horizontal::EXPAND) {
+                            child.set_outer_size_x(size.x);
+                        }
+
+                        let child_size = child.get_outer_size();
+
+                        let x_position: i32 = if child.model.has_flag(size::horizontal::EXPAND) {
+                            0
+                        } else {
+                            match cross_align {
+                                PreonAlignment::Start => 0,
+                                PreonAlignment::Center => size.x / 2 - child_size.x / 2,
+                                PreonAlignment::End => size.x - child_size.x,
+                                PreonAlignment::Spread => {
+                                    eprintln!("VBox CrossAlignment doesn't support Spread (defaulting to Start)");
+                                    0
+                                }
+                            }
+                        };
+
+                        let y_position: i32 = match align {
+                            PreonAlignment::Start => y,
+                            PreonAlignment::Center => size.y / 2 - y / 2,
+                            PreonAlignment::End => size.y - y,
+                            PreonAlignment::Spread => {
+                                let time = 1f32 / y as f32;
+                                ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
+                            },
+                        };
+
+                        child.set_outer_position(position + PreonVector::new(x_position, y_position));
+
+                        y += child_size.y;
+                    });
+
+                    component.children = Some(children);
+                }
+            },
+            PreonComponentStack::HBoxComponent { align, cross_align } => {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
 
@@ -288,25 +364,25 @@ pub trait PreonCustomComponentStack {
             pass.push(PreonShape::Rect {
                 position: component.get_outer_position(),
                 size: component.get_outer_size(),
-                color: PreonColor::from_hex("#f002")
+                color: PreonColor::from_hex("#c06870")
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_border_position(),
                 size: component.get_border_size(),
-                color: PreonColor::from_hex("#0f02")
+                color: PreonColor::from_hex("#c09b68")
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_inner_position(),
                 size: component.get_inner_size(),
-                color: PreonColor::from_hex("#00f2")
+                color: PreonColor::from_hex("#68c093")
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_content_position(),
                 size: component.get_content_size(),
-                color: PreonColor::from_hex("#ff02")
+                color: PreonColor::from_hex("#6891c0")
             });
         }
 
@@ -334,7 +410,7 @@ pub trait PreonCustomComponentStack {
                     size,
                     color,
                 }),
-                PreonComponentStack::VBoxComponent { .. } => {}
+                _ => {}
             },
             PreonComponentRenderStage::Foreground { .. } => match component.data {
                 PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
@@ -366,6 +442,10 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     RectComponent {
         color: PreonColor,
     },
+    HBoxComponent {
+        align: PreonAlignment,
+        cross_align: PreonAlignment
+    },
     VBoxComponent {
         align: PreonAlignment,
         cross_align: PreonAlignment,
@@ -377,6 +457,19 @@ impl<T: PreonCustomComponentStack> PreonComponentStack<T> {
         Self::VBoxComponent {
             align: PreonAlignment::default(),
             cross_align: PreonAlignment::default(),
+        }
+    }
+
+    pub fn hbox_default() -> PreonComponentStack<T> {
+        Self::HBoxComponent {
+            align: PreonAlignment::default(),
+            cross_align: PreonAlignment::default(),
+        }
+    }
+
+    pub fn rect_default() -> PreonComponentStack<T> {
+        Self::RectComponent {
+            color: PreonColor::from_hex("#ffffff"),
         }
     }
 }
