@@ -104,6 +104,8 @@ const RECT_VERTICES: &[Vertex] = &[
 const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 
 pub mod preon {
+    use std::time::{Duration, Instant};
+
     use preon_engine::{
         components::PreonCustomComponentStack,
         events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
@@ -172,6 +174,7 @@ pub mod preon {
                         physical_size.width,
                         physical_size.height,
                     )));
+                    *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.1f32));
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     wgpu.resize(**new_inner_size);
@@ -287,7 +290,7 @@ impl PreonRendererWGPU {
                 format: surface.get_preferred_format(&adapter).unwrap(),
                 width: size.width,
                 height: size.height,
-                present_mode: wgpu::PresentMode::Immediate,
+                present_mode: wgpu::PresentMode::Fifo,
             };
             surface.configure(&device, &config);
 

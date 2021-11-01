@@ -30,7 +30,8 @@
         "**/tmp",
         "**/dist",
         "**/tests",
-        "**/target"
+        "**/target",
+        "**/res"
     ],
     "colorize.decoration_type": "background",
     "colorize.hide_current_line_decorations": false

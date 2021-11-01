@@ -181,18 +181,6 @@ pub trait PreonCustomComponentStack {
     );
 
     fn layout<T: PreonCustomComponentStack + Any + 'static>(mut component: &mut PreonComponent<T>) {
-        if let Some(mut children) = component.children.take() {
-            component.children = Some(
-                children
-                    .drain(..)
-                    .map(|mut f| -> PreonComponent<T> {
-                        T::layout(&mut f);
-                        f
-                    })
-                    .collect::<Vec<PreonComponent<T>>>(),
-            );
-        }
-
         match component.data {
             PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
             PreonComponentStack::RectComponent { .. } => {}
@@ -208,12 +196,19 @@ pub trait PreonCustomComponentStack {
                     // Gather some data on the children
                     children.iter().for_each(|child| {
                         let s = child.get_outer_size();
-                        height += s.y;
-                        width = width.max(s.x);
+
                         if child.model.has_flag(size::vertical::EXPAND) {
+                            height += child.model.min_size.y;
                             expanding_children += 1;
                         } else {
+                            height += s.y;
                             leftover_height += s.y;
+                        }
+
+                        if !child.model.has_flag(size::horizontal::EXPAND) {
+                            width = width.max(s.x);
+                        } else {
+                            width = width.max(child.model.min_size.x);
                         }
                     });
 
@@ -256,14 +251,18 @@ pub trait PreonCustomComponentStack {
                             }
                         };
 
-                        let y_position: i32 = match align {
-                            PreonAlignment::Start => y,
-                            PreonAlignment::Center => size.y / 2 - y / 2,
-                            PreonAlignment::End => size.y - y,
-                            PreonAlignment::Spread => {
-                                let time = 1f32 / y as f32;
-                                ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
-                            },
+                        let y_position: i32 = if expanding_children > 0 {
+                            y
+                        } else {
+                            match align {
+                               PreonAlignment::Start => y,
+                               PreonAlignment::Center => size.y / 2 - height / 2 + y,
+                               PreonAlignment::End => (size.y - height) + y,
+                               PreonAlignment::Spread => {
+                                   let time = 1f32 / y as f32;
+                                   ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
+                               },
+                           }
                         };
 
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
@@ -281,17 +280,24 @@ pub trait PreonCustomComponentStack {
                     let mut height = 0;
                     let mut width = 0;
                     let mut expanding_children = 0;
-                    let mut leftover_height = 0;
+                    let mut leftover_width = 0;
 
                     // Gather some data on the children
                     children.iter().for_each(|child| {
                         let s = child.get_outer_size();
-                        height += s.y;
-                        width = width.max(s.x);
-                        if child.model.has_flag(size::vertical::EXPAND) {
+
+                        if child.model.has_flag(size::horizontal::EXPAND) {
+                            width += child.model.min_size.x;
                             expanding_children += 1;
                         } else {
-                            leftover_height += s.y;
+                            width += s.x;
+                            leftover_width += s.x;
+                        }
+
+                        if !child.model.has_flag(size::vertical::EXPAND) {
+                            height = height.max(s.y);
+                        } else {
+                            height = height.max(child.model.min_size.y);
                         }
                     });
 
@@ -308,50 +314,66 @@ pub trait PreonCustomComponentStack {
                     size = component.get_content_size();
 
                     // Correctly position everything
-                    let mut y = 0;
+                    let mut x = 0;
 
                     children.iter_mut().for_each(|child| {
-                        if child.model.has_flag(size::vertical::EXPAND) {
-                            child.set_outer_size_y((size.y - leftover_height) / expanding_children);
-                        }
                         if child.model.has_flag(size::horizontal::EXPAND) {
-                            child.set_outer_size_x(size.x);
+                            child.set_outer_size_x((size.x - leftover_width) / expanding_children);
+                        }
+                        if child.model.has_flag(size::vertical::EXPAND) {
+                            child.set_outer_size_y(size.y);
                         }
 
                         let child_size = child.get_outer_size();
 
-                        let x_position: i32 = if child.model.has_flag(size::horizontal::EXPAND) {
+                        let y_position: i32 = if child.model.has_flag(size::vertical::EXPAND) {
                             0
                         } else {
                             match cross_align {
                                 PreonAlignment::Start => 0,
-                                PreonAlignment::Center => size.x / 2 - child_size.x / 2,
-                                PreonAlignment::End => size.x - child_size.x,
+                                PreonAlignment::Center => size.y / 2 - child_size.y / 2,
+                                PreonAlignment::End => size.y - child_size.y,
                                 PreonAlignment::Spread => {
-                                    eprintln!("VBox CrossAlignment doesn't support Spread (defaulting to Start)");
+                                    eprintln!("HBox CrossAlignment doesn't support Spread (defaulting to Start)");
                                     0
                                 }
                             }
                         };
 
-                        let y_position: i32 = match align {
-                            PreonAlignment::Start => y,
-                            PreonAlignment::Center => size.y / 2 - y / 2,
-                            PreonAlignment::End => size.y - y,
-                            PreonAlignment::Spread => {
-                                let time = 1f32 / y as f32;
-                                ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
-                            },
+                        let x_position: i32 = if expanding_children > 0 {
+                            x
+                        } else {
+                            match align {
+                                PreonAlignment::Start => x,
+                                PreonAlignment::Center => size.x / 2 - width / 2 + x,
+                                PreonAlignment::End => (size.x - width) + x,
+                                PreonAlignment::Spread => {
+                                    let time = 1f32 / x as f32;
+                                    ((1f32 - time) * x as f32 + time * (size.x - x) as f32) as i32
+                                },
+                            }
                         };
 
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
-                        y += child_size.y;
+                        x += child_size.x;
                     });
 
                     component.children = Some(children);
                 }
             }
+        }
+
+        if let Some(mut children) = component.children.take() {
+            component.children = Some(
+                children
+                    .drain(..)
+                    .map(|mut f| -> PreonComponent<T> {
+                        T::layout(&mut f);
+                        f
+                    })
+                    .collect::<Vec<PreonComponent<T>>>(),
+            );
         }
     }
 
@@ -471,5 +493,100 @@ impl<T: PreonCustomComponentStack> PreonComponentStack<T> {
         Self::RectComponent {
             color: PreonColor::from_hex("#ffffff"),
         }
+    }
+}
+
+pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
+    component: PreonComponent<T>
+}
+
+impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
+    pub fn new(component: PreonComponentStack<T>) -> PreonComponentBuilder<T> {
+        Self {
+            component: PreonComponent {
+                data: component,
+                model: PreonBox {
+                    size_flags: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        }
+    }
+
+    pub fn with_margin(mut self, margin: PreonBorder) -> PreonComponentBuilder<T> {
+        self.component.model.margin = margin;
+
+        self
+    }
+
+    pub fn with_padding(mut self, padding: PreonBorder) -> PreonComponentBuilder<T> {
+        self.component.model.padding = padding;
+
+        self
+    }
+
+    pub fn with_min_size(mut self, min_size: PreonVector<i32>) -> PreonComponentBuilder<T> {
+        self.component.model.min_size = min_size;
+
+        self
+    }
+
+    pub fn with_border(mut self, border: PreonBorder) -> PreonComponentBuilder<T> {
+        self.component.model.border = border;
+
+        self
+    }
+
+    pub fn fit_children(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::FIT;
+
+        self
+    }
+
+    pub fn fit_children_horizontally(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::horizontal::FIT;
+
+        self
+    }
+
+    pub fn fit_children_vertically(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::vertical::FIT;
+
+        self
+    }
+
+    pub fn expand(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::EXPAND;
+
+        self
+    }
+
+    pub fn expand_horizontally(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::horizontal::EXPAND;
+
+        self
+    }
+
+    pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
+        self.component.model.size_flags = self.component.model.size_flags | size::vertical::EXPAND;
+
+        self
+    }
+
+    pub fn with_child(mut self, child: PreonComponent<T>) -> PreonComponentBuilder<T> {
+        if self.component.children.is_none() {
+            self.component.children = Some(vec![child]);
+        } else {
+            let mut children = self.component.children.take().unwrap();
+            children.push(child);
+            self.component.children = Some(children);
+        }
+
+        self
+    }
+
+    pub fn build(self) -> PreonComponent<T> {
+        self.component
     }
 }
