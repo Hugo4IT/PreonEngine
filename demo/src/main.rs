@@ -1,15 +1,6 @@
 use std::any::Any;
 
-use preon_engine::{
-    components::{
-        PreonComponent, PreonComponentBuilder, PreonComponentRenderStage, PreonComponentStack,
-        PreonCustomComponentStack,
-    },
-    events::PreonEvent,
-    rendering::PreonRenderPass,
-    types::{PreonBorder, PreonColor, PreonVector},
-    PreonEngine,
-};
+use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder, PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack}, events::PreonEvent, rendering::PreonRenderPass, types::PreonBorder};
 use preon_module_wgpu::preon;
 
 #[derive(Debug, Copy, Clone)]
@@ -22,15 +13,7 @@ impl PreonCustomComponentStack for MyComponentStack {
         component: &mut PreonComponent<T>,
     ) {
         match component.data {
-            PreonComponentStack::Custom(ref d) => {
-                let comp: &MyComponentStack =
-                    (d as &dyn Any).downcast_ref::<MyComponentStack>().unwrap();
-                match comp {
-                    MyComponentStack::Boi => {
-                        println!("Handle 'Boi' layout")
-                    }
-                }
-            }
+            PreonComponentStack::Custom(ref _d) => { /* Handle layout here */ }
             _ => {}
         }
     }
@@ -49,55 +32,38 @@ impl PreonCustomComponentStack for MyComponentStack {
 }
 
 fn main() {
+    #[rustfmt::skip]
     preon::run(
         PreonEngine::<MyComponentStack>::new(
-            PreonComponentBuilder::new(PreonComponentStack::vbox_default())
-                .with_padding(PreonBorder::from_single(16))
-                .with_child(
-                    PreonComponentBuilder::new(PreonComponentStack::hbox_default())
-                        .expand_horizontally()
-                        .fit_children_vertically()
-                        .with_child(
-                            PreonComponentBuilder::new(PreonComponentStack::RectComponent {
-                                color: PreonColor::from_hex("#444"),
-                            })
-                            .with_min_size(PreonVector::new(300, 32))
-                            .with_margin(PreonBorder::new(0, 16, 0, 0))
-                            .build(),
-                        )
-                        .with_child(
-                            PreonComponentBuilder::new(PreonComponentStack::RectComponent {
-                                color: PreonColor::from_hex("#333"),
-                            })
-                            .with_min_size(PreonVector::new(0, 32))
+            PreonComponentBuilder::new()
+                .start_panel()
+                    .panel_color("#da0037")
+                    .with_min_size(0, 60)
+                    .expand_horizontally()
+                .end()
+                .start_hbox()
+                    .expand()
+                    .start_panel()
+                        .panel_color("#ffffff")
+                        .with_min_size(300, 0)
+                        .expand_vertically()
+                        .with_padding(PreonBorder::from_single(16))
+                        .start_vbox()
+                            .fit_children_vertically()
                             .expand_horizontally()
-                            .build(),
-                        )
-                        .build(),
-                )
-                .with_child(
-                    PreonComponentBuilder::new(PreonComponentStack::hbox_default())
-                        .with_margin(PreonBorder::new(16, 0, 0, 0))
+                            .start_panel()
+                                .panel_color("#da0037")
+                                .with_min_size(0, 48)
+                                .expand_horizontally()
+                            .end()
+                        .end()
+                    .end()
+                    .start_panel()
+                        .panel_color("#d3d3d3")
                         .expand()
-                        .with_child(
-                            PreonComponentBuilder::new(PreonComponentStack::RectComponent {
-                                color: PreonColor::from_hex("#333"),
-                            })
-                            .with_min_size(PreonVector::new(300, 0))
-                            .with_margin(PreonBorder::new(0, 16, 0, 0))
-                            .expand_vertically()
-                            .build(),
-                        )
-                        .with_child(
-                            PreonComponentBuilder::new(PreonComponentStack::RectComponent {
-                                color: PreonColor::from_hex("#222"),
-                            })
-                            .expand()
-                            .build(),
-                        )
-                        .build(),
-                )
-                .build(),
+                    .end()
+                .end()
+            .build()
         ),
         |e| match e {
             PreonEvent::WindowClosed => {

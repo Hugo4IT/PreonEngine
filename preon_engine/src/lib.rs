@@ -78,8 +78,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     }
 
     pub fn start(&mut self) {
-        // T::layout(&mut self.tree);
-        // T::render(&mut self.tree, &mut self.render_pass);
+
     }
 
     pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {

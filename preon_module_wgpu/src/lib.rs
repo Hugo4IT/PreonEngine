@@ -370,7 +370,11 @@ impl PreonRendererWGPU {
                 fragment: Some(wgpu::FragmentState {
                     module: &rect_frag_module,
                     entry_point: "main",
-                    targets: &[config.format.into()],
+                    targets: &[wgpu::ColorTargetState {
+                        format: config.format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL
+                    }],
                 }),
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
