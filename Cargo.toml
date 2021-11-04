@@ -3,6 +3,9 @@ members = [
     "preon_module_wgpu",
     "preon_engine",
     "preon_data",
-    "demo",
+    "demo"
 ]
 resolver = "2"
+
+[profile.dev.package."*"]
+opt-level = 3

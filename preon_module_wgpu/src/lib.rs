@@ -1,8 +1,7 @@
 use std::mem::size_of;
 
 use preon_engine::{
-    events::{PreonEvent, PreonEventEmitter},
-    rendering::{PreonRenderPass, PreonRenderer, PreonShape},
+    rendering::{PreonRenderPass, PreonShape},
 };
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -109,7 +108,6 @@ pub mod preon {
     use preon_engine::{
         components::PreonCustomComponentStack,
         events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
-        rendering::PreonRenderer,
         types::PreonVector,
         PreonEngine,
     };
@@ -126,7 +124,7 @@ pub mod preon {
     pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
     where
         T: PreonCustomComponentStack + 'static,
-        F: FnMut(PreonEvent) + 'static,
+        F: FnMut(PreonEvent, &PreonEngine<T>) + 'static,
     {
         engine.start();
         env_logger::init();
@@ -140,7 +138,6 @@ pub mod preon {
             .unwrap();
 
         let mut wgpu = PreonRendererWGPU::new(&window);
-        wgpu.start();
 
         window.set_visible(true);
 
@@ -152,10 +149,8 @@ pub mod preon {
             Event::RedrawRequested(_) => {
                 user_events.flip();
 
-                if engine.update(&mut user_events) {
-                    engine.events.pull(|e| callback(e));
-
-                    wgpu.update(&mut engine.events);
+                if engine.update(&user_events) {
+                    engine.events.pull(|e| callback(e, &engine));
                     wgpu.render(&mut engine.render_pass);
                 }
             }
@@ -165,7 +160,7 @@ pub mod preon {
                 window_id,
             } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => {
-                    callback(PreonEvent::WindowClosed);
+                    callback(PreonEvent::WindowClosed, &engine);
                     *control_flow = ControlFlow::Exit;
                 }
                 WindowEvent::Resized(physical_size) => {
@@ -182,6 +177,9 @@ pub mod preon {
                         new_inner_size.width,
                         new_inner_size.height,
                     )));
+                }
+                WindowEvent::CursorMoved { position, .. } => {
+                    user_events.push(PreonUserEvent::MouseMove(PreonVector::new(position.x as i32, position.y as i32)));
                 }
                 WindowEvent::ModifiersChanged(modifier) => {
                     ctrl = modifier.ctrl();
@@ -200,7 +198,7 @@ pub mod preon {
                     ..
                 } => {
                     if ctrl && !shift && !logo && !alt {
-                        callback(PreonEvent::WindowClosed);
+                        callback(PreonEvent::WindowClosed, &engine);
                         *control_flow = ControlFlow::Exit;
                     }
                 }
@@ -457,12 +455,6 @@ impl PreonRendererWGPU {
             );
         }
     }
-}
-
-impl PreonRenderer for PreonRendererWGPU {
-    fn start(&mut self) {}
-
-    fn update(&mut self, _events: &mut PreonEventEmitter<PreonEvent>) {}
 
     fn render(&mut self, pass: &mut PreonRenderPass) {
         let previous_size = self.rect_instances.len();

@@ -1,13 +1,6 @@
 use crate::{
-    events::{PreonEvent, PreonEventEmitter},
     types::{PreonColor, PreonVector},
 };
-
-pub trait PreonRenderer {
-    fn start(&mut self);
-    fn update(&mut self, events: &mut PreonEventEmitter<PreonEvent>);
-    fn render(&mut self, render_pass: &mut PreonRenderPass);
-}
 
 #[derive(Debug, Copy, Clone)]
 pub enum PreonShape {

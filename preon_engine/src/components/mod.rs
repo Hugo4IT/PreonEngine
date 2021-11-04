@@ -1,10 +1,6 @@
 use std::any::Any;
 
-use crate::{
-    rendering::{PreonRenderPass, PreonShape},
-    size,
-    types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector},
-};
+use crate::{rendering::{PreonRenderPass, PreonShape}, size, types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector}};
 
 #[derive(Debug, Clone)]
 pub struct PreonComponent<T: PreonCustomComponentStack> {
@@ -18,12 +14,16 @@ pub struct PreonComponent<T: PreonCustomComponentStack> {
 impl<T: PreonCustomComponentStack> PreonComponent<T> {
     pub fn new(component: PreonComponentStack<T>) -> PreonComponent<T> {
         PreonComponent {
-            children: Some(Vec::new()),
+            children: None,
             model: PreonBox::initial(),
             data: component,
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
         }
+    }
+
+    pub fn empty() -> PreonComponent<T> {
+        PreonComponent::<T>::new(PreonComponentStack::Dummy)
     }
 
     #[inline(always)]
@@ -186,7 +186,18 @@ pub trait PreonCustomComponentStack {
     fn layout<T: PreonCustomComponentStack + Any + 'static>(mut component: &mut PreonComponent<T>) {
         match component.data {
             PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
-            PreonComponentStack::Panel { .. } => {}
+            PreonComponentStack::Panel { .. } => {
+                if component.children.is_some() {
+                    let mut children = component.children.take().unwrap();
+
+                    component.children = Some(children.drain(..).map(|mut child| {
+                        child.set_outer_position(component.get_content_position());
+                        child.set_outer_size(component.get_content_size());
+
+                        child
+                    }).collect());
+                }
+            },
             PreonComponentStack::VBox { align, cross_align } => {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
@@ -364,7 +375,8 @@ pub trait PreonCustomComponentStack {
 
                     component.children = Some(children);
                 }
-            }
+            },
+            _ => {}
         }
 
         if let Some(mut children) = component.children.take() {
@@ -464,6 +476,7 @@ pub trait PreonCustomComponentStack {
 #[derive(Debug, Clone)]
 pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Custom(T),
+    Dummy,
     Panel {
         color: PreonColor,
     },
@@ -478,7 +491,8 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
 }
 
 pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
-    stack: Vec<PreonComponent<T>>
+    stack: Vec<PreonComponent<T>>,
+    current_location: usize
 }
 
 impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
@@ -492,7 +506,20 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
                     },
                     ..Default::default()
                 }
-            ]
+            ],
+            current_location: 0
+        }
+    }
+
+    pub fn new_from(component: PreonComponentStack<T>) -> PreonComponentBuilder<T> {
+        Self {
+            stack: vec![
+                PreonComponent {
+                    data: component,
+                    ..Default::default()
+                }
+            ],
+            current_location: 0
         }
     }
 
@@ -500,7 +527,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.margin = margin;
         self.stack.push(component);
-
         self
     }
 
@@ -508,7 +534,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.padding = padding;
         self.stack.push(component);
-
         self
     }
 
@@ -516,7 +541,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.min_size = PreonVector::new(x, y);
         self.stack.push(component);
-
         self
     }
 
@@ -524,7 +548,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.border = border;
         self.stack.push(component);
-
         self
     }
 
@@ -532,7 +555,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::FIT;
         self.stack.push(component);
-
         self
     }
 
@@ -540,7 +562,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::horizontal::FIT;
         self.stack.push(component);
-
         self
     }
 
@@ -548,7 +569,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::vertical::FIT;
         self.stack.push(component);
-
         self
     }
 
@@ -556,7 +576,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::EXPAND;
         self.stack.push(component);
-
         self
     }
 
@@ -564,7 +583,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::horizontal::EXPAND;
         self.stack.push(component);
-
         self
     }
 
@@ -572,7 +590,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags = component.model.size_flags | size::vertical::EXPAND;
         self.stack.push(component);
-
         self
     }
 
@@ -588,7 +605,15 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         }
 
         self.stack.push(component);
+        self
+    }
 
+    fn start(&mut self) {
+        self.current_location += 1;
+    }
+
+    pub fn store(self, reference: &mut usize) -> PreonComponentBuilder<T> {
+        *reference = self.current_location;
         self
     }
 
@@ -609,6 +634,8 @@ pub trait AddVBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
     fn start_vbox(mut self) -> PreonComponentBuilder<T> {
+        self.start();
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::VBox {
                 align: PreonAlignment::Start,
@@ -632,6 +659,8 @@ pub trait AddHBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
     fn start_hbox(mut self) -> PreonComponentBuilder<T> {
+        self.start();
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::HBox {
                 align: PreonAlignment::Start,
@@ -656,6 +685,8 @@ pub trait AddPanel<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
     fn start_panel(mut self) -> PreonComponentBuilder<T> {
+        self.start();
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#000000")
@@ -671,6 +702,8 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
     }
 
     fn panel_color(mut self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+        self.start();
+
         let mut component = self.stack.pop().take().unwrap();
         match component.data {
             PreonComponentStack::Panel { .. } => {

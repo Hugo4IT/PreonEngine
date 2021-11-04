@@ -81,7 +81,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
 
     }
 
-    pub fn update(&mut self, user_events: &mut PreonEventEmitter<PreonUserEvent>) -> bool {
+    pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
         if user_events.len() > 0 || self.events.len() > 0 {
             let mut update_layout = false;
 

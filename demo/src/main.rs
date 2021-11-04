@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder, PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack}, events::PreonEvent, rendering::PreonRenderPass, types::PreonBorder};
+use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder, PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack}, rendering::PreonRenderPass, types::PreonBorder};
 use preon_module_wgpu::preon;
 
 #[derive(Debug, Copy, Clone)]
@@ -32,47 +32,44 @@ impl PreonCustomComponentStack for MyComponentStack {
 }
 
 fn main() {
+    // Store the location of the first panel
+    let mut first_panel: usize = 0;
+
     #[rustfmt::skip]
-    preon::run(
-        PreonEngine::<MyComponentStack>::new(
-            PreonComponentBuilder::new()
+    preon::run(PreonEngine::<MyComponentStack>::new(
+        PreonComponentBuilder::new()
+            .start_panel()
+                .panel_color("#da0037")
+                .with_min_size(0, 60)
+                .expand_horizontally()
+            .end()
+            .start_hbox()
+                .expand()
                 .start_panel()
-                    .panel_color("#da0037")
-                    .with_min_size(0, 60)
-                    .expand_horizontally()
-                .end()
-                .start_hbox()
-                    .expand()
-                    .start_panel()
-                        .panel_color("#ffffff")
-                        .with_min_size(300, 0)
-                        .expand_vertically()
-                        .with_padding(PreonBorder::from_single(16))
-                        .start_vbox()
-                            .fit_children_vertically()
+                    .panel_color("#ffffff")
+                    .with_min_size(300, 0)
+                    .expand_vertically()
+                    .with_padding(PreonBorder::from_single(16))
+                    .start_vbox()
+                        .fit_children_vertically()
+                        .expand_horizontally()
+                        .start_panel()
+                            .panel_color("#c4c4c4")
+                            .with_min_size(0, 48)
                             .expand_horizontally()
-                            .start_panel()
-                                .panel_color("#da0037")
-                                .with_min_size(0, 48)
-                                .expand_horizontally()
-                            .end()
+                            .store(&mut first_panel)
                         .end()
                     .end()
-                    .start_panel()
-                        .panel_color("#d3d3d3")
-                        .expand()
-                    .end()
                 .end()
-            .build()
-        ),
-        |e| match e {
-            PreonEvent::WindowClosed => {
-                println!("Press F to pay respect for a lost fellow");
-            }
-            PreonEvent::Button(id, state) => {
-                println!("Button {} fired event {}", id, state);
-            }
-            _ => {}
-        },
-    );
+                .start_panel()
+                    .panel_color("#d3d3d3")
+                    .expand()
+                .end()
+            .end()
+        .build()
+    ), move |event, _engine| match event {
+        preon_engine::events::PreonEvent::WindowOpened => println!("Panel: {}", first_panel),
+        preon_engine::events::PreonEvent::WindowClosed => println!("F"),
+        _ => {},
+    });
 }
