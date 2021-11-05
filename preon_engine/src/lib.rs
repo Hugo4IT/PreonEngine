@@ -77,9 +77,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
         }
     }
 
-    pub fn start(&mut self) {
-
-    }
+    pub fn start(&mut self) {}
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
         if user_events.len() > 0 || self.events.len() > 0 {
@@ -99,7 +97,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
             if update_layout {
                 self.tree.set_outer_size(PreonVector::new(
                     self.window_inner_size.x as i32,
-                    self.window_inner_size.y as i32
+                    self.window_inner_size.y as i32,
                 ));
                 self.tree.set_outer_position(PreonVector::zero());
                 T::layout(&mut self.tree);

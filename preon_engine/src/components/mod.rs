@@ -1,6 +1,10 @@
 use std::any::Any;
 
-use crate::{rendering::{PreonRenderPass, PreonShape}, size, types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector}};
+use crate::{
+    rendering::{PreonRenderPass, PreonShape},
+    size,
+    types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector},
+};
 
 #[derive(Debug, Clone)]
 pub struct PreonComponent<T: PreonCustomComponentStack> {
@@ -58,7 +62,8 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
 
     #[inline(always)]
     pub fn set_outer_position(&mut self, new_position: PreonVector<i32>) {
-        self.inner_position = new_position + self.model.border.top_left() + self.model.margin.top_left();
+        self.inner_position =
+            new_position + self.model.border.top_left() + self.model.margin.top_left();
     }
 
     #[inline(always)]
@@ -85,7 +90,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
     pub fn get_inner_size(&self) -> PreonVector<i32> {
         PreonVector::new(
             self.inner_size.x.max(self.model.min_size.x),
-            self.inner_size.y.max(self.model.min_size.y)
+            self.inner_size.y.max(self.model.min_size.y),
         )
     }
 
@@ -154,7 +159,7 @@ impl<T: PreonCustomComponentStack> Default for PreonComponent<T> {
     fn default() -> Self {
         Self::new(PreonComponentStack::VBox {
             align: PreonAlignment::Start,
-            cross_align: PreonAlignment::Center
+            cross_align: PreonAlignment::Center,
         })
     }
 }
@@ -190,14 +195,19 @@ pub trait PreonCustomComponentStack {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
 
-                    component.children = Some(children.drain(..).map(|mut child| {
-                        child.set_outer_position(component.get_content_position());
-                        child.set_outer_size(component.get_content_size());
+                    component.children = Some(
+                        children
+                            .drain(..)
+                            .map(|mut child| {
+                                child.set_outer_position(component.get_content_position());
+                                child.set_outer_size(component.get_content_size());
 
-                        child
-                    }).collect());
+                                child
+                            })
+                            .collect(),
+                    );
                 }
-            },
+            }
             PreonComponentStack::VBox { align, cross_align } => {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
@@ -286,7 +296,7 @@ pub trait PreonCustomComponentStack {
 
                     component.children = Some(children);
                 }
-            },
+            }
             PreonComponentStack::HBox { align, cross_align } => {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
@@ -375,7 +385,7 @@ pub trait PreonCustomComponentStack {
 
                     component.children = Some(children);
                 }
-            },
+            }
             _ => {}
         }
 
@@ -437,25 +447,25 @@ pub trait PreonCustomComponentStack {
             pass.push(PreonShape::Rect {
                 position: component.get_outer_position(),
                 size: component.get_outer_size(),
-                color: PreonColor::from_hex("#c0687055")
+                color: PreonColor::from_hex("#c0687055"),
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_border_position(),
                 size: component.get_border_size(),
-                color: PreonColor::from_hex("#c09b6855")
+                color: PreonColor::from_hex("#c09b6855"),
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_inner_position(),
                 size: component.get_inner_size(),
-                color: PreonColor::from_hex("#68c09355")
+                color: PreonColor::from_hex("#68c09355"),
             });
 
             pass.push(PreonShape::Rect {
                 position: component.get_content_position(),
                 size: component.get_content_size(),
-                color: PreonColor::from_hex("#6891c055")
+                color: PreonColor::from_hex("#6891c055"),
             });
         }
 
@@ -482,7 +492,7 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     },
     HBox {
         align: PreonAlignment,
-        cross_align: PreonAlignment
+        cross_align: PreonAlignment,
     },
     VBox {
         align: PreonAlignment,
@@ -492,34 +502,30 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
 
 pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
     stack: Vec<PreonComponent<T>>,
-    current_location: usize
+    current_location: usize,
 }
 
 impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     pub fn new() -> PreonComponentBuilder<T> {
         Self {
-            stack: vec![
-                PreonComponent {
-                    data: PreonComponentStack::VBox {
-                        align: PreonAlignment::Start,
-                        cross_align: PreonAlignment::Center
-                    },
-                    ..Default::default()
-                }
-            ],
-            current_location: 0
+            stack: vec![PreonComponent {
+                data: PreonComponentStack::VBox {
+                    align: PreonAlignment::Start,
+                    cross_align: PreonAlignment::Center,
+                },
+                ..Default::default()
+            }],
+            current_location: 0,
         }
     }
 
     pub fn new_from(component: PreonComponentStack<T>) -> PreonComponentBuilder<T> {
         Self {
-            stack: vec![
-                PreonComponent {
-                    data: component,
-                    ..Default::default()
-                }
-            ],
-            current_location: 0
+            stack: vec![PreonComponent {
+                data: component,
+                ..Default::default()
+            }],
+            current_location: 0,
         }
     }
 
@@ -639,7 +645,7 @@ impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
         self.stack.push(PreonComponent {
             data: PreonComponentStack::VBox {
                 align: PreonAlignment::Start,
-                cross_align: PreonAlignment::Center
+                cross_align: PreonAlignment::Center,
             },
             ..Default::default()
         });
@@ -664,7 +670,7 @@ impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
         self.stack.push(PreonComponent {
             data: PreonComponentStack::HBox {
                 align: PreonAlignment::Start,
-                cross_align: PreonAlignment::Center
+                cross_align: PreonAlignment::Center,
             },
             ..Default::default()
         });
@@ -689,7 +695,7 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
 
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Panel {
-                color: PreonColor::from_hex("#000000")
+                color: PreonColor::from_hex("#000000"),
             },
             ..Default::default()
         });
@@ -710,8 +716,11 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
                 component.data = PreonComponentStack::Panel {
                     color: PreonColor::from_hex(hex_color),
                 }
-            },
-            _ => eprintln!("{}: panel_color() can only be used after start_panel() and before end()", line!())
+            }
+            _ => eprintln!(
+                "{}: panel_color() can only be used after start_panel() and before end()",
+                line!()
+            ),
         }
         self.stack.push(component);
 

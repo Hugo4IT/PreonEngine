@@ -1,6 +1,4 @@
-use crate::{
-    types::{PreonColor, PreonVector},
-};
+use crate::types::{PreonColor, PreonVector};
 
 #[derive(Debug, Copy, Clone)]
 pub enum PreonShape {

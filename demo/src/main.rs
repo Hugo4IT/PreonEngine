@@ -1,6 +1,14 @@
 use std::any::Any;
 
-use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder, PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack}, rendering::PreonRenderPass, types::PreonBorder};
+use preon_engine::{
+    components::{
+        AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder,
+        PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack,
+    },
+    rendering::PreonRenderPass,
+    types::PreonBorder,
+    PreonEngine,
+};
 use preon_module_wgpu::preon;
 
 #[derive(Debug, Copy, Clone)]

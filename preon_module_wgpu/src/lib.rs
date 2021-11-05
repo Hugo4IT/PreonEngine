@@ -1,8 +1,6 @@
 use std::mem::size_of;
 
-use preon_engine::{
-    rendering::{PreonRenderPass, PreonShape},
-};
+use preon_engine::rendering::{PreonRenderPass, PreonShape};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -169,7 +167,8 @@ pub mod preon {
                         physical_size.width,
                         physical_size.height,
                     )));
-                    *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.1f32));
+                    *control_flow =
+                        ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.1f32));
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     wgpu.resize(**new_inner_size);
@@ -179,7 +178,10 @@ pub mod preon {
                     )));
                 }
                 WindowEvent::CursorMoved { position, .. } => {
-                    user_events.push(PreonUserEvent::MouseMove(PreonVector::new(position.x as i32, position.y as i32)));
+                    user_events.push(PreonUserEvent::MouseMove(PreonVector::new(
+                        position.x as i32,
+                        position.y as i32,
+                    )));
                 }
                 WindowEvent::ModifiersChanged(modifier) => {
                     ctrl = modifier.ctrl();
@@ -371,7 +373,7 @@ impl PreonRendererWGPU {
                     targets: &[wgpu::ColorTargetState {
                         format: config.format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL
+                        write_mask: wgpu::ColorWrites::ALL,
                     }],
                 }),
                 primitive: wgpu::PrimitiveState {
