@@ -103,7 +103,12 @@ const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 pub mod preon {
     use std::time::{Duration, Instant};
 
-    use preon_engine::{PreonEngine, components::{PreonComponent, PreonCustomComponentStack}, events::{PreonEvent, PreonEventEmitter, PreonUserEvent}, types::PreonVector};
+    use preon_engine::{
+        components::{PreonComponent, PreonCustomComponentStack},
+        events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
+        types::PreonVector,
+        PreonEngine,
+    };
     use winit::{
         dpi::LogicalSize,
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},

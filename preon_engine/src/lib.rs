@@ -88,9 +88,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
                     self.resize(s);
                     update_layout = true
                 }
-                PreonUserEvent::ForceLayoutUpdate => {
-                    update_layout = true
-                },
+                PreonUserEvent::ForceLayoutUpdate => update_layout = true,
                 PreonUserEvent::WindowOpened => {
                     self.events.push(PreonEvent::WindowOpened);
                     update_layout = true

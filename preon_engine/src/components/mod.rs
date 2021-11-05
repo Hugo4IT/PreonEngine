@@ -50,22 +50,44 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         if path.len() == 1 {
             self.return_child(child)
         } else {
-            self.get_child_ref_mut(index).return_child_recursive(child, &_path)
+            self.get_child_ref_mut(index)
+                .return_child_recursive(child, &_path)
         }
     }
 
     pub fn get_child(&mut self, id: usize) -> PreonComponent<T> {
-        let mut child = self.children.as_mut().unwrap().get_mut(id).take().unwrap().take().unwrap();
+        let mut child = self
+            .children
+            .as_mut()
+            .unwrap()
+            .get_mut(id)
+            .take()
+            .unwrap()
+            .take()
+            .unwrap();
         child.id = id; // Ensure id for return_child()
         child
     }
 
     pub fn get_child_ref(&mut self, id: usize) -> &PreonComponent<T> {
-        self.children.as_mut().unwrap().get_mut(id).unwrap().as_ref().unwrap()
+        self.children
+            .as_mut()
+            .unwrap()
+            .get_mut(id)
+            .unwrap()
+            .as_ref()
+            .unwrap()
     }
 
     pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponent<T> {
-        let mut child = self.children.as_mut().unwrap().get_mut(id).unwrap().as_mut().unwrap();
+        let mut child = self
+            .children
+            .as_mut()
+            .unwrap()
+            .get_mut(id)
+            .unwrap()
+            .as_mut()
+            .unwrap();
         child.id = id; // Ensure id for return_child()
         child
     }
@@ -709,7 +731,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         let new_id: usize;
 
         if self.stack.len() == 1 {
-            return 0
+            return 0;
         }
 
         let component = self.stack.pop().take().unwrap();
