@@ -41,7 +41,7 @@ impl PreonCustomComponentStack for MyComponentStack {
 
 fn main() {
     // Store the location of the first panel
-    let mut first_panel: usize = 0;
+    let mut first_panel: Vec<usize> = Vec::new();
 
     #[rustfmt::skip]
     preon::run(PreonEngine::<MyComponentStack>::new(
@@ -65,7 +65,7 @@ fn main() {
                             .panel_color("#c4c4c4")
                             .with_min_size(0, 48)
                             .expand_horizontally()
-                            .store(&mut first_panel)
+                            .store_path(&mut first_panel)
                         .end()
                     .end()
                 .end()
@@ -75,8 +75,14 @@ fn main() {
                 .end()
             .end()
         .build()
-    ), move |event, _engine| match event {
-        preon_engine::events::PreonEvent::WindowOpened => println!("Panel: {}", first_panel),
+    ), move |tree, event| match event {
+        preon_engine::events::PreonEvent::WindowOpened => {
+            let panel = tree.get_child_recursive(&first_panel);
+
+            println!("{:?}", panel);
+
+            tree.return_child_recursive(panel, &first_panel);
+        },
         preon_engine::events::PreonEvent::WindowClosed => println!("F"),
         _ => {},
     });

@@ -59,7 +59,7 @@ pub mod size {
 }
 
 pub struct PreonEngine<T: PreonCustomComponentStack> {
-    pub tree: PreonComponent<T>,
+    pub tree: Option<PreonComponent<T>>,
     pub model: PreonBox,
     pub events: PreonEventEmitter<PreonEvent>,
     pub window_inner_size: PreonVector<u32>,
@@ -69,7 +69,7 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
 impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn new(tree: PreonComponent<T>) -> Self {
         Self {
-            tree,
+            tree: Some(tree),
             model: PreonBox::initial(),
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
@@ -88,21 +88,29 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
                     self.resize(s);
                     update_layout = true
                 }
-                PreonUserEvent::ForceLayoutUpdate | PreonUserEvent::WindowOpened => {
+                PreonUserEvent::ForceLayoutUpdate => {
+                    update_layout = true
+                },
+                PreonUserEvent::WindowOpened => {
+                    self.events.push(PreonEvent::WindowOpened);
                     update_layout = true
                 }
                 _ => {}
             });
 
+            let mut tree = self.tree.take().unwrap();
+
             if update_layout {
-                self.tree.set_outer_size(PreonVector::new(
+                tree.set_outer_size(PreonVector::new(
                     self.window_inner_size.x as i32,
                     self.window_inner_size.y as i32,
                 ));
-                self.tree.set_outer_position(PreonVector::zero());
-                T::layout(&mut self.tree);
+                tree.set_outer_position(PreonVector::zero());
+                T::layout(&mut tree);
             }
-            T::render(&mut self.tree, &mut self.render_pass);
+            T::render(&mut tree, &mut self.render_pass);
+
+            self.tree = Some(tree);
 
             self.events.flip();
             self.render_pass.flip();

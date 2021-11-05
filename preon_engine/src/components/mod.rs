@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
@@ -8,11 +8,12 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct PreonComponent<T: PreonCustomComponentStack> {
-    pub children: Option<Vec<PreonComponent<T>>>,
+    pub children: Option<Vec<Option<PreonComponent<T>>>>,
     pub model: PreonBox,
     pub data: PreonComponentStack<T>,
     pub inner_size: PreonVector<i32>,
     pub inner_position: PreonVector<i32>,
+    pub id: usize,
 }
 
 impl<T: PreonCustomComponentStack> PreonComponent<T> {
@@ -23,11 +24,57 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             data: component,
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
+            id: 0,
         }
     }
 
     pub fn empty() -> PreonComponent<T> {
         PreonComponent::<T>::new(PreonComponentStack::Dummy)
+    }
+
+    pub fn get_child_recursive(&mut self, path: &Vec<usize>) -> PreonComponent<T> {
+        let mut _path = path.clone();
+        let index = _path.pop().unwrap();
+
+        if path.len() == 1 {
+            self.get_child(index)
+        } else {
+            self.get_child_ref_mut(index).get_child_recursive(&_path)
+        }
+    }
+
+    pub fn return_child_recursive(&mut self, child: PreonComponent<T>, path: &Vec<usize>) {
+        let mut _path = path.clone();
+        let index = _path.pop().unwrap();
+
+        if path.len() == 1 {
+            self.return_child(child)
+        } else {
+            self.get_child_ref_mut(index).return_child_recursive(child, &_path)
+        }
+    }
+
+    pub fn get_child(&mut self, id: usize) -> PreonComponent<T> {
+        let mut child = self.children.as_mut().unwrap().get_mut(id).take().unwrap().take().unwrap();
+        child.id = id; // Ensure id for return_child()
+        child
+    }
+
+    pub fn get_child_ref(&mut self, id: usize) -> &PreonComponent<T> {
+        self.children.as_mut().unwrap().get_mut(id).unwrap().as_ref().unwrap()
+    }
+
+    pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponent<T> {
+        let mut child = self.children.as_mut().unwrap().get_mut(id).unwrap().as_mut().unwrap();
+        child.id = id; // Ensure id for return_child()
+        child
+    }
+
+    pub fn return_child(&mut self, child: PreonComponent<T>) {
+        let mut children = self.children.take().unwrap();
+        let index = child.id; // Copy ID
+        children[index] = Some(child);
+        self.children = Some(children);
     }
 
     #[inline(always)]
@@ -180,7 +227,7 @@ pub enum PreonComponentRenderStage {
     },
 }
 
-pub trait PreonCustomComponentStack {
+pub trait PreonCustomComponentStack: Debug {
     fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(comp: &mut PreonComponent<T>);
     fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
         stage: PreonComponentRenderStage,
@@ -198,11 +245,11 @@ pub trait PreonCustomComponentStack {
                     component.children = Some(
                         children
                             .drain(..)
-                            .map(|mut child| {
+                            .map(|mut ch| {
+                                let mut child = ch.take().unwrap();
                                 child.set_outer_position(component.get_content_position());
                                 child.set_outer_size(component.get_content_size());
-
-                                child
+                                Some(child)
                             })
                             .collect(),
                     );
@@ -218,7 +265,9 @@ pub trait PreonCustomComponentStack {
                     let mut leftover_height = 0;
 
                     // Gather some data on the children
-                    children.iter().for_each(|child| {
+                    children.iter_mut().for_each(|ch| {
+                        let child = ch.take().unwrap();
+
                         let s = child.get_outer_size();
 
                         if child.model.has_flag(size::vertical::EXPAND) {
@@ -234,6 +283,8 @@ pub trait PreonCustomComponentStack {
                         } else {
                             width = width.max(child.model.min_size.x);
                         }
+
+                        *ch = Some(child);
                     });
 
                     let position = component.get_content_position();
@@ -251,7 +302,9 @@ pub trait PreonCustomComponentStack {
                     // Correctly position everything
                     let mut y = 0;
 
-                    children.iter_mut().for_each(|child| {
+                    children.iter_mut().for_each(|ch| {
+                        let mut child = ch.take().unwrap();
+
                         if child.model.has_flag(size::vertical::EXPAND) {
                             child.set_outer_size_y((size.y - leftover_height) / expanding_children);
                         }
@@ -292,6 +345,8 @@ pub trait PreonCustomComponentStack {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         y += child_size.y;
+
+                        *ch = Some(child);
                     });
 
                     component.children = Some(children);
@@ -307,7 +362,9 @@ pub trait PreonCustomComponentStack {
                     let mut leftover_width = 0;
 
                     // Gather some data on the children
-                    children.iter().for_each(|child| {
+                    children.iter_mut().for_each(|ch| {
+                        let child = ch.take().unwrap();
+
                         let s = child.get_outer_size();
 
                         if child.model.has_flag(size::horizontal::EXPAND) {
@@ -323,6 +380,8 @@ pub trait PreonCustomComponentStack {
                         } else {
                             height = height.max(child.model.min_size.y);
                         }
+
+                        *ch = Some(child);
                     });
 
                     let position = component.get_content_position();
@@ -340,7 +399,9 @@ pub trait PreonCustomComponentStack {
                     // Correctly position everything
                     let mut x = 0;
 
-                    children.iter_mut().for_each(|child| {
+                    children.iter_mut().for_each(|ch| {
+                        let mut child = ch.take().unwrap();
+
                         if child.model.has_flag(size::horizontal::EXPAND) {
                             child.set_outer_size_x((size.x - leftover_width) / expanding_children);
                         }
@@ -381,6 +442,8 @@ pub trait PreonCustomComponentStack {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         x += child_size.x;
+
+                        *ch = Some(child);
                     });
 
                     component.children = Some(children);
@@ -393,11 +456,12 @@ pub trait PreonCustomComponentStack {
             component.children = Some(
                 children
                     .drain(..)
-                    .map(|mut f| -> PreonComponent<T> {
-                        T::layout(&mut f);
-                        f
+                    .map(|mut f| {
+                        let mut comp = f.take().unwrap();
+                        T::layout(&mut comp);
+                        Some(comp)
                     })
-                    .collect::<Vec<PreonComponent<T>>>(),
+                    .collect::<Vec<Option<PreonComponent<T>>>>(),
             );
         }
     }
@@ -473,11 +537,12 @@ pub trait PreonCustomComponentStack {
             component.children = Some(
                 children
                     .drain(..)
-                    .map(|mut f| -> PreonComponent<T> {
-                        T::render(&mut f, pass);
-                        f
+                    .map(|mut f| {
+                        let mut comp = f.take().unwrap();
+                        T::render(&mut comp, pass);
+                        Some(comp)
                     })
-                    .collect::<Vec<PreonComponent<T>>>(),
+                    .collect::<Vec<Option<PreonComponent<T>>>>(),
             );
         }
     }
@@ -502,7 +567,6 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
 
 pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
     stack: Vec<PreonComponent<T>>,
-    current_location: usize,
 }
 
 impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
@@ -515,7 +579,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
                 },
                 ..Default::default()
             }],
-            current_location: 0,
         }
     }
 
@@ -525,7 +588,6 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
                 data: component,
                 ..Default::default()
             }],
-            current_location: 0,
         }
     }
 
@@ -599,14 +661,16 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         self
     }
 
-    pub fn with_child(mut self, child: PreonComponent<T>) -> PreonComponentBuilder<T> {
+    pub fn with_child(mut self, mut child: PreonComponent<T>) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
 
         if component.children.is_none() {
-            component.children = Some(vec![child]);
+            child.id = 0;
+            component.children = Some(vec![Some(child)]);
         } else {
             let mut children = component.children.take().unwrap();
-            children.push(child);
+            child.id = children.len();
+            children.push(Some(child));
             component.children = Some(children);
         }
 
@@ -614,13 +678,54 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         self
     }
 
-    fn start(&mut self) {
-        self.current_location += 1;
+    pub fn store_index(mut self, reference: &mut usize) -> PreonComponentBuilder<T> {
+        *reference = self.get_index();
+
+        self
     }
 
-    pub fn store(self, reference: &mut usize) -> PreonComponentBuilder<T> {
-        *reference = self.current_location;
+    pub fn store_path(mut self, reference: &mut Vec<usize>) -> PreonComponentBuilder<T> {
+        reference.clear();
+        reference.truncate(self.stack.len());
+        reference.shrink_to_fit();
+
+        let mut _stack: Vec<PreonComponent<T>> = Vec::with_capacity(self.stack.capacity());
+
+        for _ in 0..self.stack.len() {
+            if self.stack.len() >= 2 {
+                reference.push(self.get_index());
+            }
+            _stack.push(self.stack.pop().take().unwrap());
+        }
+
+        for _ in 0.._stack.len() {
+            self.stack.push(_stack.pop().take().unwrap());
+        }
+
         self
+    }
+
+    fn get_index(&mut self) -> usize {
+        let new_id: usize;
+
+        if self.stack.len() == 1 {
+            return 0
+        }
+
+        let component = self.stack.pop().take().unwrap();
+        let mut parent_component = self.stack.pop().take().unwrap();
+
+        if let Some(children) = parent_component.children {
+            new_id = children.len();
+            parent_component.children = Some(children);
+        } else {
+            new_id = 0;
+        }
+
+        self.stack.push(parent_component);
+        self.stack.push(component);
+
+        new_id
     }
 
     pub fn end(mut self) -> PreonComponentBuilder<T> {
@@ -640,8 +745,6 @@ pub trait AddVBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
     fn start_vbox(mut self) -> PreonComponentBuilder<T> {
-        self.start();
-
         self.stack.push(PreonComponent {
             data: PreonComponentStack::VBox {
                 align: PreonAlignment::Start,
@@ -665,8 +768,6 @@ pub trait AddHBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
     fn start_hbox(mut self) -> PreonComponentBuilder<T> {
-        self.start();
-
         self.stack.push(PreonComponent {
             data: PreonComponentStack::HBox {
                 align: PreonAlignment::Start,
@@ -691,8 +792,6 @@ pub trait AddPanel<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
     fn start_panel(mut self) -> PreonComponentBuilder<T> {
-        self.start();
-
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#000000"),
@@ -708,8 +807,6 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
     }
 
     fn panel_color(mut self, hex_color: &'static str) -> PreonComponentBuilder<T> {
-        self.start();
-
         let mut component = self.stack.pop().take().unwrap();
         match component.data {
             PreonComponentStack::Panel { .. } => {

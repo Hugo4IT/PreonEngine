@@ -103,12 +103,7 @@ const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
 pub mod preon {
     use std::time::{Duration, Instant};
 
-    use preon_engine::{
-        components::PreonCustomComponentStack,
-        events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
-        types::PreonVector,
-        PreonEngine,
-    };
+    use preon_engine::{PreonEngine, components::{PreonComponent, PreonCustomComponentStack}, events::{PreonEvent, PreonEventEmitter, PreonUserEvent}, types::PreonVector};
     use winit::{
         dpi::LogicalSize,
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -122,7 +117,7 @@ pub mod preon {
     pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
     where
         T: PreonCustomComponentStack + 'static,
-        F: FnMut(PreonEvent, &PreonEngine<T>) + 'static,
+        F: FnMut(&mut PreonComponent<T>, PreonEvent) + 'static,
     {
         engine.start();
         env_logger::init();
@@ -148,7 +143,12 @@ pub mod preon {
                 user_events.flip();
 
                 if engine.update(&user_events) {
-                    engine.events.pull(|e| callback(e, &engine));
+                    let mut tree = engine.tree.take().unwrap();
+                    engine.events.pull(|event| {
+                        callback(&mut tree, event);
+                    });
+                    engine.tree = Some(tree);
+
                     wgpu.render(&mut engine.render_pass);
                 }
             }
@@ -158,7 +158,7 @@ pub mod preon {
                 window_id,
             } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => {
-                    callback(PreonEvent::WindowClosed, &engine);
+                    user_events.push(PreonUserEvent::WindowClosed);
                     *control_flow = ControlFlow::Exit;
                 }
                 WindowEvent::Resized(physical_size) => {
@@ -200,7 +200,7 @@ pub mod preon {
                     ..
                 } => {
                     if ctrl && !shift && !logo && !alt {
-                        callback(PreonEvent::WindowClosed, &engine);
+                        user_events.push(PreonUserEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
                     }
                 }
