@@ -6,6 +6,7 @@ use crate::{
     types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector},
 };
 
+/// A UI component
 #[derive(Debug, Clone)]
 pub struct PreonComponent<T: PreonCustomComponentStack> {
     pub children: Option<Vec<Option<PreonComponent<T>>>>,
@@ -13,7 +14,7 @@ pub struct PreonComponent<T: PreonCustomComponentStack> {
     pub data: PreonComponentStack<T>,
     pub inner_size: PreonVector<i32>,
     pub inner_position: PreonVector<i32>,
-    pub id: usize,
+    pub index_updates: Vec<isize>,
 }
 
 impl<T: PreonCustomComponentStack> PreonComponent<T> {
@@ -24,12 +25,31 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             data: component,
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
-            id: 0,
+            index_updates: Vec::new(),
         }
     }
 
-    pub fn empty() -> PreonComponent<T> {
-        PreonComponent::<T>::new(PreonComponentStack::Dummy)
+    pub fn validate(&mut self, path: &mut Vec<usize>) {
+        let mut current = self;
+        path.reverse();
+
+        'outer: for i in path.iter_mut() {
+            for change in current.index_updates.iter() {
+                if *i >= (*change).abs() as usize {
+                    if *change < 0 {
+                        *i -= 1;
+                    } else {
+                        *i += 1;
+                    }
+
+                    break 'outer;
+                }
+            }
+
+            current = current.get_child_ref_mut(*i);
+        }
+
+        path.reverse();
     }
 
     pub fn get_child_recursive(&mut self, path: &Vec<usize>) -> PreonComponent<T> {
@@ -43,12 +63,36 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
+    pub fn get_child_ref_recursive(&mut self, path: &Vec<usize>) -> &PreonComponent<T> {
+        let mut _path = path.clone();
+        let index = _path.pop().unwrap();
+
+        if path.len() == 1 {
+            self.get_child_ref(index)
+        } else {
+            self.get_child_ref_mut(index)
+                .get_child_ref_recursive(&_path)
+        }
+    }
+
+    pub fn get_child_ref_mut_recursive(&mut self, path: &Vec<usize>) -> &mut PreonComponent<T> {
+        let mut _path = path.clone();
+        let index = _path.pop().unwrap();
+
+        if path.len() == 1 {
+            self.get_child_ref_mut(index)
+        } else {
+            self.get_child_ref_mut(index)
+                .get_child_ref_mut_recursive(&_path)
+        }
+    }
+
     pub fn return_child_recursive(&mut self, child: PreonComponent<T>, path: &Vec<usize>) {
         let mut _path = path.clone();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
-            self.return_child(child)
+            self.return_child(index, child)
         } else {
             self.get_child_ref_mut(index)
                 .return_child_recursive(child, &_path)
@@ -56,47 +100,92 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
     }
 
     pub fn get_child(&mut self, id: usize) -> PreonComponent<T> {
-        let mut child = self
-            .children
-            .as_mut()
-            .unwrap()
-            .get_mut(id)
-            .take()
-            .unwrap()
-            .take()
-            .unwrap();
-        child.id = id; // Ensure id for return_child()
-        child
-    }
-
-    pub fn get_child_ref(&mut self, id: usize) -> &PreonComponent<T> {
         self.children
             .as_mut()
             .unwrap()
             .get_mut(id)
+            .take()
+            .unwrap()
+            .take()
+            .unwrap()
+    }
+
+    pub fn get_child_ref(&self, id: usize) -> &PreonComponent<T> {
+        self.children
+            .as_ref()
+            .unwrap()
+            .get(id)
             .unwrap()
             .as_ref()
             .unwrap()
     }
 
     pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponent<T> {
-        let mut child = self
-            .children
+        self.children
             .as_mut()
             .unwrap()
             .get_mut(id)
             .unwrap()
             .as_mut()
-            .unwrap();
-        child.id = id; // Ensure id for return_child()
-        child
+            .unwrap()
     }
 
-    pub fn return_child(&mut self, child: PreonComponent<T>) {
+    pub fn return_child(&mut self, id: usize, child: PreonComponent<T>) {
         let mut children = self.children.take().unwrap();
-        let index = child.id; // Copy ID
-        children[index] = Some(child);
+        children[id] = Some(child);
         self.children = Some(children);
+    }
+
+    pub fn add_child(&mut self, child: PreonComponent<T>) {
+        if self.children.is_some() {
+            let mut children = self.children.take().unwrap();
+            children.push(Some(child));
+            self.children = Some(children);
+        } else {
+            self.children = Some(vec![Some(child)]);
+        }
+    }
+
+    pub fn insert_child(&mut self, id: usize, child: PreonComponent<T>) {
+        if self.children.is_some() {
+            let mut children = self.children.take().unwrap();
+            children.insert(id, Some(child));
+            self.children = Some(children);
+
+            self.index_updates.insert(0, id as isize);
+        } else {
+            self.children = Some(vec![Some(child)]);
+
+            #[cfg(debug_assertions)]
+            if id > 0 {
+                eprintln!(
+                    "You're trying to add a child to component {:?} at index {}, but not enough children are present.",
+                    self,
+                    id
+                );
+            }
+        }
+    }
+
+    pub fn remove_child(&mut self, id: usize) {
+        if self.children.is_some() {
+            let mut children = self.children.take().unwrap();
+            children.remove(id);
+
+            if children.len() == 0 {
+                self.children = None;
+            } else {
+                self.children = Some(children);
+            }
+
+            self.index_updates.insert(0, -(id as isize));
+        } else {
+            eprintln!(
+                "You're trying to remove a child at index {} from component {:?}, but no child was found at the specified index.",
+                id,
+                self
+            );
+        }
     }
 
     #[inline(always)]
@@ -258,6 +347,8 @@ pub trait PreonCustomComponentStack: Debug {
     );
 
     fn layout<T: PreonCustomComponentStack + Any + 'static>(mut component: &mut PreonComponent<T>) {
+        component.index_updates.clear();
+
         match component.data {
             PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
             PreonComponentStack::Panel { .. } => {
@@ -683,15 +774,13 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         self
     }
 
-    pub fn with_child(mut self, mut child: PreonComponent<T>) -> PreonComponentBuilder<T> {
+    pub fn with_child(mut self, child: PreonComponent<T>) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
 
         if component.children.is_none() {
-            child.id = 0;
             component.children = Some(vec![Some(child)]);
         } else {
             let mut children = component.children.take().unwrap();
-            child.id = children.len();
             children.push(Some(child));
             component.children = Some(children);
         }

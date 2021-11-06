@@ -110,7 +110,6 @@ pub mod preon {
         PreonEngine,
     };
     use winit::{
-        dpi::LogicalSize,
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -122,15 +121,14 @@ pub mod preon {
     pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
     where
         T: PreonCustomComponentStack + 'static,
-        F: FnMut(&mut PreonComponent<T>, PreonEvent) + 'static,
+        F: FnMut(&mut PreonComponent<T>, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
+            + 'static,
     {
         engine.start();
         env_logger::init();
 
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_min_inner_size(LogicalSize::new(20, 2))
-            .with_max_inner_size(LogicalSize::new(1000000, 1000000))
             .with_visible(false)
             .build(&event_loop)
             .unwrap();
@@ -143,6 +141,8 @@ pub mod preon {
         let mut user_events = PreonEventEmitter::new();
         user_events.push(PreonUserEvent::WindowOpened);
 
+        let mut await_close = false;
+
         event_loop.run(move |event, _, control_flow| match event {
             Event::RedrawRequested(_) => {
                 user_events.flip();
@@ -150,21 +150,32 @@ pub mod preon {
                 if engine.update(&user_events) {
                     let mut tree = engine.tree.take().unwrap();
                     engine.events.pull(|event| {
-                        callback(&mut tree, event);
+                        callback(&mut tree, event, &mut user_events);
                     });
                     engine.tree = Some(tree);
 
                     wgpu.render(&mut engine.render_pass);
                 }
+
+                if await_close {
+                    *control_flow = ControlFlow::Exit;
+                }
             }
-            Event::RedrawEventsCleared => *control_flow = ControlFlow::Wait,
+            Event::RedrawEventsCleared => {
+                if user_events.buffer_len() > 0 {
+                    window.request_redraw();
+                } else {
+                    *control_flow = ControlFlow::Wait;
+                }
+            }
             Event::WindowEvent {
                 ref event,
                 window_id,
             } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => {
                     user_events.push(PreonUserEvent::WindowClosed);
-                    *control_flow = ControlFlow::Exit;
+                    await_close = true;
+                    window.request_redraw();
                 }
                 WindowEvent::Resized(physical_size) => {
                     wgpu.resize(*physical_size);
@@ -173,7 +184,7 @@ pub mod preon {
                         physical_size.height,
                     )));
                     *control_flow =
-                        ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.1f32));
+                        ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.05f32));
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     wgpu.resize(**new_inner_size);

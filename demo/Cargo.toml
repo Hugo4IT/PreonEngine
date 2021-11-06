@@ -6,3 +6,4 @@ edition = "2018"
 [dependencies]
 preon_engine = { path = "../preon_engine" }
 preon_module_wgpu = { path = "../preon_module_wgpu" }
+rand = "0.8.4"

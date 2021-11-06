@@ -32,6 +32,8 @@ pub enum PreonEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
     WindowClosed,
+    Update,
+    LayoutUpdate,
     Button(u32, PreonButtonState),
 }
 
@@ -41,7 +43,7 @@ pub enum PreonUserEvent {
     WindowOpened,
     WindowClosed,
     MouseMove(PreonVector<i32>),
-    ForceLayoutUpdate,
+    ForceUpdate,
 }
 
 #[derive(Debug)]
@@ -76,5 +78,10 @@ impl<T: Copy + Clone> PreonEventEmitter<T> {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    #[inline(always)]
+    pub fn buffer_len(&self) -> usize {
+        self.buffer.len()
     }
 }

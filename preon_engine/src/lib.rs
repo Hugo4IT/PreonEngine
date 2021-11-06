@@ -80,7 +80,9 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn start(&mut self) {}
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
-        if user_events.len() > 0 || self.events.len() > 0 {
+        let mut tree = self.tree.take().unwrap();
+
+        let rerender = if user_events.len() > 0 || self.events.len() > 0 {
             let mut update_layout = false;
 
             user_events.pull(|f| match f {
@@ -88,15 +90,16 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
                     self.resize(s);
                     update_layout = true
                 }
-                PreonUserEvent::ForceLayoutUpdate => update_layout = true,
+                PreonUserEvent::ForceUpdate => update_layout = true,
                 PreonUserEvent::WindowOpened => {
                     self.events.push(PreonEvent::WindowOpened);
                     update_layout = true
                 }
+                PreonUserEvent::WindowClosed => {
+                    self.events.push(PreonEvent::WindowClosed);
+                }
                 _ => {}
             });
-
-            let mut tree = self.tree.take().unwrap();
 
             if update_layout {
                 tree.set_outer_size(PreonVector::new(
@@ -105,18 +108,24 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
                 ));
                 tree.set_outer_position(PreonVector::zero());
                 T::layout(&mut tree);
-            }
-            T::render(&mut tree, &mut self.render_pass);
 
-            self.tree = Some(tree);
+                self.events.push(PreonEvent::LayoutUpdate);
+
+                T::render(&mut tree, &mut self.render_pass);
+                self.render_pass.flip();
+            }
+
+            self.events.push(PreonEvent::Update);
 
             self.events.flip();
-            self.render_pass.flip();
 
             true
         } else {
             false
-        }
+        };
+
+        self.tree = Some(tree);
+        rerender
     }
 
     pub fn resize(&mut self, new_size: PreonVector<u32>) {

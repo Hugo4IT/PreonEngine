@@ -5,43 +5,32 @@ use preon_engine::{
         AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder,
         PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack,
     },
+    events::{PreonEvent, PreonUserEvent},
     rendering::PreonRenderPass,
-    types::PreonBorder,
+    types::{PreonBorder, PreonColor},
     PreonEngine,
 };
 use preon_module_wgpu::preon;
+use rand::Rng;
 
 #[derive(Debug, Copy, Clone)]
-pub enum MyComponentStack {
-    Boi,
-}
+pub enum MyComponentStack {}
 
 impl PreonCustomComponentStack for MyComponentStack {
-    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(
-        component: &mut PreonComponent<T>,
-    ) {
-        match component.data {
-            PreonComponentStack::Custom(ref _d) => { /* Handle layout here */ }
-            _ => {}
-        }
-    }
+    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(_: &mut PreonComponent<T>) {}
 
     fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
-        stage: PreonComponentRenderStage,
-        _component: &mut PreonComponent<T>,
-        _pass: &mut PreonRenderPass,
+        _: PreonComponentRenderStage,
+        _: &mut PreonComponent<T>,
+        _: &mut PreonRenderPass,
     ) {
-        match stage {
-            PreonComponentRenderStage::Background { .. } => { /* Render here */ }
-            PreonComponentRenderStage::Border { .. } => { /* Render here */ }
-            PreonComponentRenderStage::Foreground { .. } => { /* Render here */ }
-        }
     }
 }
 
 fn main() {
-    // Store the location of the first panel
+    let mut rng = rand::thread_rng();
     let mut first_panel: Vec<usize> = Vec::new();
+    let mut panel_list: Vec<usize> = Vec::new();
 
     #[rustfmt::skip]
     preon::run(PreonEngine::<MyComponentStack>::new(
@@ -67,6 +56,7 @@ fn main() {
                             .expand_horizontally()
                             .store_path(&mut first_panel)
                         .end()
+                        .store_path(&mut panel_list)
                     .end()
                 .end()
                 .start_panel()
@@ -75,15 +65,31 @@ fn main() {
                 .end()
             .end()
         .build()
-    ), move |tree, event| match event {
-        preon_engine::events::PreonEvent::WindowOpened => {
-            let panel = tree.get_child_recursive(&first_panel);
+    ), move |tree, event, user_events| match event {
+        PreonEvent::WindowOpened => println!("Over the hills far away, Ferris came to play!"),
+        PreonEvent::WindowResized( _new_size ) => {
+            let mut panel = tree.get_child_recursive(&first_panel);
+            let list = tree.get_child_ref_mut_recursive(&panel_list);
 
-            println!("{:?}", panel);
+            let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
+                color: PreonColor::from_hex("#da0037")
+            })
+                .with_min_size(0, 48)
+                .expand_horizontally()
+                .build();
 
+            list.insert_child(0, new_component);
+
+            if let PreonComponentStack::Panel { ref mut color } = panel.data {
+                *color = PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0);
+            }
+
+            tree.validate(&mut first_panel);
             tree.return_child_recursive(panel, &first_panel);
-        },
-        preon_engine::events::PreonEvent::WindowClosed => println!("F"),
+
+            user_events.push(PreonUserEvent::ForceUpdate);
+        }
+        PreonEvent::WindowClosed => println!("Then he died..."),
         _ => {},
     });
 }
