@@ -180,12 +180,9 @@ impl<T: Vector2Able> Display for PreonVector<T> {
     }
 }
 
+/// Color values with advanced features. Automatically applies SRGB to linear color space conversion.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreonColor {
-    pub r8: u8,
-    pub g8: u8,
-    pub b8: u8,
-    pub a8: u8,
     pub r: f32,
     pub g: f32,
     pub b: f32,
@@ -193,12 +190,14 @@ pub struct PreonColor {
 }
 
 impl PreonColor {
+    /// Same as `PreonColor::from_rgba(...)`
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> PreonColor {
+        PreonColor::from_rgba(r, g, b, a)
+    }
+
+    /// Generate a PreonColor value from 4 float values going from 0 to 1, color space conversion is applied.
     pub fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> PreonColor {
         PreonColor {
-            r8: (r * 255.0f32) as u8,
-            g8: (g * 255.0f32) as u8,
-            b8: (b * 255.0f32) as u8,
-            a8: (a * 255.0f32) as u8,
             r: r.powf(2.2f32),
             g: g.powf(2.2f32),
             b: b.powf(2.2f32),
@@ -206,25 +205,38 @@ impl PreonColor {
         }
     }
 
+    /// Generate a PreonColor value from 4 8-bit unsigned integers ranging from 0 to 255, color values become much easier to read in this format.
     pub fn from_rgba8(r: u8, g: u8, b: u8, a: u8) -> PreonColor {
-        PreonColor {
-            r8: r,
-            g8: g,
-            b8: b,
-            a8: a,
-            r: (r as f32 / 255.0f32).powf(2.2f32),
-            g: (g as f32 / 255.0f32).powf(2.2f32),
-            b: (b as f32 / 255.0f32).powf(2.2f32),
-            a: (|| -> f32 {
-                if a != 255 {
-                    a as f32 / 255.0f32
-                } else {
-                    1.0f32
-                }
-            })(),
-        }
+        PreonColor::from_rgba(
+            r as f32 / 255.0f32,
+            g as f32 / 255.0f32,
+            b as f32 / 255.0f32,
+            a as f32 / 255.0f32
+        )
     }
 
+    /// Generate a PreonColor value from a string containing a hex value, similair to CSS.
+    ///
+    /// ### Supported formats
+    ///
+    /// Input string|Output color
+    /// ---:|:---
+    /// `"da003755"`|`#da003755`
+    /// `"da0037"`|`#da0037ff`
+    /// `"4445"`|`#44444455`
+    /// `"444"`|`#444444ff`
+    /// `"#da003755"`|`#da003755`
+    /// `"#da0037"`|`#da0037ff`
+    /// `"#4445"`|`#44444455`
+    /// `"#444"`|`#444444ff`
+    /// `"0xda003755"`|`#da003755`
+    /// `"0xda0037"`|`#da0037ff`
+    /// `"0x4445"`|`#44444455`
+    /// `"0x444"`|`#444444ff`
+    ///
+    /// ### Editor Integration
+    ///
+    /// To get a visual preview of your colors in Visual Studio Code, use the [Colorize](https://marketplace.visualstudio.com/items?itemName=kamikillerto.vscode-colorize) extension, and add [this](https://gist.github.com/Hugo4IT/0defde4eb0bf1c8cac093498c9d474fd) to your `settings.json`
     pub fn from_hex(hex: &'static str) -> PreonColor {
         let cleaned = hex.replace("#", "").replace("0x", "");
         if cleaned.len() <= 4usize {
@@ -285,64 +297,76 @@ impl PreonColor {
         }
     }
 
+    /// Get the value of the PreonColor without color space conversion applied.
+    ///
+    /// ### Performance
+    ///
+    /// This function reverts the conversion every time it is called, due to it being a pretty expensive operation, using this at runtime is discouraged
+    pub fn as_linear(&self) -> PreonColor {
+        PreonColor {
+            r: self.r.powf(1.0 / 2.2),
+            g: self.g.powf(1.0 / 2.2),
+            b: self.b.powf(1.0 / 2.2),
+            a: self.a,
+        }
+    }
+
+    /// Multiplies the color's values (excluding alpha) by `1.0 + amount`, making them brighter. If you want to keep this PreonColor the same, but also get a lighter version of it, see [`Self::lightened()`]
     pub fn lighten(&mut self, amount: f32) {
         let Self {
             r,
             g,
             b,
-            r8,
-            g8,
-            b8,
             ..
         } = self.lightened(amount);
         self.r = r;
         self.g = g;
         self.b = b;
-        self.r8 = r8;
-        self.b8 = b8;
-        self.g8 = g8;
     }
 
+    /// Returns a copy of `self` where all color values (excluding alpha) are multiplied by `1.0 + amount`, making them brighter. If you want to mutate `self` instead of copying, see [`Self::lighten()`]
     pub fn lightened(&self, amount: f32) -> PreonColor {
-        PreonColor::from_rgba8(
-            (self.r8 as f32 * (1.0f32 + amount)) as u8,
-            (self.g8 as f32 * (1.0f32 + amount)) as u8,
-            (self.b8 as f32 * (1.0f32 + amount)) as u8,
-            self.a8,
+        let linear = self.as_linear();
+
+        PreonColor::from_rgba(
+            linear.r * (1.0 + amount),
+            linear.g * (1.0 + amount),
+            linear.b * (1.0 + amount),
+            self.a,
         )
     }
 
+    /// Multiplies the color's values (excluding alpha) by `1.0 - amount`, making them darker. If you want to keep this PreonColor the same, but also get a darker version of it, see [`Self::darkened()`]
     pub fn darken(&mut self, amount: f32) {
         let Self {
             r,
             g,
             b,
-            r8,
-            g8,
-            b8,
             ..
         } = self.darkened(amount);
         self.r = r;
         self.g = g;
         self.b = b;
-        self.r8 = r8;
-        self.b8 = b8;
-        self.g8 = g8;
     }
 
+    /// Returns a copy of `self` where all color values (excluding alpha) are multiplied by `1.0 - amount`, making them darker. If you want to mutate `self` instead of copying, see [`Self::darken()`]
     pub fn darkened(&self, amount: f32) -> PreonColor {
-        PreonColor::from_rgba8(
-            (self.r8 as f32 * (1.0f32 - amount)) as u8,
-            (self.g8 as f32 * (1.0f32 - amount)) as u8,
-            (self.b8 as f32 * (1.0f32 - amount)) as u8,
-            self.a8,
+        let linear = self.as_linear();
+
+        PreonColor::from_rgba(
+            linear.r * (1.0 - amount),
+            linear.g * (1.0 - amount),
+            linear.b * (1.0 - amount),
+            self.a,
         )
     }
 
+    /// Break a copy of `self` into a tuple of 4 f32's (r, g, b, a)
     pub fn into_f32_tuple(&self) -> (f32, f32, f32, f32) {
         (self.r, self.g, self.b, self.a)
     }
 
+    /// Break a copy of `self` into a tuple of 4 f64's (r, g, b, a)
     pub fn into_f64_tuple(&self) -> (f64, f64, f64, f64) {
         (self.r as f64, self.g as f64, self.b as f64, self.a as f64)
     }
@@ -352,9 +376,8 @@ impl Display for PreonColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "R: {}, G: {}, B: {}, A: {}
-            R8: {}, G8: {}, B8: {}, A8: {}",
-            self.r, self.g, self.b, self.a, self.r8, self.g8, self.b8, self.a8
+            "R: {}, G: {}, B: {}, A: {}",
+            self.r, self.g, self.b, self.a
         )
     }
 }
