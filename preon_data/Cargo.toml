@@ -1,7 +1,7 @@
 [package]
 name = "preon_data"
 version = "1.0.0"
-edition = "2018"
+edition = "2021"
 readme = "./README.md"
 license = "MIT"
 authors = [ "Hugo van de Kuilen from Hugo4IT" ]
