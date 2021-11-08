@@ -607,6 +607,11 @@ pub trait PreonCustomComponentStack: Debug {
                     size,
                     color,
                 }),
+                PreonComponentStack::StaticTexture { texture_index } => pass.push(PreonShape::StaticTexture {
+                    position,
+                    size,
+                    index: texture_index
+                }),
                 _ => {}
             },
             PreonComponentRenderStage::Foreground { .. } => match component.data {
@@ -665,8 +670,25 @@ pub trait PreonCustomComponentStack: Debug {
 pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Custom(T),
     Dummy,
+    StaticLabel {
+        textdb_index: usize,
+
+        // 0101010101[0][1][01][01]
+        //            |  |   |   |=> Horizontal alignment: 00 - Left, 01 - Center, 10 - Right, 11 - Spread
+        //            |  |   |=> Vertical alignment: 00 - Top, 01 - Center, 10 - Bottom
+        //            |  |=> Bold?
+        //            |=> Italic?
+        font_details: u16,
+    },
+    Label {
+        text: String,
+        font_index: usize
+    },
+    StaticTexture {
+        texture_index: usize
+    },
     Panel {
-        color: PreonColor,
+        color: PreonColor, // <-- Largest item, making the size of this enum 16 bytes :/
     },
     HBox {
         align: PreonAlignment,
@@ -896,16 +918,15 @@ impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
 }
 
 pub trait AddPanel<T: PreonCustomComponentStack> {
-    fn start_panel(self) -> PreonComponentBuilder<T>;
-    fn empty_panel(self) -> PreonComponentBuilder<T>;
-    fn panel_color(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
+    fn start_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
+    fn empty_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
-    fn start_panel(mut self) -> PreonComponentBuilder<T> {
+    fn start_panel(mut self, hex_color: &'static str) -> PreonComponentBuilder<T> {
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Panel {
-                color: PreonColor::from_hex("#000000"),
+                color: PreonColor::from_hex(hex_color),
             },
             ..Default::default()
         });
@@ -913,25 +934,38 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn empty_panel(self) -> PreonComponentBuilder<T> {
-        self.start_panel().end()
+    fn empty_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+        self.start_panel(hex_color).expand().end()
     }
+}
 
-    fn panel_color(mut self, hex_color: &'static str) -> PreonComponentBuilder<T> {
-        let mut component = self.stack.pop().take().unwrap();
-        match component.data {
-            PreonComponentStack::Panel { .. } => {
-                component.data = PreonComponentStack::Panel {
-                    color: PreonColor::from_hex(hex_color),
-                }
-            }
-            _ => eprintln!(
-                "{}: panel_color() can only be used after start_panel() and before end()",
-                line!()
-            ),
-        }
-        self.stack.push(component);
+pub trait AddStaticTexture<T: PreonCustomComponentStack> {
+    fn start_static_texture(self, index: usize) -> PreonComponentBuilder<T>;
+}
+
+impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder<T> {
+    fn start_static_texture(mut self, index: usize) -> PreonComponentBuilder<T> {
+        self.stack.push(PreonComponent {
+            data: PreonComponentStack::StaticTexture {
+                texture_index: index,
+            },
+            ..Default::default()
+        });
 
         self
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum NoCustomComponents {}
+
+impl PreonCustomComponentStack for NoCustomComponents {
+    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(_: &mut PreonComponent<T>) {}
+
+    fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
+        _: PreonComponentRenderStage,
+        _: &mut PreonComponent<T>,
+        _: &mut PreonRenderPass,
+    ) {
     }
 }

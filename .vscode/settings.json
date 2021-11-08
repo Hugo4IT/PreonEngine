@@ -9,6 +9,14 @@
         "**/target/": true,
         "**/Cargo.lock": true,
     },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/.hg/store/**": true,
+        "**/target/**": true,
+        "**/res/**": true
+    },
     "glsllint.glslangValidatorArgs": "-V",
     "rust-analyzer.cargo.allFeatures": true,
     "rust-analyzer.checkOnSave.allFeatures": true,

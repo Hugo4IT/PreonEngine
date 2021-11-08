@@ -1,71 +1,73 @@
-use std::any::Any;
-
-use preon_engine::{
-    components::{
-        AddHBox, AddPanel, AddVBox, PreonComponent, PreonComponentBuilder,
-        PreonComponentRenderStage, PreonComponentStack, PreonCustomComponentStack,
-    },
-    events::{PreonEvent, PreonUserEvent},
-    rendering::PreonRenderPass,
-    types::{PreonBorder, PreonColor},
-    PreonEngine,
-};
+use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, theme::PreonFont, types::{PreonBorder, PreonColor}};
 use preon_module_wgpu::preon;
 use rand::Rng;
-
-#[derive(Debug, Copy, Clone)]
-pub enum MyComponentStack {}
-
-impl PreonCustomComponentStack for MyComponentStack {
-    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(_: &mut PreonComponent<T>) {}
-
-    fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
-        _: PreonComponentRenderStage,
-        _: &mut PreonComponent<T>,
-        _: &mut PreonRenderPass,
-    ) {
-    }
-}
 
 fn main() {
     let mut rng = rand::thread_rng();
     let mut first_panel: Vec<usize> = Vec::new();
     let mut panel_list: Vec<usize> = Vec::new();
 
-    #[rustfmt::skip]
-    preon::run(PreonEngine::<MyComponentStack>::new(
+    let engine = PreonEngine::<NoCustomComponents>::new(
+        PreonStaticRenderData {
+            textures: &[
+                include_bytes!("../res/mm2wood.png"),
+                include_bytes!("../res/juan.png")
+            ],
+            strings: &[
+                "Hello, World!"
+            ],
+            fonts: &[
+                &PreonFont {
+                    stack: &[
+                        "Fira Sans",
+                        "Roboto",
+                        "DejaVu Sans",
+                        "SF Pro",
+                        "Segoe UI",
+                        "Fira Code",
+                        "Arial"
+                    ],
+                    size: 16,
+                }
+            ]
+        },
         PreonComponentBuilder::new()
-            .start_panel()
-                .panel_color("#da0037")
+            .start_panel("#da0037")
                 .with_min_size(0, 60)
                 .expand_horizontally()
             .end()
             .start_hbox()
                 .expand()
-                .start_panel()
-                    .panel_color("#ffffff")
+                .start_panel("#ffffff")
                     .with_min_size(300, 0)
                     .expand_vertically()
                     .with_padding(PreonBorder::from_single(16))
                     .start_vbox()
                         .fit_children_vertically()
                         .expand_horizontally()
-                        .start_panel()
-                            .panel_color("#c4c4c4")
+                        .start_panel("#c4c4c4")
                             .with_min_size(0, 48)
                             .expand_horizontally()
                             .store_path(&mut first_panel)
                         .end()
+                        .start_static_texture(0)
+                            .with_min_size(0, 200)
+                            .expand_horizontally()
+                        .end()
+                        .start_static_texture(1)
+                            .with_min_size(0, 200)
+                            .expand_horizontally()
+                        .end()
                         .store_path(&mut panel_list)
                     .end()
                 .end()
-                .start_panel()
-                    .panel_color("#d3d3d3")
-                    .expand()
-                .end()
+                .empty_panel("#d3d3d3")
             .end()
         .build()
-    ), move |tree, event, user_events| match event {
+    );
+
+    #[rustfmt::skip]
+    preon::run(engine, move |tree, event, user_events| match event {
         PreonEvent::WindowOpened => println!("Over the hills far away, Ferris came to play!"),
         PreonEvent::WindowResized( _new_size ) => {
             let mut panel = tree.get_child_recursive(&first_panel);

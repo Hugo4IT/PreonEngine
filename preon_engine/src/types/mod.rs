@@ -5,7 +5,7 @@ use std::{
 
 use crate::size;
 
-pub trait Vector2Able:
+pub trait PreonVectorAble:
     Add<Output = Self>
     + Sub<Output = Self>
     + Mul<Output = Self>
@@ -18,25 +18,26 @@ pub trait Vector2Able:
 {
 }
 
-impl Vector2Able for i16 {}
-impl Vector2Able for i32 {}
-impl Vector2Able for i64 {}
-impl Vector2Able for i128 {}
-impl Vector2Able for u8 {}
-impl Vector2Able for u16 {}
-impl Vector2Able for u32 {}
-impl Vector2Able for u64 {}
-impl Vector2Able for u128 {}
-impl Vector2Able for f32 {}
-impl Vector2Able for f64 {}
+impl PreonVectorAble for i16 {}
+impl PreonVectorAble for i32 {}
+impl PreonVectorAble for i64 {}
+impl PreonVectorAble for i128 {}
+impl PreonVectorAble for u8 {}
+impl PreonVectorAble for u16 {}
+impl PreonVectorAble for u32 {}
+impl PreonVectorAble for u64 {}
+impl PreonVectorAble for u128 {}
+impl PreonVectorAble for f32 {}
+impl PreonVectorAble for f64 {}
 
+// A vector (from math, not the array-one) with 2 axis. Useful for storing positions or sizes
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct PreonVector<T: Vector2Able> {
+pub struct PreonVector<T: PreonVectorAble> {
     pub x: T,
     pub y: T,
 }
 
-impl<T: Vector2Able> PreonVector<T> {
+impl<T: PreonVectorAble> PreonVector<T> {
     pub fn new(x: T, y: T) -> PreonVector<T> {
         PreonVector { x, y }
     }
@@ -54,61 +55,68 @@ impl<T: Vector2Able> PreonVector<T> {
             y: T::from(1u8),
         }
     }
+
+    /// The dot product of `self` and `rhs` (formula: `self.x * rhs.x + self.y * rhs.y`)
+    pub fn dot(&self, rhs: &PreonVector<T>) -> T {
+        self.x * rhs.x + self.y * rhs.y
+    }
 }
 
 impl PreonVector<f32> {
+    /// Distance between (0, 0) and (self.x, self.y)
+    pub fn length(&self) -> f32 {
+        (self.x * self.x + self.y * self.y).sqrt().abs()
+    }
+
+    /// `self` divided by it's length
     pub fn normalized(&self) -> PreonVector<f32> {
-        if self.x > self.y {
-            PreonVector {
-                x: 1f32,
-                y: self.y / self.x,
-            }
-        } else {
-            PreonVector {
-                x: self.x / self.y,
-                y: 1f32,
-            }
+        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
+
+        let length = self.length();
+        PreonVector {
+            x: self.x / length,
+            y: self.y / length,
         }
     }
 
+    /// `self` divided by it's length
     pub fn normalize(&mut self) {
-        if self.x > self.y {
-            self.y = self.y / self.x;
-            self.x = 1f32;
-        } else {
-            self.x = self.x / self.y;
-            self.y = 1f32;
-        }
+        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
+
+        let length = self.length();
+        self.x /= length;
+        self.y /= length;
     }
 }
 
 impl PreonVector<f64> {
+    /// Distance between (0, 0) and (self.x, self.y)
+    pub fn length(&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt().abs()
+    }
+
+    /// `self` divided by it's length
     pub fn normalized(&self) -> PreonVector<f64> {
-        if self.x > self.y {
-            PreonVector {
-                x: 1f64,
-                y: self.y / self.x,
-            }
-        } else {
-            PreonVector {
-                x: self.x / self.y,
-                y: 1f64,
-            }
+        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
+
+        let length = self.length();
+        PreonVector {
+            x: self.x / length,
+            y: self.y / length,
         }
     }
 
+    /// `self` divided by it's length
     pub fn normalize(&mut self) {
-        if self.x > self.y {
-            self.y = self.y / self.x;
-            self.x = 1f64;
-        } else {
-            self.x = self.x / self.y;
-            self.y = 1f64;
-        }
+        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
+
+        let length = self.length();
+        self.x /= length;
+        self.y /= length;
     }
 }
 
-impl<T: Vector2Able> Add for PreonVector<T> {
+impl<T: PreonVectorAble> Add for PreonVector<T> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -119,7 +127,7 @@ impl<T: Vector2Able> Add for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Sub for PreonVector<T> {
+impl<T: PreonVectorAble> Sub for PreonVector<T> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -130,7 +138,7 @@ impl<T: Vector2Able> Sub for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Mul for PreonVector<T> {
+impl<T: PreonVectorAble> Mul for PreonVector<T> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -141,7 +149,7 @@ impl<T: Vector2Able> Mul for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Mul<T> for PreonVector<T> {
+impl<T: PreonVectorAble> Mul<T> for PreonVector<T> {
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -152,7 +160,7 @@ impl<T: Vector2Able> Mul<T> for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Div for PreonVector<T> {
+impl<T: PreonVectorAble> Div for PreonVector<T> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -163,7 +171,7 @@ impl<T: Vector2Able> Div for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Div<T> for PreonVector<T> {
+impl<T: PreonVectorAble> Div<T> for PreonVector<T> {
     type Output = Self;
 
     fn div(self, rhs: T) -> Self::Output {
@@ -174,7 +182,7 @@ impl<T: Vector2Able> Div<T> for PreonVector<T> {
     }
 }
 
-impl<T: Vector2Able> Display for PreonVector<T> {
+impl<T: PreonVectorAble> Display for PreonVector<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(x: {}, y: {})", self.x, self.y)
     }
@@ -211,7 +219,7 @@ impl PreonColor {
             r as f32 / 255.0f32,
             g as f32 / 255.0f32,
             b as f32 / 255.0f32,
-            a as f32 / 255.0f32
+            a as f32 / 255.0f32,
         )
     }
 
@@ -313,12 +321,7 @@ impl PreonColor {
 
     /// Multiplies the color's values (excluding alpha) by `1.0 + amount`, making them brighter. If you want to keep this PreonColor the same, but also get a lighter version of it, see [`Self::lightened()`]
     pub fn lighten(&mut self, amount: f32) {
-        let Self {
-            r,
-            g,
-            b,
-            ..
-        } = self.lightened(amount);
+        let Self { r, g, b, .. } = self.lightened(amount);
         self.r = r;
         self.g = g;
         self.b = b;
@@ -338,12 +341,7 @@ impl PreonColor {
 
     /// Multiplies the color's values (excluding alpha) by `1.0 - amount`, making them darker. If you want to keep this PreonColor the same, but also get a darker version of it, see [`Self::darkened()`]
     pub fn darken(&mut self, amount: f32) {
-        let Self {
-            r,
-            g,
-            b,
-            ..
-        } = self.darkened(amount);
+        let Self { r, g, b, .. } = self.darkened(amount);
         self.r = r;
         self.g = g;
         self.b = b;
