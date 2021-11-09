@@ -3,7 +3,7 @@
 //!
 //! # Compatibility
 //!
-//! PreonEngine could technically run on anything supported by rust, because it has no dependencies by itself. There is a catch though: PreonEngine does not include a renderer by default, you need to attach a render module for that (e.g. preon_module_wgpu), so **compatibility depends on the render module of choice**. For now, only an official [WGPU](https://github.com/gfx-rs/wgpu/#supported-platforms) renderer exists, but making a renderer is extremely easy, as only 1 function is required. See [`rendering`] for more information and a tutorial.
+//! PreonEngine does not include a renderer by default, you need to attach a render module for that (e.g. preon_module_wgpu), so **compatibility depends on the render module of choice**. For now, only an official [WGPU](https://github.com/gfx-rs/wgpu/#supported-platforms) renderer exists, but making a renderer is extremely easy, as only 1 function is required. See [`rendering`] for more information and a tutorial.
 //!
 //! ### Render module?
 //!
@@ -11,7 +11,7 @@
 //!
 //! # Why "engine"?
 //!
-//! Recent UI solutions have opted for the word "framework", personally I hate this word, as it indicates something pre-existing, with the developer having to adapt their code to fit the frames. I think code should adapt to the developer, not the other way around. PreonEngine can be used with just a single function: `engine.update(user_events)`, which returns a boolean indicating if any visual changes were present, to save on rerendering. For advanced interactivity, another function (`engine.events.pull(|event| {..})`) can be used, where `event` is an enum which you can `match` to get exactly what happened. Thats it!
+//! Recent UI solutions have opted for the word "framework", personally I hate this word as it indicates something pre-existing, with the developer having to adapt their code to fit the frames. I think code should adapt to the developer, not the other way around. PreonEngine can be used with just a single function: `engine.update(user_events)`, which returns a boolean indicating if any visual changes were present, to save on rerendering. For advanced interactivity, another function (`engine.events.pull(|event| {..})`) can be used, where `event` is an enum which you can `match` to get exactly what happened. Thats it!
 //!
 //! # Base features
 //!
@@ -60,9 +60,6 @@ pub mod rendering;
 
 /// Mini event system.
 pub mod events;
-
-/// Basically default values for components.
-pub mod theme;
 
 /// All Preon* utility structs like PreonVector<T>, PreonColor and PreonBox.
 pub mod types;

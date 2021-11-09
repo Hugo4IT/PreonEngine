@@ -1,4 +1,4 @@
-use crate::{events::PreonEventEmitter, theme::PreonFont, types::{PreonColor, PreonVector}};
+use crate::{events::PreonEventEmitter, types::{PreonColor, PreonVector}};
 
 /// Describe how to render your UI component by pushing some PreonShapes to the PreonRenderPass
 #[derive(Debug, Copy, Clone)]
@@ -22,8 +22,6 @@ pub enum PreonShape {
 
 pub struct PreonStaticRenderData {
     pub textures: &'static [&'static [u8]],
-    pub strings: &'static [&'static str],
-    pub fonts: &'static [&'static PreonFont],
 }
 
 /// Syntax sugar

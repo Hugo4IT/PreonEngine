@@ -1,4 +1,4 @@
-use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, theme::PreonFont, types::{PreonBorder, PreonColor}};
+use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, types::{PreonBorder, PreonColor}};
 use preon_module_wgpu::preon;
 use rand::Rng;
 
@@ -12,29 +12,16 @@ fn main() {
             textures: &[
                 include_bytes!("../res/mm2wood.png"),
                 include_bytes!("../res/juan.png")
-            ],
-            strings: &[
-                "Hello, World!"
-            ],
-            fonts: &[
-                &PreonFont {
-                    stack: &[
-                        "Fira Sans",
-                        "Roboto",
-                        "DejaVu Sans",
-                        "SF Pro",
-                        "Segoe UI",
-                        "Fira Code",
-                        "Arial"
-                    ],
-                    size: 16,
-                }
             ]
         },
         PreonComponentBuilder::new()
             .start_panel("#da0037")
                 .with_min_size(0, 60)
                 .expand_horizontally()
+                .start_static_texture(0)
+                    .with_margin(PreonBorder::new(0, 0, -50, 0))
+                    .with_min_size(200, 200)
+                .end()
             .end()
             .start_hbox()
                 .expand()
