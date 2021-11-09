@@ -1,4 +1,13 @@
-use preon_engine::{PreonEngine, components::{AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, types::{PreonBorder, PreonColor}};
+use preon_engine::{
+    components::{
+        AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder,
+        PreonComponentStack,
+    },
+    events::{PreonEvent, PreonUserEvent},
+    rendering::PreonStaticRenderData,
+    types::{PreonBorder, PreonColor},
+    PreonEngine,
+};
 use preon_module_wgpu::preon;
 use rand::Rng;
 
@@ -11,46 +20,46 @@ fn main() {
         PreonStaticRenderData {
             textures: &[
                 include_bytes!("../res/mm2wood.png"),
-                include_bytes!("../res/juan.png")
-            ]
+                include_bytes!("../res/juan.png"),
+            ],
         },
         PreonComponentBuilder::new()
             .start_panel("#da0037")
-                .with_min_size(0, 60)
-                .expand_horizontally()
-                .start_static_texture(0)
-                    .with_margin(PreonBorder::new(0, 0, -50, 0))
-                    .with_min_size(200, 200)
-                .end()
+            .with_min_size(0, 60)
+            .expand_horizontally()
+            .start_static_texture(0)
+            .with_margin(PreonBorder::new(0, 0, -50, 0))
+            .with_min_size(200, 200)
+            .end()
             .end()
             .start_hbox()
-                .expand()
-                .start_panel("#ffffff")
-                    .with_min_size(300, 0)
-                    .expand_vertically()
-                    .with_padding(PreonBorder::from_single(16))
-                    .start_vbox()
-                        .fit_children_vertically()
-                        .expand_horizontally()
-                        .start_panel("#c4c4c4")
-                            .with_min_size(0, 48)
-                            .expand_horizontally()
-                            .store_path(&mut first_panel)
-                        .end()
-                        .start_static_texture(0)
-                            .with_min_size(0, 200)
-                            .expand_horizontally()
-                        .end()
-                        .start_static_texture(1)
-                            .with_min_size(0, 200)
-                            .expand_horizontally()
-                        .end()
-                        .store_path(&mut panel_list)
-                    .end()
-                .end()
-                .empty_panel("#d3d3d3")
+            .expand()
+            .start_panel("#ffffff")
+            .with_min_size(300, 0)
+            .expand_vertically()
+            .with_padding(PreonBorder::from_single(16))
+            .start_vbox()
+            .fit_children_vertically()
+            .expand_horizontally()
+            .start_panel("#c4c4c4")
+            .with_min_size(0, 48)
+            .expand_horizontally()
+            .store_path(&mut first_panel)
             .end()
-        .build()
+            .start_static_texture(0)
+            .with_min_size(0, 200)
+            .expand_horizontally()
+            .end()
+            .start_static_texture(1)
+            .with_min_size(0, 200)
+            .expand_horizontally()
+            .end()
+            .store_path(&mut panel_list)
+            .end()
+            .end()
+            .empty_panel("#d3d3d3")
+            .end()
+            .build(),
     );
 
     #[rustfmt::skip]

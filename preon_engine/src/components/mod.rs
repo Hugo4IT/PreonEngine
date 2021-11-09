@@ -607,11 +607,13 @@ pub trait PreonCustomComponentStack: Debug {
                     size,
                     color,
                 }),
-                PreonComponentStack::StaticTexture { texture_index } => pass.push(PreonShape::StaticTexture {
-                    position,
-                    size,
-                    index: texture_index
-                }),
+                PreonComponentStack::StaticTexture { texture_index } => {
+                    pass.push(PreonShape::StaticTexture {
+                        position,
+                        size,
+                        index: texture_index,
+                    })
+                }
                 _ => {}
             },
             PreonComponentRenderStage::Foreground { .. } => match component.data {
@@ -682,10 +684,10 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     },
     Label {
         text: String,
-        font_index: usize
+        font_index: usize,
     },
     StaticTexture {
-        texture_index: usize
+        texture_index: usize,
     },
     Panel {
         color: PreonColor, // <-- Largest item, making the size of this enum 16 bytes :/

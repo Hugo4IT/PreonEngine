@@ -179,12 +179,8 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
     pub static_render_data: PreonStaticRenderData,
 }
 
-impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T>
-{
-    pub fn new(
-        static_render_data: PreonStaticRenderData,
-        tree: PreonComponent<T>,
-    ) -> Self {
+impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
+    pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent<T>) -> Self {
         Self {
             tree: Some(tree),
             events: PreonEventEmitter::new(),

@@ -338,11 +338,10 @@ pub mod preon {
     }
 }
 
-fn create_depth_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> (
-    wgpu::Texture,
-    wgpu::TextureView,
-    wgpu::Sampler,
-) {
+fn create_depth_texture(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+) -> (wgpu::Texture, wgpu::TextureView, wgpu::Sampler) {
     let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("Depth Texture"),
         size: wgpu::Extent3d {
@@ -354,8 +353,7 @@ fn create_depth_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfigurati
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Depth32Float,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-            | wgpu::TextureUsages::TEXTURE_BINDING,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
     });
     let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
     let depth_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -826,7 +824,8 @@ impl PreonRendererWGPU {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
-            let (depth_texture, depth_view, depth_sampler) = create_depth_texture(&self.device, &self.config);
+            let (depth_texture, depth_view, depth_sampler) =
+                create_depth_texture(&self.device, &self.config);
             self.depth_texture = depth_texture;
             self.depth_view = depth_view;
             self.depth_sampler = depth_sampler;
