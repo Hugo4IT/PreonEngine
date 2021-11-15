@@ -16,7 +16,7 @@ pub enum PreonShape {
         size: PreonVector<i32>,
         index: usize,
     },
-    StaticText {
+    Text {
         position: PreonVector<i32>,
         size: PreonVector<i32>,
         index: usize,

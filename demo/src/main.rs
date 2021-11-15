@@ -16,6 +16,7 @@ fn main() {
     let mut first_panel: Vec<usize> = Vec::new();
     let mut panel_list: Vec<usize> = Vec::new();
 
+    #[rustfmt::ignore]
     let engine = PreonEngine::<NoCustomComponents>::new(
         PreonStaticRenderData {
             textures: &[
@@ -25,41 +26,41 @@ fn main() {
         },
         PreonComponentBuilder::new()
             .start_panel("#da0037")
-            .with_min_size(0, 60)
-            .expand_horizontally()
-            .start_static_texture(0)
-            .with_margin(PreonBorder::new(0, 0, -50, 0))
-            .with_min_size(200, 200)
-            .end()
+                .with_min_size(0, 60)
+                .expand_horizontally()
+                .start_static_texture(0)
+                    .with_margin(PreonBorder::new(0, 0, -50, 0))
+                    .with_min_size(200, 200)
+                .end()
             .end()
             .start_hbox()
-            .expand()
-            .start_panel("#ffffff")
-            .with_min_size(300, 0)
-            .expand_vertically()
-            .with_padding(PreonBorder::from_single(16))
-            .start_vbox()
-            .fit_children_vertically()
-            .expand_horizontally()
-            .start_panel("#c4c4c4")
-            .with_min_size(0, 48)
-            .expand_horizontally()
-            .store_path(&mut first_panel)
+                .expand()
+                .start_panel("#ffffff")
+                    .with_min_size(300, 0)
+                    .expand_vertically()
+                    .with_padding(PreonBorder::from_single(16))
+                    .start_vbox()
+                        .fit_children_vertically()
+                        .expand_horizontally()
+                        .start_panel("#c4c4c4")
+                            .with_min_size(0, 48)
+                            .expand_horizontally()
+                            .store_path(&mut first_panel)
+                        .end()
+                        .start_static_texture(0)
+                            .with_min_size(0, 200)
+                            .expand_horizontally()
+                        .end()
+                        .start_static_texture(1)
+                            .with_min_size(0, 200)
+                            .expand_horizontally()
+                        .end()
+                    .store_path(&mut panel_list)
+                    .end()
+                .end()
+                .empty_panel("#d3d3d3")
             .end()
-            .start_static_texture(0)
-            .with_min_size(0, 200)
-            .expand_horizontally()
-            .end()
-            .start_static_texture(1)
-            .with_min_size(0, 200)
-            .expand_horizontally()
-            .end()
-            .store_path(&mut panel_list)
-            .end()
-            .end()
-            .empty_panel("#d3d3d3")
-            .end()
-            .build(),
+        .build(),
     );
 
     #[rustfmt::skip]
@@ -68,7 +69,6 @@ fn main() {
         PreonEvent::WindowResized( _new_size ) => {
             let mut panel = tree.get_child_recursive(&first_panel);
             let list = tree.get_child_ref_mut_recursive(&panel_list);
-
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#da0037")
             })

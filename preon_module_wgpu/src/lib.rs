@@ -5,8 +5,11 @@ use preon_engine::{
     rendering::{PreonRenderPass, PreonShape},
     PreonEngine,
 };
+use texture::Texture;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
+
+mod texture;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -338,41 +341,6 @@ pub mod preon {
     }
 }
 
-fn create_depth_texture(
-    device: &wgpu::Device,
-    config: &wgpu::SurfaceConfiguration,
-) -> (wgpu::Texture, wgpu::TextureView, wgpu::Sampler) {
-    let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("Depth Texture"),
-        size: wgpu::Extent3d {
-            width: config.width,
-            height: config.height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Depth32Float,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-    });
-    let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let depth_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Linear,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        compare: Some(wgpu::CompareFunction::LessEqual),
-        lod_min_clamp: -100.0,
-        lod_max_clamp: 100.0,
-        label: Some("Depth Sampler"),
-        ..Default::default()
-    });
-
-    (depth_texture, depth_view, depth_sampler)
-}
-
 pub struct PreonRendererWGPU {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -386,9 +354,7 @@ pub struct PreonRendererWGPU {
     transform_bind_group: wgpu::BindGroup,
 
     // Depth Texture
-    depth_texture: wgpu::Texture,
-    depth_view: wgpu::TextureView,
-    depth_sampler: wgpu::Sampler,
+    depth_texture: Texture,
 
     // Rect
     rect_pipeline: wgpu::RenderPipeline,
@@ -455,7 +421,7 @@ impl PreonRendererWGPU {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-            let rect_transform_bind_group_layout =
+            let transform_bind_group_layout =
                 device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: Some("Rect Transform Bind Group Layout"),
                     entries: &[wgpu::BindGroupLayoutEntry {
@@ -472,7 +438,7 @@ impl PreonRendererWGPU {
 
             let transform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Rect Transform Bind Group"),
-                layout: &rect_transform_bind_group_layout,
+                layout: &transform_bind_group_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
                     resource: transform_buffer.as_entire_binding(),
@@ -481,7 +447,7 @@ impl PreonRendererWGPU {
 
             // Depth Texture
 
-            let (depth_texture, depth_view, depth_sampler) = create_depth_texture(&device, &config);
+            let depth_texture = Texture::new_depth(&device, &config);
 
             // Rectangles
 
@@ -513,7 +479,7 @@ impl PreonRendererWGPU {
             let rect_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[&rect_transform_bind_group_layout],
+                    bind_group_layouts: &[&transform_bind_group_layout],
                     push_constant_ranges: &[],
                 });
 
@@ -544,7 +510,7 @@ impl PreonRendererWGPU {
                     conservative: false,
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth32Float,
+                    format: Texture::DEPTH_FORMAT,
                     depth_write_enabled: true,
                     depth_compare: wgpu::CompareFunction::Less,
                     stencil: wgpu::StencilState::default(),
@@ -695,7 +661,7 @@ impl PreonRendererWGPU {
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[
-                        &rect_transform_bind_group_layout,
+                        &transform_bind_group_layout,
                         &texture_bind_group_layout,
                     ],
                     push_constant_ranges: &[],
@@ -729,7 +695,7 @@ impl PreonRendererWGPU {
                         conservative: false,
                     },
                     depth_stencil: Some(wgpu::DepthStencilState {
-                        format: wgpu::TextureFormat::Depth32Float,
+                        format: Texture::DEPTH_FORMAT,
                         depth_write_enabled: true,
                         depth_compare: wgpu::CompareFunction::Less,
                         stencil: wgpu::StencilState::default(),
@@ -752,8 +718,6 @@ impl PreonRendererWGPU {
                 transform_uniform,
                 transform_bind_group,
                 depth_texture,
-                depth_view,
-                depth_sampler,
                 rect_pipeline,
                 rect_vertex_buffer,
                 rect_index_buffer,
@@ -777,8 +741,6 @@ impl PreonRendererWGPU {
             transform_uniform,
             transform_bind_group,
             depth_texture,
-            depth_view,
-            depth_sampler,
             rect_pipeline,
             rect_vertex_buffer,
             rect_index_buffer,
@@ -801,8 +763,6 @@ impl PreonRendererWGPU {
             transform_bind_group,
             transform_buffer,
             depth_texture,
-            depth_view,
-            depth_sampler,
             rect_pipeline,
             rect_vertex_buffer,
             rect_index_buffer,
@@ -824,11 +784,7 @@ impl PreonRendererWGPU {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
-            let (depth_texture, depth_view, depth_sampler) =
-                create_depth_texture(&self.device, &self.config);
-            self.depth_texture = depth_texture;
-            self.depth_view = depth_view;
-            self.depth_sampler = depth_sampler;
+            self.depth_texture = Texture::new_depth(&self.device, &self.config);
 
             self.transform_uniform
                 .resize(self.size.width as f32, self.size.height as f32);
@@ -888,7 +844,7 @@ impl PreonRendererWGPU {
                         uv_dimensions: self.static_texture_uv_dimensions[index],
                     });
                 }
-                PreonShape::StaticText {
+                PreonShape::Text {
                     // TODO: Text PreonShape Implementation
                     position,
                     size,
@@ -971,7 +927,7 @@ impl PreonRendererWGPU {
                         },
                     }],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_view,
+                        view: &self.depth_texture.view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Clear(1.0),
                             store: true,
