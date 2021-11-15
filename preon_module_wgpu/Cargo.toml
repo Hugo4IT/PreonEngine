@@ -10,6 +10,7 @@ bytemuck = { version = "1.7.2", features = [ "derive" ] }
 preon_engine = { path = "../preon_engine" }
 env_logger = "0.9.0"
 pollster = "0.2.4"
+fontdue = "0.6.2"
 image = "0.23.14"
 winit = "0.25.0"
 sheep = "0.3.0"
