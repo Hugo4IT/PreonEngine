@@ -2,4 +2,3 @@
 Cargo.lock
 /.sublime
 **/*.spv
-/.vscode
