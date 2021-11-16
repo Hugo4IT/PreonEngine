@@ -1,18 +1,15 @@
 use preon_engine::{
-    components::PreonCustomComponentStack,
-    rendering::PreonRenderPass,
-    PreonEngine,
+    components::PreonCustomComponentStack, rendering::PreonRenderPass, PreonEngine,
 };
 use shapes::ShapeManager;
 use texture::Texture;
 use winit::{dpi::PhysicalSize, window::Window};
 
+mod instancing;
 mod shapes;
 mod texture;
-mod instancing;
 
 pub mod preon {
-    use std::time::{Duration, Instant};
 
     use preon_engine::{
         components::{PreonComponent, PreonCustomComponentStack},
@@ -20,7 +17,11 @@ pub mod preon {
         types::PreonVector,
         PreonEngine,
     };
-    use winit::{event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
+    use winit::{
+        event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        window::WindowBuilder,
+    };
 
     use crate::PreonRendererWGPU;
 
@@ -214,7 +215,7 @@ impl PreonRendererWGPU {
                 &device,
                 &config,
                 &queue,
-                &engine.static_render_data.textures
+                &engine.static_render_data.textures,
             );
 
             (
@@ -224,19 +225,12 @@ impl PreonRendererWGPU {
                 config,
                 size,
                 depth_texture,
-                shape_manager
+                shape_manager,
             )
         };
 
-        let (
-            surface,
-            device,
-            queue,
-            config,
-            size,
-            depth_texture,
-            shape_manager
-        ) = pollster::block_on(task);
+        let (surface, device, queue, config, size, depth_texture, shape_manager) =
+            pollster::block_on(task);
 
         Self {
             surface,
@@ -245,7 +239,7 @@ impl PreonRendererWGPU {
             config,
             size,
             depth_texture,
-            shape_manager
+            shape_manager,
         }
     }
 

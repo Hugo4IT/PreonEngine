@@ -123,7 +123,8 @@ impl RectShape {
             position,
             size,
             color,
-        } = shape {
+        } = shape
+        {
             self.instance_buffer.push(RectInstance {
                 z_index,
                 radius: [0.0, 0.0, 0.0, 0.0],
@@ -139,7 +140,6 @@ impl RectShape {
                 },
             });
         }
-
     }
 
     pub fn render<'a>(&'a self, mut render_pass: wgpu::RenderPass<'a>) -> wgpu::RenderPass<'a> {

@@ -2,14 +2,17 @@ use preon_engine::rendering::{PreonRenderPass, PreonShape};
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
-use self::{rect::RectShape, static_texture::
-    StaticTextureShape, transform::Transform, vertex::{RECT_INDICES, RECT_VERTICES}};
-
+use self::{
+    rect::RectShape,
+    static_texture::StaticTextureShape,
+    transform::Transform,
+    vertex::{RECT_INDICES, RECT_VERTICES},
+};
 
 mod rect;
-mod vertex;
-mod transform;
 mod static_texture;
+mod transform;
+mod vertex;
 
 pub struct ShapeManager {
     transform: Transform,
@@ -42,18 +45,14 @@ impl ShapeManager {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let rect = RectShape::new(
-            device,
-            config,
-            &transform.bind_group_layout
-        );
+        let rect = RectShape::new(device, config, &transform.bind_group_layout);
 
         let static_texture = StaticTextureShape::new(
             device,
             config,
             queue,
             &transform.bind_group_layout,
-            static_textures
+            static_textures,
         );
 
         Self {
@@ -93,7 +92,8 @@ impl ShapeManager {
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
         render_pass = self.rect.render(render_pass);
-        /*         */ self.static_texture.render(render_pass);
+        /*         */
+        self.static_texture.render(render_pass);
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>, queue: &wgpu::Queue) {

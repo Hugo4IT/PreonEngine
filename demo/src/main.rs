@@ -16,7 +16,7 @@ fn main() {
     let mut first_panel: Vec<usize> = Vec::new();
     let mut panel_list: Vec<usize> = Vec::new();
 
-    #[rustfmt::ignore]
+    #[rustfmt::skip]
     let engine = PreonEngine::<NoCustomComponents>::new(
         PreonStaticRenderData {
             textures: &[
@@ -55,7 +55,7 @@ fn main() {
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()
-                    .store_path(&mut panel_list)
+                        .store_path(&mut panel_list)
                     .end()
                 .end()
                 .empty_panel("#d3d3d3")
@@ -63,7 +63,6 @@ fn main() {
         .build(),
     );
 
-    #[rustfmt::skip]
     preon::run(engine, move |tree, event, user_events| match event {
         PreonEvent::WindowOpened => {
             println!("Over the hills far away, Ferris came to play!");
@@ -71,11 +70,11 @@ fn main() {
             let mut panel = tree.get_child_recursive(&first_panel);
             let list = tree.get_child_ref_mut_recursive(&panel_list);
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
-                color: PreonColor::from_hex("#da0037")
+                color: PreonColor::from_hex("#da0037"),
             })
-                .with_min_size(0, 48)
-                .expand_horizontally()
-                .build();
+            .with_min_size(0, 48)
+            .expand_horizontally()
+            .build();
 
             list.insert_child(0, new_component);
 
@@ -87,8 +86,8 @@ fn main() {
             tree.return_child_recursive(panel, &first_panel);
 
             user_events.push(PreonUserEvent::ForceUpdate);
-        },
+        }
         PreonEvent::WindowClosed => println!("Then he died..."),
-        _ => {},
+        _ => {}
     });
 }
