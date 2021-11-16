@@ -1,189 +1,15 @@
-use std::mem::size_of;
-
 use preon_engine::{
     components::PreonCustomComponentStack,
-    rendering::{PreonRenderPass, PreonShape},
+    rendering::PreonRenderPass,
     PreonEngine,
 };
+use shapes::ShapeManager;
 use texture::Texture;
-use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
+mod shapes;
 mod texture;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 2],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 2]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct TransformationUniform {
-    transformation: [f32; 2],
-}
-
-impl TransformationUniform {
-    fn new(size_x: f32, size_y: f32) -> Self {
-        let mut new_self = Self {
-            transformation: [1.0, 1.0],
-        };
-
-        new_self.resize(size_x, size_y);
-        new_self
-    }
-
-    fn resize(&mut self, size_x: f32, size_y: f32) {
-        self.transformation = [2.0f32 / size_x, 2.0f32 / size_y];
-    }
-
-    fn raw(&self) -> [f32; 2] {
-        self.transformation
-    }
-}
-
-pub struct PreonAtlasMeta {}
-impl sheep::Format for PreonAtlasMeta {
-    type Data = Vec<[f32; 4]>;
-    type Options = u8;
-
-    fn encode(
-        dimensions: (u32, u32),
-        sprites: &[sheep::SpriteAnchor],
-        _options: Self::Options,
-    ) -> Self::Data {
-        let mut _sprites = sprites.to_vec();
-        _sprites.sort_by(|left, right| left.id.cmp(&right.id));
-
-        let mut data = Vec::with_capacity(_sprites.len());
-        _sprites.iter().for_each(|anchor| {
-            data.push([
-                (anchor.position.0 as f32) / (dimensions.0 as f32),
-                (anchor.position.1 as f32) / (dimensions.1 as f32),
-                (anchor.dimensions.0 as f32) / (dimensions.0 as f32),
-                (anchor.dimensions.1 as f32) / (dimensions.1 as f32),
-            ])
-        });
-        data
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct TextureInstance {
-    z_index: f32,
-    dimensions: [f32; 4],
-    uv_dimensions: [f32; 4],
-}
-
-impl TextureInstance {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<TextureInstance>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<f32>() as wgpu::BufferAddress,
-                    shader_location: 3,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 5]>() as wgpu::BufferAddress,
-                    shader_location: 4,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-            ],
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct RectInstance {
-    z_index: f32,
-    radius: [f32; 4],
-    dimensions: [f32; 4],
-    color: [f32; 4],
-}
-
-impl RectInstance {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<RectInstance>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<f32>() as wgpu::BufferAddress,
-                    shader_location: 3,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 5]>() as wgpu::BufferAddress,
-                    shader_location: 4,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 9]>() as wgpu::BufferAddress,
-                    shader_location: 5,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-            ],
-        }
-    }
-}
-
-const RECT_VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.0],
-        tex_coords: [0.0, 0.0],
-    },
-    Vertex {
-        position: [0.0, -1.0],
-        tex_coords: [0.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, -1.0],
-        tex_coords: [1.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, 0.0],
-        tex_coords: [1.0, 0.0],
-    },
-];
-
-const RECT_INDICES: &[u16] = &[0, 1, 2, 3, 0, 2, 0];
+mod instancing;
 
 pub mod preon {
     use std::time::{Duration, Instant};
@@ -194,11 +20,7 @@ pub mod preon {
         types::PreonVector,
         PreonEngine,
     };
-    use winit::{
-        event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-        event_loop::{ControlFlow, EventLoop},
-        window::WindowBuilder,
-    };
+    use winit::{event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
     use crate::PreonRendererWGPU;
 
@@ -233,11 +55,12 @@ pub mod preon {
 
                 if engine.update(&user_events) {
                     let mut tree = engine.tree.take().unwrap();
+
                     engine.events.pull(|event| {
                         callback(&mut tree, event, &mut user_events);
                     });
-                    engine.tree = Some(tree);
 
+                    engine.tree = Some(tree);
                     wgpu.render(&mut engine.render_pass);
                 }
 
@@ -267,8 +90,6 @@ pub mod preon {
                         physical_size.width,
                         physical_size.height,
                     )));
-                    *control_flow =
-                        ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f32(0.05f32));
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     wgpu.resize(**new_inner_size);
@@ -347,31 +168,8 @@ pub struct PreonRendererWGPU {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: PhysicalSize<u32>,
-
-    // Transform uniform
-    transform_buffer: wgpu::Buffer,
-    transform_uniform: TransformationUniform,
-    transform_bind_group: wgpu::BindGroup,
-
-    // Depth Texture
     depth_texture: Texture,
-
-    // Rect
-    rect_pipeline: wgpu::RenderPipeline,
-    rect_vertex_buffer: wgpu::Buffer,
-    rect_index_buffer: wgpu::Buffer,
-    rect_instances: Vec<RectInstance>,
-    rect_instance_buffer: wgpu::Buffer,
-
-    // StaticTexture
-    static_texture_pipeline: wgpu::RenderPipeline,
-    static_texture_bind_group: wgpu::BindGroup,
-    static_texture_instances: Vec<TextureInstance>,
-    static_texture_instance_buffer: wgpu::Buffer,
-    static_texture_uv_dimensions: Vec<[f32; 4]>,
-
-    // StaticText
-    static_text_offset: usize,
+    shape_manager: ShapeManager,
 }
 
 impl PreonRendererWGPU {
@@ -407,306 +205,17 @@ impl PreonRendererWGPU {
                 format: surface.get_preferred_format(&adapter).unwrap(),
                 width: size.width,
                 height: size.height,
-                present_mode: wgpu::PresentMode::Fifo,
+                present_mode: wgpu::PresentMode::Immediate,
             };
             surface.configure(&device, &config);
 
-            // Transformation
-
-            let transform_uniform = TransformationUniform::new(1.0, 1.0);
-
-            let transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Rect Transform Uniform"),
-                contents: bytemuck::cast_slice(&transform_uniform.raw()),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-            let transform_bind_group_layout =
-                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Rect Transform Bind Group Layout"),
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(size_of::<[f32; 2]>() as _),
-                        },
-                        count: None,
-                    }],
-                });
-
-            let transform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Rect Transform Bind Group"),
-                layout: &transform_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: transform_buffer.as_entire_binding(),
-                }],
-            });
-
-            // Depth Texture
-
             let depth_texture = Texture::new_depth(&device, &config);
-
-            // Rectangles
-
-            let rect_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Rect Vertex Buffer"),
-                contents: bytemuck::cast_slice(RECT_VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-            let rect_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Rect Index Buffer"),
-                contents: bytemuck::cast_slice(RECT_INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            });
-
-            let rect_instances: Vec<RectInstance> = Vec::new();
-            let rect_instance_buffer =
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Rect Instances"),
-                    contents: bytemuck::cast_slice(rect_instances.as_slice()),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                });
-
-            let rect_vert_shader = wgpu::include_wgsl!("shaders/rect_shader.vert.wgsl");
-            let rect_vert_module = device.create_shader_module(&rect_vert_shader);
-            let rect_frag_shader = wgpu::include_wgsl!("shaders/rect_shader.frag.wgsl");
-            let rect_frag_module = device.create_shader_module(&rect_frag_shader);
-
-            let rect_pipeline_layout =
-                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[&transform_bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-            let rect_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
-                layout: Some(&rect_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &rect_vert_module,
-                    entry_point: "main",
-                    buffers: &[Vertex::desc(), RectInstance::desc()],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &rect_frag_module,
-                    entry_point: "main",
-                    targets: &[wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    }],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Back),
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    clamp_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: Texture::DEPTH_FORMAT,
-                    depth_write_enabled: true,
-                    depth_compare: wgpu::CompareFunction::Less,
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-            });
-
-            // Textures
-
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Nearest,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                ..Default::default()
-            });
-
-            let texture_bind_group_layout =
-                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler {
-                                comparison: false,
-                                filtering: true,
-                            },
-                            count: None,
-                        },
-                    ],
-                    label: Some("BindGroupLayout for textures"),
-                });
-
-            // Stitch textures into one big texture
-            let mut textures: Vec<sheep::InputSprite> = Vec::new();
-            for buffer in engine.static_render_data.textures.iter() {
-                let image = image::load_from_memory(*buffer).unwrap();
-
-                use image::GenericImageView;
-                let dimensions = image.dimensions();
-
-                textures.push(sheep::InputSprite {
-                    bytes: image
-                        .as_rgba8()
-                        .unwrap()
-                        .pixels()
-                        .flat_map(|p| p.0.iter().map(|b| *b))
-                        .collect::<Vec<u8>>(),
-                    dimensions,
-                });
-            }
-
-            let sprite_sheet =
-                sheep::pack::<sheep::MaxrectsPacker>(textures, 4, Default::default());
-            let sprite_sheet = sprite_sheet.into_iter().next().unwrap();
-            let sheet_size = wgpu::Extent3d {
-                width: sprite_sheet.dimensions.0,
-                height: sprite_sheet.dimensions.1,
-                depth_or_array_layers: 1,
-            };
-
-            let static_texture_uv_dimensions = sheep::encode::<PreonAtlasMeta>(&sprite_sheet, 0);
-
-            // TODO: Implement texture-stitch cache
-            image::save_buffer(
-                "cache.bmp",
-                sprite_sheet.bytes.as_slice(),
-                sprite_sheet.dimensions.0,
-                sprite_sheet.dimensions.1,
-                image::ColorType::Rgba8,
-            )
-            .unwrap();
-
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                size: sheet_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("StaticTexture atlas"),
-            });
-
-            queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                sprite_sheet.bytes.as_slice(),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(4 * sprite_sheet.dimensions.0),
-                    rows_per_image: std::num::NonZeroU32::new(sprite_sheet.dimensions.1),
-                },
-                sheet_size,
+            let shape_manager = ShapeManager::new(
+                &device,
+                &config,
+                &queue,
+                &engine.static_render_data.textures
             );
-
-            let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-            let static_texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&sampler),
-                    },
-                ],
-                label: Some("BindGroup for StaticTexture atlas"),
-            });
-
-            let static_texture_instances: Vec<TextureInstance> = Vec::new();
-            let static_texture_instance_buffer =
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Texture Instances"),
-                    contents: bytemuck::cast_slice(static_texture_instances.as_slice()),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                });
-
-            let texture_vert_shader = wgpu::include_wgsl!("shaders/texture_shader.vert.wgsl");
-            let texture_vert_module = device.create_shader_module(&texture_vert_shader);
-            let texture_frag_shader = wgpu::include_wgsl!("shaders/texture_shader.frag.wgsl");
-            let texture_frag_module = device.create_shader_module(&texture_frag_shader);
-
-            let texture_pipeline_layout =
-                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[
-                        &transform_bind_group_layout,
-                        &texture_bind_group_layout,
-                    ],
-                    push_constant_ranges: &[],
-                });
-
-            let static_texture_pipeline =
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("Render Pipeline"),
-                    layout: Some(&texture_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &texture_vert_module,
-                        entry_point: "main",
-                        buffers: &[Vertex::desc(), TextureInstance::desc()],
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &texture_frag_module,
-                        entry_point: "main",
-                        targets: &[wgpu::ColorTargetState {
-                            format: config.format,
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        }],
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        topology: wgpu::PrimitiveTopology::TriangleList,
-                        strip_index_format: None,
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: Some(wgpu::Face::Back),
-                        polygon_mode: wgpu::PolygonMode::Fill,
-                        clamp_depth: false,
-                        conservative: false,
-                    },
-                    depth_stencil: Some(wgpu::DepthStencilState {
-                        format: Texture::DEPTH_FORMAT,
-                        depth_write_enabled: true,
-                        depth_compare: wgpu::CompareFunction::Less,
-                        stencil: wgpu::StencilState::default(),
-                        bias: wgpu::DepthBiasState::default(),
-                    }),
-                    multisample: wgpu::MultisampleState {
-                        count: 1,
-                        mask: !0,
-                        alpha_to_coverage_enabled: false,
-                    },
-                });
 
             (
                 surface,
@@ -714,20 +223,8 @@ impl PreonRendererWGPU {
                 queue,
                 config,
                 size,
-                transform_buffer,
-                transform_uniform,
-                transform_bind_group,
                 depth_texture,
-                rect_pipeline,
-                rect_vertex_buffer,
-                rect_index_buffer,
-                rect_instance_buffer,
-                static_texture_pipeline,
-                static_texture_bind_group,
-                static_texture_instances,
-                static_texture_instance_buffer,
-                static_texture_uv_dimensions,
-                engine.static_render_data.textures.len(),
+                shape_manager
             )
         };
 
@@ -737,20 +234,8 @@ impl PreonRendererWGPU {
             queue,
             config,
             size,
-            transform_buffer,
-            transform_uniform,
-            transform_bind_group,
             depth_texture,
-            rect_pipeline,
-            rect_vertex_buffer,
-            rect_index_buffer,
-            rect_instance_buffer,
-            static_texture_pipeline,
-            static_texture_bind_group,
-            static_texture_instances,
-            static_texture_instance_buffer,
-            static_texture_uv_dimensions,
-            static_text_offset,
+            shape_manager
         ) = pollster::block_on(task);
 
         Self {
@@ -759,21 +244,8 @@ impl PreonRendererWGPU {
             queue,
             config,
             size,
-            transform_uniform,
-            transform_bind_group,
-            transform_buffer,
             depth_texture,
-            rect_pipeline,
-            rect_vertex_buffer,
-            rect_index_buffer,
-            rect_instances: Vec::new(),
-            rect_instance_buffer,
-            static_texture_pipeline,
-            static_texture_bind_group,
-            static_texture_instances,
-            static_texture_instance_buffer,
-            static_texture_uv_dimensions,
-            static_text_offset,
+            shape_manager
         }
     }
 
@@ -785,119 +257,12 @@ impl PreonRendererWGPU {
             self.surface.configure(&self.device, &self.config);
 
             self.depth_texture = Texture::new_depth(&self.device, &self.config);
-
-            self.transform_uniform
-                .resize(self.size.width as f32, self.size.height as f32);
-            self.queue.write_buffer(
-                &self.transform_buffer,
-                0,
-                bytemuck::cast_slice(&self.transform_uniform.raw()),
-            );
+            self.shape_manager.resize(new_size, &self.queue);
         }
     }
 
     fn render(&mut self, pass: &mut PreonRenderPass) {
-        let initial_z = 1.0 + pass.len() as f32; // French DejaVu
-        let previous_rect_count = self.rect_instances.len();
-        let previous_texture_count = self.static_texture_instances.len();
-
-        self.rect_instances.clear();
-        self.static_texture_instances.clear();
-
-        let mut iteration: f32 = 1.0;
-
-        pass.pull(|s| {
-            match s {
-                PreonShape::Rect {
-                    color,
-                    position,
-                    size,
-                } => {
-                    self.rect_instances.push(RectInstance {
-                        z_index: (initial_z - iteration) / initial_z,
-                        radius: [0.0, 0.0, 0.0, 0.0],
-                        dimensions: [
-                            position.x as f32,
-                            position.y as f32,
-                            size.x as f32,
-                            size.y as f32,
-                        ],
-                        color: {
-                            let (r, g, b, a) = color.into_f32_tuple();
-                            [r, g, b, a]
-                        },
-                    });
-                }
-                PreonShape::StaticTexture {
-                    position,
-                    size,
-                    index,
-                } => {
-                    self.static_texture_instances.push(TextureInstance {
-                        z_index: (initial_z - iteration) / initial_z,
-                        dimensions: [
-                            position.x as f32,
-                            position.y as f32,
-                            size.x as f32,
-                            size.y as f32,
-                        ],
-                        uv_dimensions: self.static_texture_uv_dimensions[index],
-                    });
-                }
-                PreonShape::Text {
-                    // TODO: Text PreonShape Implementation
-                    position,
-                    size,
-                    index,
-                } => {
-                    self.static_texture_instances.push(TextureInstance {
-                        z_index: (initial_z - iteration) / initial_z,
-                        dimensions: [
-                            position.x as f32,
-                            position.y as f32,
-                            size.x as f32,
-                            size.y as f32,
-                        ],
-                        uv_dimensions: self.static_texture_uv_dimensions
-                            [self.static_text_offset + index],
-                    });
-                }
-            }
-
-            iteration += 1.0;
-        });
-
-        if previous_rect_count != self.rect_instances.len() {
-            self.rect_instance_buffer =
-                self.device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("New Rect Instance Buffer"),
-                        contents: bytemuck::cast_slice(self.rect_instances.as_slice()),
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    });
-        } else {
-            self.queue.write_buffer(
-                &self.rect_instance_buffer,
-                0,
-                bytemuck::cast_slice(self.rect_instances.as_slice()),
-            );
-        }
-
-        if previous_texture_count != self.static_texture_instances.len() {
-            self.static_texture_instance_buffer =
-                self.device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("New Texture Instance Buffer"),
-                        contents: bytemuck::cast_slice(self.static_texture_instances.as_slice()),
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    });
-        } else {
-            self.queue.write_buffer(
-                &self.static_texture_instance_buffer,
-                0,
-                bytemuck::cast_slice(self.static_texture_instances.as_slice()),
-            );
-        }
+        self.shape_manager.build(pass, &self.device, &self.queue);
 
         let res: Result<(), wgpu::SurfaceError> = {
             let output = self.surface.get_current_texture().unwrap();
@@ -911,7 +276,7 @@ impl PreonRendererWGPU {
                 });
 
             {
-                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
                     color_attachments: &[wgpu::RenderPassColorAttachment {
                         view: &view,
@@ -936,26 +301,7 @@ impl PreonRendererWGPU {
                     }),
                 });
 
-                // Rect
-                render_pass.set_vertex_buffer(1, self.rect_instance_buffer.slice(..));
-                render_pass.set_pipeline(&self.rect_pipeline);
-                render_pass.set_bind_group(0, &self.transform_bind_group, &[]);
-                render_pass.set_vertex_buffer(0, self.rect_vertex_buffer.slice(..));
-                render_pass
-                    .set_index_buffer(self.rect_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-
-                render_pass.draw_indexed(0..7, 0, 0..self.rect_instances.len() as u32);
-
-                // Texture
-                render_pass.set_vertex_buffer(1, self.static_texture_instance_buffer.slice(..));
-                render_pass.set_pipeline(&self.static_texture_pipeline);
-                render_pass.set_bind_group(0, &self.transform_bind_group, &[]);
-                render_pass.set_bind_group(1, &self.static_texture_bind_group, &[]);
-                render_pass.set_vertex_buffer(0, self.rect_vertex_buffer.slice(..));
-                render_pass
-                    .set_index_buffer(self.rect_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-
-                render_pass.draw_indexed(0..7, 0, 0..self.static_texture_instances.len() as u32);
+                self.shape_manager.render(render_pass);
             }
 
             self.queue.submit(Some(encoder.finish()));

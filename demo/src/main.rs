@@ -65,8 +65,9 @@ fn main() {
 
     #[rustfmt::skip]
     preon::run(engine, move |tree, event, user_events| match event {
-        PreonEvent::WindowOpened => println!("Over the hills far away, Ferris came to play!"),
-        PreonEvent::WindowResized( _new_size ) => {
+        PreonEvent::WindowOpened => {
+            println!("Over the hills far away, Ferris came to play!");
+
             let mut panel = tree.get_child_recursive(&first_panel);
             let list = tree.get_child_ref_mut_recursive(&panel_list);
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
@@ -86,7 +87,7 @@ fn main() {
             tree.return_child_recursive(panel, &first_panel);
 
             user_events.push(PreonUserEvent::ForceUpdate);
-        }
+        },
         PreonEvent::WindowClosed => println!("Then he died..."),
         _ => {},
     });

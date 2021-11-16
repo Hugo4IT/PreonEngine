@@ -197,8 +197,11 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
             let mut update_layout = false;
 
             user_events.pull(|f| match f {
-                PreonUserEvent::WindowResized(s) => {
-                    self.resize(s);
+                PreonUserEvent::WindowResized(new_size) => {
+                    if new_size != self.window_inner_size {
+                        self.window_inner_size = new_size;
+                        self.events.push(PreonEvent::WindowResized(new_size));
+                    }
                     update_layout = true
                 }
                 PreonUserEvent::ForceUpdate => update_layout = true,
@@ -236,12 +239,5 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
 
         self.tree = Some(tree);
         rerender
-    }
-
-    pub fn resize(&mut self, new_size: PreonVector<u32>) {
-        if new_size != self.window_inner_size {
-            self.window_inner_size = new_size;
-            self.events.push(PreonEvent::WindowResized(new_size));
-        }
     }
 }

@@ -113,10 +113,38 @@ impl Texture {
 pub struct TextureSheet {
     pub texture: Texture,
     pub indices: Vec<[f32; 4]>,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl TextureSheet {
-    pub fn new(buffers: &[&[u8]], device: &wgpu::Device, queue: &wgpu::Queue) -> TextureSheet {
+    pub fn from_images(buffers: &[&[u8]], device: &wgpu::Device, queue: &wgpu::Queue) -> TextureSheet {
+        let bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler {
+                            comparison: false,
+                            filtering: true,
+                        },
+                        count: None,
+                    },
+                ],
+                label: Some("BindGroupLayout for textures"),
+            });
+
         let mut textures: Vec<sheep::InputSprite> = Vec::new();
         for buffer in buffers.iter() {
             let image = image::load_from_memory(*buffer).unwrap();
@@ -163,7 +191,22 @@ impl TextureSheet {
             size,
         );
 
-        Self { texture, indices }
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+            label: Some("BindGroup for StaticTexture atlas"),
+        });
+
+        Self { texture, indices, bind_group_layout, bind_group }
     }
 }
 
