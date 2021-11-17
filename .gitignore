@@ -2,3 +2,5 @@
 Cargo.lock
 /.sublime
 **/*.spv
+cache.bmp
+log.log

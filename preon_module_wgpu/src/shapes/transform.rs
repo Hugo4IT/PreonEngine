@@ -3,6 +3,7 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
+/// A simple struct used in the shaders (as uniform) for converting pixel coordinates to units
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct TransformationUniform {

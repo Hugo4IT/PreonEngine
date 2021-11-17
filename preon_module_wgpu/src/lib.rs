@@ -36,12 +36,11 @@ pub mod preon {
 
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_visible(false)
+            // .with_visible(false)
             .build(&event_loop)
             .unwrap();
 
-        let mut wgpu = PreonRendererWGPU::new(&window, &engine);
-
+        let mut renderer = PreonRendererWGPU::new(&window, &engine);
         window.set_visible(true);
 
         let (mut ctrl, mut shift, mut logo, mut alt) = (false, false, false, false);
@@ -62,7 +61,10 @@ pub mod preon {
                     });
 
                     engine.tree = Some(tree);
-                    wgpu.render(&mut engine.render_pass);
+
+                    if renderer.render(&mut engine.render_pass) {
+                        *control_flow = ControlFlow::Exit;
+                    }
                 }
 
                 if await_close {
@@ -86,14 +88,14 @@ pub mod preon {
                     window.request_redraw();
                 }
                 WindowEvent::Resized(physical_size) => {
-                    wgpu.resize(*physical_size);
+                    renderer.resize(*physical_size);
                     user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
                         physical_size.width,
                         physical_size.height,
                     )));
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    wgpu.resize(**new_inner_size);
+                    renderer.resize(**new_inner_size);
                     user_events.push(PreonUserEvent::WindowResized(PreonVector::new(
                         new_inner_size.width,
                         new_inner_size.height,
@@ -176,6 +178,16 @@ pub struct PreonRendererWGPU {
 impl PreonRendererWGPU {
     pub fn new<T: PreonCustomComponentStack>(window: &Window, engine: &PreonEngine<T>) -> Self {
         let task = async {
+            #[cfg(feature = "android")]
+            {
+                loop {
+                    match ndk_glue::native_window().as_ref() {
+                        Some(_) => break,
+                        None => ()
+                    }
+                }
+            }
+
             let size = window.inner_size();
             let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
             let instance = wgpu::Instance::new(backend);
@@ -206,7 +218,7 @@ impl PreonRendererWGPU {
                 format: surface.get_preferred_format(&adapter).unwrap(),
                 width: size.width,
                 height: size.height,
-                present_mode: wgpu::PresentMode::Immediate,
+                present_mode: wgpu::PresentMode::Fifo,
             };
             surface.configure(&device, &config);
 
@@ -255,7 +267,7 @@ impl PreonRendererWGPU {
         }
     }
 
-    fn render(&mut self, pass: &mut PreonRenderPass) {
+    fn render(&mut self, pass: &mut PreonRenderPass) -> bool {
         self.shape_manager.build(pass, &self.device, &self.queue);
 
         let res: Result<(), wgpu::SurfaceError> = {
@@ -305,12 +317,12 @@ impl PreonRendererWGPU {
         };
 
         match res {
-            Ok(_) => {}
+            Ok(_) => {},
             Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
-            Err(wgpu::SurfaceError::OutOfMemory) => panic!(
-                "Out of memory, press F to pay respects to the pregnancy test running this app"
-            ),
+            Err(wgpu::SurfaceError::OutOfMemory) => return true,
             Err(e) => eprintln!("{:?}", e),
         }
+
+        false
     }
 }

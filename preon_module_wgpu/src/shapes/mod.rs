@@ -64,6 +64,7 @@ impl ShapeManager {
         }
     }
 
+    /// Translate PreonRenderPass to instanced wgpu::RenderPass instructions, and apply z_index
     pub fn build(&mut self, pass: &PreonRenderPass, device: &wgpu::Device, queue: &wgpu::Queue) {
         let z_step = 1.0 / pass.len() as f32; // French DejaVu
 
@@ -86,16 +87,17 @@ impl ShapeManager {
         self.rect.instance_buffer.end(device, queue);
     }
 
+    /// Execute instanced wgpu render calls with the built wgpu::RenderPass instructions from ShapeManager::build();
     pub fn render<'a>(&'a self, mut render_pass: wgpu::RenderPass<'a>) {
         render_pass.set_bind_group(0, &self.transform.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
         render_pass = self.rect.render(render_pass);
-        /*         */
         self.static_texture.render(render_pass);
     }
 
+    /// Correct transformation after resizing
     pub fn resize(&mut self, new_size: PhysicalSize<u32>, queue: &wgpu::Queue) {
         self.transform.resize(new_size, queue);
     }
