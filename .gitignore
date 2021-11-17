@@ -4,3 +4,4 @@ Cargo.lock
 **/*.spv
 cache.bmp
 log.log
+/.vscode
