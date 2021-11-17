@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation about building shaders
 - Logs for much easier debugging
 
-### Changed
-- Fixed incorrect image data parsing from `.preonc` format, resulting in misaligned StaticTextureShapes.
-- Fixed `env_logger` startup error on initialization when modules are attached
+### Fixed
+- Incorrect image data parsing from `.preonc` format, resulting in misaligned StaticTextureShapes.
+- `env_logger` startup error on initialization when modules are attached
 
 [Unreleased]: https://github.com/Hugo4IT/PreonEngine/
