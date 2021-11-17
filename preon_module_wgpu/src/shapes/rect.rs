@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use log::info;
 use preon_engine::rendering::PreonShape;
 
 use crate::{
@@ -61,11 +62,13 @@ impl RectShape {
     ) -> Self {
         let instance_buffer = InstanceBuffer::new(device);
 
+        info!("Compiling shaders...");
         let vert_shader = wgpu::include_wgsl!("../shaders/rect_shader.vert.wgsl");
         let vert_module = device.create_shader_module(&vert_shader);
         let frag_shader = wgpu::include_wgsl!("../shaders/rect_shader.frag.wgsl");
         let frag_module = device.create_shader_module(&frag_shader);
 
+        info!("Creating render pipeline...");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[transform_bind_group_layout],

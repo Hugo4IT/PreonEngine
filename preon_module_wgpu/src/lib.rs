@@ -1,3 +1,4 @@
+use log::info;
 use preon_engine::{
     components::PreonCustomComponentStack, rendering::PreonRenderPass, PreonEngine,
 };
@@ -180,13 +181,19 @@ impl PreonRendererWGPU {
         let task = async {
             #[cfg(feature = "android")]
             {
+                info!("Detected android platform (--features android), waiting for NativeWindow...");
+
                 loop {
                     match ndk_glue::native_window().as_ref() {
                         Some(_) => break,
                         None => ()
                     }
                 }
+
+                info!("Got NativeWindow.");
             }
+
+            info!("Initializing Surface...");
 
             let size = window.inner_size();
             let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
@@ -222,7 +229,10 @@ impl PreonRendererWGPU {
             };
             surface.configure(&device, &config);
 
+            info!("Creating depth buffer...");
             let depth_texture = Texture::new_depth(&device, &config);
+
+            info!("Init ShapeManager...");
             let shape_manager = ShapeManager::new(
                 &device,
                 &config,
@@ -243,6 +253,8 @@ impl PreonRendererWGPU {
 
         let (surface, device, queue, config, size, depth_texture, shape_manager) =
             pollster::block_on(task);
+
+        info!("Initialized!");
 
         Self {
             surface,

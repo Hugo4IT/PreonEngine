@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use log::info;
 use preon_engine::rendering::PreonShape;
 
 use crate::{
@@ -56,14 +57,18 @@ impl StaticTextureShape {
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         textures: &[&[u8]],
     ) -> Self {
-        let sheet = TextureSheet::from_images(textures, device, queue);
+        info!("Init TextureSheet...");
+        let sheet = TextureSheet::from_images(textures, device, queue, String::from("static_textures"));
+
         let instance_buffer = InstanceBuffer::new(device);
 
+        info!("Compiling shaders...");
         let vert_shader = wgpu::include_wgsl!("../shaders/texture_shader.vert.wgsl");
         let vert_module = device.create_shader_module(&vert_shader);
         let frag_shader = wgpu::include_wgsl!("../shaders/texture_shader.frag.wgsl");
         let frag_module = device.create_shader_module(&frag_shader);
 
+        info!("Creating render pipeline...");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[transform_bind_group_layout, &sheet.bind_group_layout],

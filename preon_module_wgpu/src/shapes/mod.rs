@@ -1,3 +1,4 @@
+use log::info;
 use preon_engine::rendering::{PreonRenderPass, PreonShape};
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
@@ -31,22 +32,23 @@ impl ShapeManager {
         queue: &wgpu::Queue,
         static_textures: &[&[u8]],
     ) -> Self {
+        info!("Initializing buffers...");
         let transform = Transform::new(device);
-
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Rect Vertex Buffer"),
             contents: bytemuck::cast_slice(RECT_VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
-
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Rect Index Buffer"),
             contents: bytemuck::cast_slice(RECT_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        info!("Init RectShape...");
         let rect = RectShape::new(device, config, &transform.bind_group_layout);
 
+        info!("Init StaticTextureShape...");
         let static_texture = StaticTextureShape::new(
             device,
             config,

@@ -1,3 +1,11 @@
+use std::{
+    fs::OpenOptions,
+    io::{Read, Write},
+    path::Path,
+};
+
+use log::info;
+
 pub struct Texture {
     pub raw: Option<Vec<u8>>,
     pub wgpu: wgpu::Texture,
@@ -122,6 +130,7 @@ impl TextureSheet {
         buffers: &[&[u8]],
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        label: String,
     ) -> TextureSheet {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -148,35 +157,124 @@ impl TextureSheet {
             label: Some("BindGroupLayout for textures"),
         });
 
-        let mut textures: Vec<sheep::InputSprite> = Vec::new();
-        for buffer in buffers.iter() {
-            let image = image::load_from_memory(*buffer).unwrap();
+        std::fs::create_dir_all("cache").unwrap();
+        let cache_path = Path::new("cache").join(Path::new(&(label + ".preonc")));
 
-            use image::GenericImageView;
-            let dimensions = image.dimensions();
+        // See `docs/cache_format.md`
+        let (buffer, size, indices) = if cache_path.exists() {
+            info!("Cache exists, using that...");
 
-            textures.push(sheep::InputSprite {
-                bytes: image
-                    .as_rgba8()
-                    .unwrap()
-                    .pixels()
-                    .flat_map(|p| p.0.iter().map(|b| *b))
-                    .collect::<Vec<u8>>(),
-                dimensions,
-            });
-        }
+            let mut file = OpenOptions::new().read(true).open(cache_path).unwrap();
 
-        let packed = sheep::pack::<sheep::MaxrectsPacker>(textures, 4, Default::default());
-        let packed = packed.into_iter().next().unwrap();
-        let size = wgpu::Extent3d {
-            width: packed.dimensions.0,
-            height: packed.dimensions.1,
-            depth_or_array_layers: 1,
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer).unwrap();
+
+            let mut indices: Vec<[f32; 4]> = Vec::new();
+            let index_count = u32::from_ne_bytes(buffer[0..4].try_into().unwrap());
+
+            info!("Cache index count: {}", index_count);
+
+            for i in 0..(index_count as usize) {
+                info!("{}", i);
+
+                indices.push([
+                    // Format: index * bytes_per_index + previous_bytes + byte_offset
+                    f32::from_ne_bytes(buffer[(i * 16 + 4)..(i * 16 + 4 + 4)].try_into().unwrap()),
+                    f32::from_ne_bytes(buffer[(i * 16 + 4 + 4)..(i * 16 + 4 + 8)].try_into().unwrap()),
+                    f32::from_ne_bytes(buffer[(i * 16 + 4 + 8)..(i * 16 + 4 + 12)].try_into().unwrap()),
+                    f32::from_ne_bytes(buffer[(i * 16 + 4 + 12)..(i * 16 + 4 + 16)].try_into().unwrap()),
+                ]);
+            }
+
+            info!("Cache indices: {:?}", indices);
+
+            let tex_size_x = u32::from_ne_bytes(
+                buffer[(((index_count * 4) + 1) as usize * 4)
+                    ..(((index_count * 4) + 2) as usize * 4)]
+                    .try_into()
+                    .unwrap(),
+            );
+            let tex_size_y = u32::from_ne_bytes(
+                buffer[(((index_count * 4) + 2) as usize * 4)
+                    ..(((index_count * 4) + 3) as usize * 4)]
+                    .try_into()
+                    .unwrap(),
+            );
+
+            info!("Cache texture size: {}x{}", tex_size_x, tex_size_y);
+
+            let size = wgpu::Extent3d {
+                width: tex_size_x,
+                height: tex_size_y,
+                depth_or_array_layers: 1,
+            };
+
+            // Remove all elements except
+            for _ in 0..((index_count + 3) as usize * 4) {
+                buffer.remove(0);
+            }
+
+            (buffer, size, indices)
+        } else {
+            info!("No cache found, stitching textures...");
+
+            let mut textures: Vec<sheep::InputSprite> = Vec::new();
+            for buffer in buffers.iter() {
+                let image = image::load_from_memory(*buffer).unwrap();
+
+                use image::GenericImageView;
+                let dimensions = image.dimensions();
+
+                info!("Texture of size {}x{}", dimensions.0, dimensions.1);
+
+                textures.push(sheep::InputSprite {
+                    bytes: image
+                        .as_rgba8()
+                        .unwrap()
+                        .pixels()
+                        .flat_map(|p| p.0.iter().map(|b| *b))
+                        .collect::<Vec<u8>>(),
+                    dimensions,
+                });
+            }
+
+            let packed = sheep::pack::<sheep::MaxrectsPacker>(textures, 4, Default::default());
+            let mut packed = packed.into_iter().next().unwrap();
+            let size = wgpu::Extent3d {
+                width: packed.dimensions.0,
+                height: packed.dimensions.1,
+                depth_or_array_layers: 1,
+            };
+
+            let indices = sheep::encode::<TextureSheetEncoder>(&packed, 0);
+            info!("Texture indices {:?}", indices);
+
+            info!("Caching newly stitched texture...");
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(cache_path)
+                .unwrap();
+
+            let buffer = packed.bytes.drain(..).collect::<Vec<u8>>();
+
+            let mut write_buffer: Vec<u8> = Vec::new();
+            write_buffer.append(&mut (indices.len() as u32).to_ne_bytes().to_vec());
+            for index in indices.iter() {
+                write_buffer.append(&mut (*index)[0].to_ne_bytes().to_vec());
+                write_buffer.append(&mut (*index)[1].to_ne_bytes().to_vec());
+                write_buffer.append(&mut (*index)[2].to_ne_bytes().to_vec());
+                write_buffer.append(&mut (*index)[3].to_ne_bytes().to_vec());
+            }
+            write_buffer.append(&mut size.width.to_ne_bytes().to_vec());
+            write_buffer.append(&mut size.height.to_ne_bytes().to_vec());
+            write_buffer.append(&mut buffer.clone());
+            file.write_all(write_buffer.as_slice()).unwrap();
+
+            (buffer, size, indices)
         };
 
-        let indices = sheep::encode::<TextureSheetEncoder>(&packed, 0);
-
-        let texture = Texture::from_bytes(packed.bytes.as_slice(), size, device, false);
+        let texture = Texture::from_bytes(buffer.as_slice(), size, device, false);
 
         queue.write_texture(
             wgpu::ImageCopyTexture {
@@ -185,11 +283,11 @@ impl TextureSheet {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            packed.bytes.as_slice(),
+            buffer.as_slice(),
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * packed.dimensions.0),
-                rows_per_image: std::num::NonZeroU32::new(packed.dimensions.1),
+                bytes_per_row: std::num::NonZeroU32::new(4 * size.width),
+                rows_per_image: std::num::NonZeroU32::new(size.height),
             },
             size,
         );

@@ -3,11 +3,6 @@
     - [Android](#android)
       - [Setup](#setup)
       - [Code](#code)
-          - [File structure (optional)](#file-structure-optional)
-          - [Cargo.toml](#cargotoml)
-          - [main<area>.rs](#mainarears)
-          - [app<area>.rs](#apparears)
-          - [lib<area>.rs](#libarears)
       - [Running](#running)
       - [Debugging](#debugging)
 
@@ -50,7 +45,8 @@ Setting up your device (pick one, real hardware is easier):
 
 Recommended setup for single codebase applications supporting both mobile & desktop:
 
-###### File structure (optional)
+**File structure (optional)**
+
 ```
 my_application
 ├──res
@@ -62,7 +58,8 @@ my_application
 └──Cargo.toml
 ```
 
-###### Cargo.toml
+**Cargo.toml**
+
 ```toml
 [features]
 default = [] # 1
@@ -82,17 +79,18 @@ crate-type = ["cdylib"] # 4
 > 3. Specify the `ndk-glue` dependency, but don't enable it by default. **Warning:** If you have a tool that checks for dependencies and their updates, ignore the update for `ndk-glue`, as [`winit`](https://github.com/rust-windowing/winit#android) depends on this specific version.
 > 4. Android requires a dynamic library for native code.
 
-###### main<area>.rs
+**main<area>.rs**
 
 ```rs
 mod app;
 
+// Desktop entry point
 fn main() {
     app::app();
 }
 ```
 
-###### app<area>.rs
+**app<area>.rs**
 
 ```rs
 pub fn app() {
@@ -100,11 +98,12 @@ pub fn app() {
 }
 ```
 
-###### lib<area>.rs
+**lib<area>.rs**
 
 ```rs
 mod app;
 
+// Mobile entry point
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 pub fn main() {
     app::app();
