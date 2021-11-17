@@ -4,8 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - Since 2021-11-17
 ### Added
 - This file
+- TextureSheet caching for slightly faster startup times.
+- Documentation about building shaders
+- Logs for much easier debugging
+
+### Changed
+- Fixed incorrect image data parsing from `.preonc` format, resulting in misaligned StaticTextureShapes.
+- Fixed `env_logger` startup error on initialization when modules are attached
 
 [Unreleased]: https://github.com/Hugo4IT/PreonEngine/

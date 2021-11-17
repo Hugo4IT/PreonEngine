@@ -209,8 +209,8 @@ impl TextureSheet {
                 depth_or_array_layers: 1,
             };
 
-            // Remove all elements except
-            for _ in 0..((index_count + 3) as usize * 4) {
+            // Remove all elements except the image data
+            for _ in 0..(((index_count * 4) + 3) as usize * 4) {
                 buffer.remove(0);
             }
 

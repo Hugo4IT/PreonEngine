@@ -33,7 +33,7 @@ pub mod preon {
         F: FnMut(&mut PreonComponent<T>, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
             + 'static,
     {
-        env_logger::init();
+        env_logger::try_init().ok();
 
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()

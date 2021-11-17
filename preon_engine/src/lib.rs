@@ -181,6 +181,8 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent<T>) -> Self {
+        env_logger::try_init().ok();
+
         Self {
             tree: Some(tree),
             events: PreonEventEmitter::new(),

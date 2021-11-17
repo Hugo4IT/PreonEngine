@@ -1,5 +1,7 @@
 use std::{any::Any, fmt::Debug};
 
+use log::warn;
+
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
     size,
@@ -369,9 +371,7 @@ pub trait PreonCustomComponentStack: Debug {
                 }
             }
             PreonComponentStack::VBox { align, cross_align } => {
-                if component.children.is_some() {
-                    let mut children = component.children.take().unwrap();
-
+                if let Some(mut children) = component.children.take() {
                     let mut height = 0;
                     let mut width = 0;
                     let mut expanding_children = 0;
@@ -379,7 +379,7 @@ pub trait PreonCustomComponentStack: Debug {
 
                     // Gather some data on the children
                     children.iter_mut().for_each(|ch| {
-                        let child = ch.take().unwrap();
+                        let child = ch.as_mut().unwrap();
 
                         let s = child.get_outer_size();
 
@@ -396,8 +396,6 @@ pub trait PreonCustomComponentStack: Debug {
                         } else {
                             width = width.max(child.model.min_size.x);
                         }
-
-                        *ch = Some(child);
                     });
 
                     let position = component.get_content_position();
@@ -416,7 +414,7 @@ pub trait PreonCustomComponentStack: Debug {
                     let mut y = 0;
 
                     children.iter_mut().for_each(|ch| {
-                        let mut child = ch.take().unwrap();
+                        let child = ch.as_mut().unwrap();
 
                         if child.model.has_flag(size::vertical::EXPAND) {
                             child.set_outer_size_y((size.y - leftover_height) / expanding_children);
@@ -458,17 +456,13 @@ pub trait PreonCustomComponentStack: Debug {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         y += child_size.y;
-
-                        *ch = Some(child);
                     });
 
                     component.children = Some(children);
                 }
             }
             PreonComponentStack::HBox { align, cross_align } => {
-                if component.children.is_some() {
-                    let mut children = component.children.take().unwrap();
-
+                if let Some(mut children) = component.children.take() {
                     let mut height = 0;
                     let mut width = 0;
                     let mut expanding_children = 0;
@@ -476,7 +470,7 @@ pub trait PreonCustomComponentStack: Debug {
 
                     // Gather some data on the children
                     children.iter_mut().for_each(|ch| {
-                        let child = ch.take().unwrap();
+                        let child = ch.as_mut().unwrap();
 
                         let s = child.get_outer_size();
 
@@ -493,8 +487,6 @@ pub trait PreonCustomComponentStack: Debug {
                         } else {
                             height = height.max(child.model.min_size.y);
                         }
-
-                        *ch = Some(child);
                     });
 
                     let position = component.get_content_position();
@@ -513,7 +505,7 @@ pub trait PreonCustomComponentStack: Debug {
                     let mut x = 0;
 
                     children.iter_mut().for_each(|ch| {
-                        let mut child = ch.take().unwrap();
+                        let child = ch.as_mut().unwrap();
 
                         if child.model.has_flag(size::horizontal::EXPAND) {
                             child.set_outer_size_x((size.x - leftover_width) / expanding_children);
@@ -555,8 +547,6 @@ pub trait PreonCustomComponentStack: Debug {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         x += child_size.x;
-
-                        *ch = Some(child);
                     });
 
                     component.children = Some(children);
@@ -566,16 +556,13 @@ pub trait PreonCustomComponentStack: Debug {
         }
 
         if let Some(mut children) = component.children.take() {
-            component.children = Some(
-                children
-                    .drain(..)
-                    .map(|mut f| {
-                        let mut comp = f.take().unwrap();
-                        T::layout(&mut comp);
-                        Some(comp)
-                    })
-                    .collect::<Vec<Option<PreonComponent<T>>>>(),
-            );
+            for child in children.iter_mut() {
+                if let Some(child) = child.as_mut() {
+                    T::layout(child);
+                }
+            }
+
+            component.children = Some(children);
         }
     }
 
