@@ -12,13 +12,13 @@
 
 ## Compatibility
 
-Platform | Status | Rendering Backend(s)
---- | --- | ---
-Windows 10+ | :heavy_check_mark: | DX12, Vulkan
-Windows 8.1- | :warning: | Vulkan, experimental DX11
-MacOS/iOS | :heavy_check_mark: | Metal
+Platform          | Status             | Rendering Backend(s)
+------------------|--------------------|--------------------------
+Windows 10+       | :heavy_check_mark: | DX12, Vulkan
+Windows 8.1-      | :warning:          | Vulkan, experimental DX11
+MacOS/iOS         | :heavy_check_mark: | Metal
 Linux X11/Wayland | :heavy_check_mark: | Vulkan, GLES3
-Android | :heavy_check_mark: | Vulkan, GLES3
+Android           | :heavy_check_mark: | Vulkan, GLES3
 
 ### Android
 

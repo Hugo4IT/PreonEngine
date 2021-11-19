@@ -12,6 +12,8 @@ use preon_module_wgpu::preon;
 use rand::Rng;
 
 pub fn app() {
+    env_logger::init();
+
     let mut rng = rand::thread_rng();
     let mut first_panel: Vec<usize> = Vec::new();
     let mut panel_list: Vec<usize> = Vec::new();

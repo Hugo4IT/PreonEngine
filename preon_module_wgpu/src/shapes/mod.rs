@@ -12,6 +12,7 @@ use self::{
 
 mod rect;
 mod static_texture;
+mod static_text;
 mod transform;
 mod vertex;
 
