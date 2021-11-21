@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::types::PreonVector;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum PreonButtonState {
     MouseEnter,
     MouseExit,
@@ -27,7 +27,7 @@ impl Display for PreonButtonState {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum PreonEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
@@ -37,7 +37,7 @@ pub enum PreonEvent {
     Button(u32, PreonButtonState),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum PreonUserEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
@@ -47,12 +47,12 @@ pub enum PreonUserEvent {
 }
 
 #[derive(Debug)]
-pub struct PreonEventEmitter<T: Copy + Clone> {
+pub struct PreonEventEmitter<T: Clone> {
     events: Vec<T>,
     buffer: Vec<T>,
 }
 
-impl<T: Copy + Clone> PreonEventEmitter<T> {
+impl<T: Clone> PreonEventEmitter<T> {
     pub fn new() -> PreonEventEmitter<T> {
         PreonEventEmitter {
             events: Vec::new(),
@@ -67,7 +67,7 @@ impl<T: Copy + Clone> PreonEventEmitter<T> {
     pub fn pull<F: FnMut(T)>(&self, mut handler: F) {
         let mut events = self.events.iter();
         while let Some(item) = events.next() {
-            handler(*item);
+            handler(item.clone());
         }
     }
 

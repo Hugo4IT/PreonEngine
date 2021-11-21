@@ -1,0 +1,7 @@
+[package]
+name = "bbcode_parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu_glyph = "0.15.1"

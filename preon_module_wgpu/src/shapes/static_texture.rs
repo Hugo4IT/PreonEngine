@@ -58,7 +58,8 @@ impl StaticTextureShape {
         textures: &[&[u8]],
     ) -> Self {
         info!("Init TextureSheet...");
-        let sheet = TextureSheet::from_images(textures, device, queue, String::from("static_textures"));
+        let sheet =
+            TextureSheet::from_images(textures, device, queue, String::from("static_textures"));
 
         let instance_buffer = InstanceBuffer::new(device);
 

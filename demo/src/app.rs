@@ -1,7 +1,7 @@
 use preon_engine::{
     components::{
-        AddHBox, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponentBuilder,
-        PreonComponentStack,
+        AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents,
+        PreonComponentBuilder, PreonComponentStack,
     },
     events::{PreonEvent, PreonUserEvent},
     rendering::PreonStaticRenderData,
@@ -12,6 +12,7 @@ use preon_module_wgpu::preon;
 use rand::Rng;
 
 pub fn app() {
+    #[cfg(debug_assertions)]
     env_logger::init();
 
     let mut rng = rand::thread_rng();
@@ -19,12 +20,15 @@ pub fn app() {
     let mut panel_list: Vec<usize> = Vec::new();
 
     #[rustfmt::skip]
-    let engine = PreonEngine::<NoCustomComponents>::new(
+    let engine: PreonEngine<NoCustomComponents> = PreonEngine::new(
         PreonStaticRenderData {
             textures: &[
                 include_bytes!("../../res/mm2wood.png"),
                 include_bytes!("../../res/juan.png"),
             ],
+            fonts: &[
+                include_bytes!("../../res/Montserrat-Regular.ttf")
+            ]
         },
         PreonComponentBuilder::new()
             .start_panel("#da0037")
@@ -54,6 +58,10 @@ pub fn app() {
                             .expand_horizontally()
                         .end()
                         .start_static_texture(1)
+                            .with_min_size(0, 200)
+                            .expand_horizontally()
+                        .end()
+                        .start_label_str("This is some very epic textalicious writing, get on my level shakespeare.")
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()

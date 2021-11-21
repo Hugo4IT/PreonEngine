@@ -1,6 +1,4 @@
-use std::{any::Any, fmt::Debug};
-
-use log::warn;
+use std::{any::Any, fmt::Debug, str::FromStr};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
@@ -603,7 +601,16 @@ pub trait PreonCustomComponentStack: Debug {
                 }
                 _ => {}
             },
-            PreonComponentRenderStage::Foreground { .. } => match component.data {
+            PreonComponentRenderStage::Foreground { position, size } => match component.data {
+                PreonComponentStack::Label {
+                    ref text,
+                    font_index,
+                } => pass.push(PreonShape::Text {
+                    font_index,
+                    position,
+                    size,
+                    text: text.clone(),
+                }),
                 PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
                 _ => {}
             },
@@ -659,16 +666,6 @@ pub trait PreonCustomComponentStack: Debug {
 pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Custom(T),
     Dummy,
-    StaticLabel {
-        textdb_index: usize,
-
-        // 0101010101[0][1][01][01]
-        //            |  |   |   |=> Horizontal alignment: 00 - Left, 01 - Center, 10 - Right, 11 - Spread
-        //            |  |   |=> Vertical alignment: 00 - Top, 01 - Center, 10 - Bottom
-        //            |  |=> Bold?
-        //            |=> Italic?
-        font_details: u16,
-    },
     Label {
         text: String,
         font_index: usize,
@@ -942,6 +939,39 @@ impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder
         });
 
         self
+    }
+}
+
+pub trait AddLabel<T: PreonCustomComponentStack> {
+    fn start_label(self, text: String) -> PreonComponentBuilder<T>;
+    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
+    fn empty_label(self, text: String) -> PreonComponentBuilder<T>;
+    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
+}
+
+impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
+    fn start_label(mut self, text: String) -> PreonComponentBuilder<T> {
+        self.stack.push(PreonComponent {
+            data: PreonComponentStack::Label {
+                text,
+                font_index: 0,
+            },
+            ..Default::default()
+        });
+
+        self
+    }
+
+    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
+        self.start_label(String::from_str(text).unwrap())
+    }
+
+    fn empty_label(self, text: String) -> PreonComponentBuilder<T> {
+        self.start_label(text).end()
+    }
+
+    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
+        self.start_label_str(text).end()
     }
 }
 

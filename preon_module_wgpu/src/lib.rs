@@ -1,18 +1,16 @@
 use log::info;
 use preon_engine::{
-    components::PreonCustomComponentStack, rendering::PreonRenderPass, PreonEngine,
+    components::PreonCustomComponentStack, rendering::PreonRenderPass, types::PreonVector,
+    PreonEngine,
 };
 use shapes::ShapeManager;
-use texture::Texture;
 use winit::{dpi::PhysicalSize, window::Window};
 
 mod instancing;
 mod shapes;
 mod texture;
-pub mod fonts;
 
 pub mod preon {
-
     use preon_engine::{
         components::{PreonComponent, PreonCustomComponentStack},
         events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
@@ -20,6 +18,7 @@ pub mod preon {
         PreonEngine,
     };
     use winit::{
+        dpi::PhysicalSize,
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -36,7 +35,8 @@ pub mod preon {
     {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            // .with_visible(false)
+            .with_inner_size(PhysicalSize::new(800u32, 600u32))
+            .with_visible(false)
             .build(&event_loop)
             .unwrap();
 
@@ -139,7 +139,7 @@ pub mod preon {
                     ..
                 } => {
                     if logo && !shift && !ctrl && !alt {
-                        callback(&PreonEvent::WindowClosed);
+                        user_events.push(PreonUserEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
                     }
                 }
@@ -154,7 +154,7 @@ pub mod preon {
                     ..
                 } => {
                     if alt && !ctrl && !shift && !logo {
-                        callback(&PreonEvent::WindowClosed);
+                        user_events.push(PreonUserEvent::WindowClosed);
                         *control_flow = ControlFlow::Exit;
                     }
                 }
@@ -171,42 +171,45 @@ pub struct PreonRendererWGPU {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: PhysicalSize<u32>,
-    depth_texture: Texture,
     shape_manager: ShapeManager,
 }
 
 impl PreonRendererWGPU {
     pub fn new<T: PreonCustomComponentStack>(window: &Window, engine: &PreonEngine<T>) -> Self {
-        let task = async {
-            #[cfg(feature = "android")]
-            {
-                info!("Detected android platform (--features android), waiting for NativeWindow...");
+        #[cfg(feature = "android")]
+        {
+            info!(
+                "Detected android platform (--features android), waiting for NativeWindow..."
+            );
 
-                loop {
-                    match ndk_glue::native_window().as_ref() {
-                        Some(_) => break,
-                        None => ()
-                    }
+            loop {
+                match ndk_glue::native_window().as_ref() {
+                    Some(_) => break,
+                    None => (),
                 }
-
-                info!("Got NativeWindow.");
             }
 
-            info!("Initializing Surface...");
+            info!("Got NativeWindow.");
+        }
 
-            let size = window.inner_size();
-            let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
-            let instance = wgpu::Instance::new(backend);
-            let surface = unsafe { instance.create_surface(window) };
-            let adapter = wgpu::util::initialize_adapter_from_env_or_default(
+        info!("Initializing Surface...");
+
+        let size = window.inner_size();
+        let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
+        let instance = wgpu::Instance::new(backend);
+        let surface = unsafe { instance.create_surface(window) };
+        let adapter = pollster::block_on(async {
+            wgpu::util::initialize_adapter_from_env_or_default(
                 &instance,
                 backend,
                 Some(&surface),
             )
             .await
-            .expect("No suitable graphics adapters found.");
+            .expect("No suitable graphics adapters found.")
+        });
 
-            let (device, queue) = adapter
+        let (device, queue) = pollster::block_on(async {
+            adapter
                 .request_device(
                     &wgpu::DeviceDescriptor {
                         features: wgpu::Features::empty(),
@@ -217,43 +220,23 @@ impl PreonRendererWGPU {
                     None,
                 )
                 .await
-                .unwrap();
+                .unwrap()
+        });
 
-            let config = wgpu::SurfaceConfiguration {
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format: surface.get_preferred_format(&adapter).unwrap(),
-                width: size.width,
-                height: size.height,
-                present_mode: wgpu::PresentMode::Fifo,
-            };
-            surface.configure(&device, &config);
-
-            info!("Creating depth buffer...");
-            let depth_texture = Texture::new_depth(&device, &config);
-
-            info!("Init ShapeManager...");
-            let shape_manager = ShapeManager::new(
-                &device,
-                &config,
-                &queue,
-                &engine.static_render_data.textures,
-            );
-
-            (
-                surface,
-                device,
-                queue,
-                config,
-                size,
-                depth_texture,
-                shape_manager,
-            )
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface.get_preferred_format(&adapter).unwrap(),
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
         };
+        surface.configure(&device, &config);
 
-        let (surface, device, queue, config, size, depth_texture, shape_manager) =
-            pollster::block_on(task);
+        info!("Init ShapeManager...");
+        let shape_manager =
+            ShapeManager::new(&device, &config, &queue, &engine.static_render_data);
 
-        info!("Initialized!");
+        info!("WGPU Initialized!");
 
         Self {
             surface,
@@ -261,20 +244,27 @@ impl PreonRendererWGPU {
             queue,
             config,
             size,
-            depth_texture,
             shape_manager,
         }
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
+        info!(
+            "Resize requested for new_size: {}x{}",
+            new_size.width, new_size.height
+        );
+
         if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+            self.shape_manager
+                .resize(new_size, &self.queue, &self.device, &self.config);
 
-            self.depth_texture = Texture::new_depth(&self.device, &self.config);
-            self.shape_manager.resize(new_size, &self.queue);
+            info!("Accepted!");
+        } else {
+            info!("Requested size was too small.")
         }
     }
 
@@ -293,32 +283,12 @@ impl PreonRendererWGPU {
                 });
 
             {
-                let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Render Pass"),
-                    color_attachments: &[wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.006022458,
-                                g: 0.006022458,
-                                b: 0.006022458,
-                                a: 1.0,
-                            }),
-                            store: true,
-                        },
-                    }],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
-                        }),
-                        stencil_ops: None,
-                    }),
-                });
-
-                self.shape_manager.render(render_pass);
+                self.shape_manager.render(
+                    PreonVector::new(self.config.width as i32, self.config.height as i32),
+                    &view,
+                    &self.device,
+                    &mut encoder,
+                );
             }
 
             self.queue.submit(Some(encoder.finish()));
@@ -328,7 +298,7 @@ impl PreonRendererWGPU {
         };
 
         match res {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
             Err(wgpu::SurfaceError::OutOfMemory) => return true,
             Err(e) => eprintln!("{:?}", e),
