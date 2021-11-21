@@ -178,9 +178,7 @@ impl PreonRendererWGPU {
     pub fn new<T: PreonCustomComponentStack>(window: &Window, engine: &PreonEngine<T>) -> Self {
         #[cfg(feature = "android")]
         {
-            info!(
-                "Detected android platform (--features android), waiting for NativeWindow..."
-            );
+            info!("Detected android platform (--features android), waiting for NativeWindow...");
 
             loop {
                 match ndk_glue::native_window().as_ref() {
@@ -199,13 +197,9 @@ impl PreonRendererWGPU {
         let instance = wgpu::Instance::new(backend);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = pollster::block_on(async {
-            wgpu::util::initialize_adapter_from_env_or_default(
-                &instance,
-                backend,
-                Some(&surface),
-            )
-            .await
-            .expect("No suitable graphics adapters found.")
+            wgpu::util::initialize_adapter_from_env_or_default(&instance, backend, Some(&surface))
+                .await
+                .expect("No suitable graphics adapters found.")
         });
 
         let (device, queue) = pollster::block_on(async {
@@ -233,8 +227,7 @@ impl PreonRendererWGPU {
         surface.configure(&device, &config);
 
         info!("Init ShapeManager...");
-        let shape_manager =
-            ShapeManager::new(&device, &config, &queue, &engine.static_render_data);
+        let shape_manager = ShapeManager::new(&device, &config, &queue, &engine.static_render_data);
 
         info!("WGPU Initialized!");
 

@@ -52,8 +52,8 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         path.reverse();
     }
 
-    pub fn get_child_recursive(&mut self, path: &Vec<usize>) -> PreonComponent<T> {
-        let mut _path = path.clone();
+    pub fn get_child_recursive(&mut self, path: &[usize]) -> PreonComponent<T> {
+        let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
@@ -63,8 +63,8 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn get_child_ref_recursive(&mut self, path: &Vec<usize>) -> &PreonComponent<T> {
-        let mut _path = path.clone();
+    pub fn get_child_ref_recursive(&mut self, path: &[usize]) -> &PreonComponent<T> {
+        let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
@@ -75,8 +75,8 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn get_child_ref_mut_recursive(&mut self, path: &Vec<usize>) -> &mut PreonComponent<T> {
-        let mut _path = path.clone();
+    pub fn get_child_ref_mut_recursive(&mut self, path: &[usize]) -> &mut PreonComponent<T> {
+        let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
@@ -87,8 +87,8 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn return_child_recursive(&mut self, child: PreonComponent<T>, path: &Vec<usize>) {
-        let mut _path = path.clone();
+    pub fn return_child_recursive(&mut self, child: PreonComponent<T>, path: &[usize]) {
+        let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
@@ -172,7 +172,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             let mut children = self.children.take().unwrap();
             children.remove(id);
 
-            if children.len() == 0 {
+            if children.is_empty() {
                 self.children = None;
             } else {
                 self.children = Some(children);
@@ -614,6 +614,7 @@ pub trait PreonCustomComponentStack: Debug {
                 PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
                 _ => {}
             },
+            #[allow(clippy::single_match)]
             PreonComponentRenderStage::Border { .. } => match component.data {
                 PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
                 _ => {}
@@ -690,6 +691,7 @@ pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
     stack: Vec<PreonComponent<T>>,
 }
 
+#[allow(clippy::new_without_default)]
 impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     pub fn new() -> PreonComponentBuilder<T> {
         Self {
@@ -742,42 +744,42 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
 
     pub fn fit_children(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::FIT;
+        component.model.size_flags |= size::FIT;
         self.stack.push(component);
         self
     }
 
     pub fn fit_children_horizontally(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::horizontal::FIT;
+        component.model.size_flags |= size::horizontal::FIT;
         self.stack.push(component);
         self
     }
 
     pub fn fit_children_vertically(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::vertical::FIT;
+        component.model.size_flags |= size::vertical::FIT;
         self.stack.push(component);
         self
     }
 
     pub fn expand(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::EXPAND;
+        component.model.size_flags |= size::EXPAND;
         self.stack.push(component);
         self
     }
 
     pub fn expand_horizontally(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::horizontal::EXPAND;
+        component.model.size_flags |= size::horizontal::EXPAND;
         self.stack.push(component);
         self
     }
 
     pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags = component.model.size_flags | size::vertical::EXPAND;
+        component.model.size_flags |= size::vertical::EXPAND;
         self.stack.push(component);
         self
     }

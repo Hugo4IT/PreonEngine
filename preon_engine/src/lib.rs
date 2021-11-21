@@ -193,7 +193,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
         let mut tree = self.tree.take().unwrap();
 
-        let rerender = if user_events.len() > 0 || self.events.len() > 0 {
+        let rerender = if !user_events.is_empty() || !self.events.is_empty() {
             let mut update_layout = false;
 
             user_events.pull(|f| match f {

@@ -1,9 +1,7 @@
 [workspace]
 members = [
     "preon_module_wgpu",
-    "bbcode_parser",
     "preon_engine",
-    "preon_data",
     "demo"
 ]
 resolver = "2"

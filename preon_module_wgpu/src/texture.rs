@@ -28,7 +28,7 @@ impl Texture {
                 .as_rgba8()
                 .unwrap()
                 .pixels()
-                .flat_map(|p| p.0.iter().map(|b| *b))
+                .flat_map(|p| p.0.iter().copied())
                 .collect::<Vec<u8>>()
                 .as_slice(),
             wgpu::Extent3d {
@@ -228,7 +228,7 @@ impl TextureSheet {
                         .as_rgba8()
                         .unwrap()
                         .pixels()
-                        .flat_map(|p| p.0.iter().map(|b| *b))
+                        .flat_map(|p| p.0.iter().copied())
                         .collect::<Vec<u8>>(),
                     dimensions,
                 });
@@ -357,12 +357,7 @@ impl TextureSheet {
         Self::new(buffer, size, indices, device, queue)
     }
 
-    fn store_cache(
-        cache_path: PathBuf,
-        buffer: &Vec<u8>,
-        indices: &Vec<[f32; 4]>,
-        size: wgpu::Extent3d,
-    ) {
+    fn store_cache(cache_path: PathBuf, buffer: &[u8], indices: &[[f32; 4]], size: wgpu::Extent3d) {
         info!("Caching newly stitched texture...");
         let mut file = OpenOptions::new()
             .write(true)
@@ -380,7 +375,7 @@ impl TextureSheet {
         }
         write_buffer.append(&mut size.width.to_ne_bytes().to_vec());
         write_buffer.append(&mut size.height.to_ne_bytes().to_vec());
-        write_buffer.append(&mut buffer.clone());
+        write_buffer.append(&mut buffer.to_vec());
         file.write_all(write_buffer.as_slice()).unwrap();
     }
 }

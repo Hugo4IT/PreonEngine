@@ -52,6 +52,7 @@ pub struct PreonEventEmitter<T: Clone> {
     buffer: Vec<T>,
 }
 
+#[allow(clippy::new_without_default)]
 impl<T: Clone> PreonEventEmitter<T> {
     pub fn new() -> PreonEventEmitter<T> {
         PreonEventEmitter {
@@ -65,8 +66,7 @@ impl<T: Clone> PreonEventEmitter<T> {
     }
 
     pub fn pull<F: FnMut(T)>(&self, mut handler: F) {
-        let mut events = self.events.iter();
-        while let Some(item) = events.next() {
+        for item in self.events.iter() {
             handler(item.clone());
         }
     }
@@ -78,6 +78,11 @@ impl<T: Clone> PreonEventEmitter<T> {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
     }
 
     #[inline(always)]

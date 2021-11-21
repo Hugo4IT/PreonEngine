@@ -42,7 +42,7 @@ impl ShapeManager {
         static_render_data: &PreonStaticRenderData,
     ) -> Self {
         info!("Creating depth buffer...");
-        let depth_texture = Texture::new_depth(&device, &config);
+        let depth_texture = Texture::new_depth(device, config);
 
         info!("Initializing buffers...");
         let transform = Transform::new(device);
@@ -118,7 +118,7 @@ impl ShapeManager {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -159,7 +159,7 @@ impl ShapeManager {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
     ) {
-        self.depth_texture = Texture::new_depth(&device, &config);
+        self.depth_texture = Texture::new_depth(device, config);
         self.transform.resize(new_size, queue);
     }
 }
