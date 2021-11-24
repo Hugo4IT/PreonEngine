@@ -245,7 +245,7 @@ impl PreonColor {
     /// ### Editor Integration
     ///
     /// To get a visual preview of your colors in Visual Studio Code, use the [Colorize](https://marketplace.visualstudio.com/items?itemName=kamikillerto.vscode-colorize) extension, and add [this](https://gist.github.com/Hugo4IT/0defde4eb0bf1c8cac093498c9d474fd) to your `settings.json`
-    pub fn from_hex(hex: &'static str) -> PreonColor {
+    pub fn from_hex(hex: &str) -> PreonColor {
         let cleaned = hex.replace("#", "").replace("0x", "");
         if cleaned.len() <= 4usize {
             PreonColor::from_rgba8(

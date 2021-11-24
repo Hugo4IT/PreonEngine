@@ -48,6 +48,7 @@ use std::any::Any;
 
 use components::{PreonComponent, PreonCustomComponentStack};
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
+use log::{info, log_enabled};
 use rendering::{PreonRenderPass, PreonStaticRenderData};
 
 use self::types::PreonVector;

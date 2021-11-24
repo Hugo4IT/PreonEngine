@@ -31,7 +31,7 @@ pub fn app() {
             ]
         },
         PreonComponentBuilder::new()
-            .start_panel("#da0037")
+            .start_panel_hex("#da0037")
                 .with_min_size(0, 60)
                 .expand_horizontally()
                 .start_static_texture(0)
@@ -41,14 +41,14 @@ pub fn app() {
             .end()
             .start_hbox()
                 .expand()
-                .start_panel("#ffffff")
+                .start_panel_hex("#ffffff")
                     .with_min_size(300, 0)
                     .expand_vertically()
                     .with_padding(PreonBorder::from_single(16))
                     .start_vbox()
                         .fit_children_vertically()
                         .expand_horizontally()
-                        .start_panel("#c4c4c4")
+                        .start_panel_hex("#c4c4c4")
                             .with_min_size(0, 48)
                             .expand_horizontally()
                             .store_path(&mut first_panel)
@@ -68,7 +68,7 @@ pub fn app() {
                         .store_path(&mut panel_list)
                     .end()
                 .end()
-                .empty_panel("#d3d3d3")
+                .empty_panel_hex("#d3d3d3")
             .end()
         .build(),
     );

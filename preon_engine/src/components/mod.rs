@@ -1,5 +1,7 @@
 use std::{any::Any, fmt::Debug, str::FromStr};
 
+use log::info;
+
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
     size,
@@ -715,6 +717,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_margin(mut self, margin: PreonBorder) -> PreonComponentBuilder<T> {
+        info!("with margin: {}", margin);
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.margin = margin;
         self.stack.push(component);
@@ -722,6 +726,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_padding(mut self, padding: PreonBorder) -> PreonComponentBuilder<T> {
+        info!("with padding: {}", padding);
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.padding = padding;
         self.stack.push(component);
@@ -729,6 +735,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_min_size(mut self, x: i32, y: i32) -> PreonComponentBuilder<T> {
+        info!("with min_size: {}x{}", x, y);
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.min_size = PreonVector::new(x, y);
         self.stack.push(component);
@@ -736,6 +744,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_border(mut self, border: PreonBorder) -> PreonComponentBuilder<T> {
+        info!("with border: {}", border);
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.border = border;
         self.stack.push(component);
@@ -743,6 +753,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children(mut self) -> PreonComponentBuilder<T> {
+        info!("fit children");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::FIT;
         self.stack.push(component);
@@ -750,6 +762,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children_horizontally(mut self) -> PreonComponentBuilder<T> {
+        info!("fit children horizontally");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::horizontal::FIT;
         self.stack.push(component);
@@ -757,6 +771,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children_vertically(mut self) -> PreonComponentBuilder<T> {
+        info!("fit children vertically");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::vertical::FIT;
         self.stack.push(component);
@@ -764,6 +780,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand(mut self) -> PreonComponentBuilder<T> {
+        info!("expand");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::EXPAND;
         self.stack.push(component);
@@ -771,6 +789,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand_horizontally(mut self) -> PreonComponentBuilder<T> {
+        info!("expand horizontally");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::horizontal::EXPAND;
         self.stack.push(component);
@@ -778,6 +798,8 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
+        info!("expand vertically");
+
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::vertical::EXPAND;
         self.stack.push(component);
@@ -850,11 +872,15 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn end(mut self) -> PreonComponentBuilder<T> {
+        info!("end");
+
         let child = self.stack.pop().unwrap();
         self.with_child(child)
     }
 
     pub fn build(mut self) -> PreonComponent<T> {
+        info!("build");
+
         self.stack.pop().unwrap()
     }
 }
@@ -866,6 +892,8 @@ pub trait AddVBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
     fn start_vbox(mut self) -> PreonComponentBuilder<T> {
+        info!("start vbox");
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::VBox {
                 align: PreonAlignment::Start,
@@ -889,6 +917,8 @@ pub trait AddHBox<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
     fn start_hbox(mut self) -> PreonComponentBuilder<T> {
+        info!("start hbox");
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::HBox {
                 align: PreonAlignment::Start,
@@ -906,24 +936,50 @@ impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
 }
 
 pub trait AddPanel<T: PreonCustomComponentStack> {
-    fn start_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
-    fn empty_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
+    fn start_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
+    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
+    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
+    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
+    fn panel_color(self, color: PreonColor) -> PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
-    fn start_panel(mut self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+    fn start_panel(mut self, color: PreonColor) -> PreonComponentBuilder<T> {
+        info!("start panel");
+
         self.stack.push(PreonComponent {
-            data: PreonComponentStack::Panel {
-                color: PreonColor::from_hex(hex_color),
-            },
+            data: PreonComponentStack::Panel { color },
             ..Default::default()
         });
 
         self
     }
 
-    fn empty_panel(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
-        self.start_panel(hex_color).expand().end()
+    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T> {
+        self.start_panel(color).end()
+    }
+
+    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+        self.start_panel(PreonColor::from_hex(hex_color))
+    }
+
+    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+        self.start_panel_hex(hex_color).expand().end()
+    }
+
+    fn panel_color(mut self, in_color: PreonColor) -> PreonComponentBuilder<T> {
+        info!("panel color: {}", in_color);
+
+        let mut component = self.stack.pop().unwrap();
+
+        if let PreonComponentStack::Panel { ref mut color } = component.data {
+            *color = in_color;
+        } else {
+            panic!("")
+        }
+
+        self.stack.push(component);
+        self
     }
 }
 
@@ -933,6 +989,8 @@ pub trait AddStaticTexture<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder<T> {
     fn start_static_texture(mut self, index: usize) -> PreonComponentBuilder<T> {
+        info!("start static texture: {}", index);
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::StaticTexture {
                 texture_index: index,
@@ -953,6 +1011,8 @@ pub trait AddLabel<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
     fn start_label(mut self, text: String) -> PreonComponentBuilder<T> {
+        info!("start label: {}", text);
+
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Label {
                 text,
