@@ -182,6 +182,10 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent<T>) -> Self {
+        if log_enabled!(log::Level::Info) {
+            info!("{}", tree.print_tree(0))
+        }
+
         Self {
             tree: Some(tree),
             events: PreonEventEmitter::new(),

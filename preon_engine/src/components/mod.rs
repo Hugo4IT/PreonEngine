@@ -31,6 +31,22 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
+    pub fn print_tree(&self, indent_level: usize) -> String {
+        let child_indent_level = indent_level + 1;
+        let indents = String::from("  ").repeat(indent_level);
+        let mut children_strings = String::new();
+        self.children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|c| c.as_ref().unwrap().print_tree(child_indent_level))
+            .collect::<Vec<String>>()
+            .drain(..)
+            .for_each(|s| children_strings.push_str(&s));
+
+        format!("{}{:?}:\n{}", indents, self.data, children_strings)
+    }
+
     pub fn validate(&mut self, path: &mut Vec<usize>) {
         let mut current = self;
         path.reverse();
