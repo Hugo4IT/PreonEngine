@@ -305,20 +305,6 @@ impl PreonColor {
         }
     }
 
-    /// Get the value of the PreonColor without color space conversion applied.
-    ///
-    /// ### Performance
-    ///
-    /// This function reverts the conversion every time it is called, due to it being a pretty expensive operation, using this at runtime is discouraged
-    pub fn as_linear(&self) -> PreonColor {
-        PreonColor {
-            r: self.r.powf(1.0 / 2.2),
-            g: self.g.powf(1.0 / 2.2),
-            b: self.b.powf(1.0 / 2.2),
-            a: self.a,
-        }
-    }
-
     /// Multiplies the color's values (excluding alpha) by `1.0 + amount`, making them brighter. If you want to keep this PreonColor the same, but also get a lighter version of it, see [`Self::lightened()`]
     pub fn lighten(&mut self, amount: f32) {
         let Self { r, g, b, .. } = self.lightened(amount);
@@ -329,7 +315,7 @@ impl PreonColor {
 
     /// Returns a copy of `self` where all color values (excluding alpha) are multiplied by `1.0 + amount`, making them brighter. If you want to mutate `self` instead of copying, see [`Self::lighten()`]
     pub fn lightened(&self, amount: f32) -> PreonColor {
-        let linear = self.as_linear();
+        let linear = self.into_linear();
 
         PreonColor::from_rgba(
             linear.r * (1.0 + amount),
@@ -349,7 +335,7 @@ impl PreonColor {
 
     /// Returns a copy of `self` where all color values (excluding alpha) are multiplied by `1.0 - amount`, making them darker. If you want to mutate `self` instead of copying, see [`Self::darken()`]
     pub fn darkened(&self, amount: f32) -> PreonColor {
-        let linear = self.as_linear();
+        let linear = self.into_linear();
 
         PreonColor::from_rgba(
             linear.r * (1.0 - amount),
@@ -357,6 +343,20 @@ impl PreonColor {
             linear.b * (1.0 - amount),
             self.a,
         )
+    }
+
+    /// Get the value of the PreonColor without color space conversion applied.
+    ///
+    /// ### Performance
+    ///
+    /// This function reverts the conversion every time it is called, due to it being a pretty expensive operation, using this at runtime is discouraged
+    pub fn into_linear(&self) -> PreonColor {
+        PreonColor {
+            r: self.r.powf(1.0 / 2.2),
+            g: self.g.powf(1.0 / 2.2),
+            b: self.b.powf(1.0 / 2.2),
+            a: self.a,
+        }
     }
 
     /// Break a copy of `self` into a tuple of 4 f32's (r, g, b, a)
@@ -368,15 +368,25 @@ impl PreonColor {
     pub fn into_f64_tuple(&self) -> (f64, f64, f64, f64) {
         (self.r as f64, self.g as f64, self.b as f64, self.a as f64)
     }
+
+    pub fn into_rgba8_tuple(&self) -> (u8, u8, u8, u8) {
+        (
+            (self.r * 255.0) as u8,
+            (self.g * 255.0) as u8,
+            (self.b * 255.0) as u8,
+            (self.a * 255.0) as u8,
+        )
+    }
+
+    pub fn into_hex(&self) -> String {
+        let (r, g, b, a) = self.into_linear().into_rgba8_tuple();
+        format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a)
+    }
 }
 
 impl Display for PreonColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "R: {}, G: {}, B: {}, A: {}",
-            self.r, self.g, self.b, self.a
-        )
+        write!(f, "{}", self.into_hex())
     }
 }
 
@@ -448,11 +458,8 @@ impl Display for PreonBorder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            " ___{:2}___  \
-            \n |      |  \
-            \n{:2}     {:2} \
-            \n |__{:2}__|",
-            self.top, self.left, self.right, self.bottom
+            "t: {}, r: {}, b: {}, l: {}",
+            self.top, self.right, self.bottom, self.left
         )
     }
 }
@@ -516,11 +523,7 @@ impl Display for PreonCorners {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:2}______{:2} \
-            \n |      |     \
-            \n |      |     \
-            \n |______|     \
-            \n{:2}      {:2}",
+            "tl: {}, tr: {}, bl: {}, br: {}",
             self.top_left, self.top_right, self.bottom_left, self.bottom_right
         )
     }
@@ -559,11 +562,69 @@ impl Default for PreonBox {
 
 impl Display for PreonBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Margin:\n\n{}\n\nPadding:\n\n{}\n\nBorder:\n\n{}\n\nSizeFlags: {:08b}\nMinSize: {}",
-            self.margin, self.padding, self.border, self.size_flags, self.min_size
-        )
+        let Self {
+            margin,
+            padding,
+            border,
+            size_flags,
+            min_size,
+        } = Self::default();
+
+        let mut result = String::new();
+
+        fn push_result(dest: &mut String, res: &str) {
+            if dest.is_empty() {
+                dest.push_str(res)
+            } else {
+                dest.push_str(&format!(", {}", res))
+            }
+        }
+
+        if self.margin != margin {
+            push_result(&mut result, &format!("margin: {}", self.margin))
+        }
+        if self.padding != padding {
+            push_result(&mut result, &format!("padding: {}", self.padding))
+        }
+        if self.border != border {
+            push_result(&mut result, &format!("border: {}", self.border))
+        }
+
+        if self.size_flags != size_flags {
+            let mut flags = String::new();
+
+            fn push_flag(dest: &mut String, flg: &str) {
+                if dest.is_empty() {
+                    dest.push_str(flg);
+                } else {
+                    dest.push_str(&format!(" | {}", flg));
+                }
+            }
+
+            if self.has_flag(size::FIT) {
+                push_flag(&mut flags, "FIT");
+            } else if self.has_flag(size::horizontal::FIT) {
+                push_flag(&mut flags, "HORIZONTAL_FIT");
+            } else if self.has_flag(size::vertical::FIT) {
+                push_flag(&mut flags, "VERTICAL_FIT");
+            }
+
+            if self.has_flag(size::EXPAND) {
+                push_flag(&mut flags, "EXPAND");
+            } else if self.has_flag(size::horizontal::EXPAND) {
+                push_flag(&mut flags, "HORIZONTAL_EXPAND");
+            } else if self.has_flag(size::vertical::EXPAND) {
+                push_flag(&mut flags, "VERTICAL_EXPAND");
+            }
+
+            push_result(&mut result, &format!("size_flags: {}", flags));
+        }
+
+        if self.min_size != min_size {
+            push_result(&mut result, &format!("min_size: {}", self.min_size));
+        }
+
+        write!(f, "{}", result)
     }
 }
 
@@ -578,5 +639,20 @@ pub enum PreonAlignment {
 impl Default for PreonAlignment {
     fn default() -> Self {
         Self::Start
+    }
+}
+
+impl Display for PreonAlignment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                PreonAlignment::Start => "Start",
+                PreonAlignment::Center => "Center",
+                PreonAlignment::End => "End",
+                PreonAlignment::Spread => "Spread",
+            }
+        )
     }
 }

@@ -1,4 +1,4 @@
-use std::{any::Any, fmt::Debug, str::FromStr};
+use std::{fmt::Debug, str::FromStr};
 
 use log::info;
 
@@ -32,19 +32,31 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
     }
 
     pub fn print_tree(&self, indent_level: usize) -> String {
-        let child_indent_level = indent_level + 1;
-        let indents = String::from("  ").repeat(indent_level);
+        let indents = String::from("    ").repeat(indent_level);
         let mut children_strings = String::new();
-        self.children
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|c| c.as_ref().unwrap().print_tree(child_indent_level))
-            .collect::<Vec<String>>()
-            .drain(..)
-            .for_each(|s| children_strings.push_str(&s));
 
-        format!("{}{:?}:\n{}", indents, self.data, children_strings)
+        if let Some(children) = self.children.as_ref() {
+            children
+                .iter()
+                .map(|c| c.as_ref().unwrap().print_tree(indent_level + 1))
+                .collect::<Vec<String>>()
+                .drain(..)
+                .for_each(|s| children_strings.push_str(&format!("\n{}", s)));
+        }
+
+        let (name, attributes) = T::display(&self.data);
+
+        let mut extra = String::new();
+        if !attributes.is_empty() {
+            extra.push_str(&format!("\n{}  {}", indents, attributes));
+        }
+
+        let model = format!("{}", self.model);
+        if !model.is_empty() {
+            extra.push_str(&format!("\n{}  {}", indents, model))
+        }
+
+        format!("{}- {}{}{}", indents, name, extra, children_strings,)
     }
 
     pub fn validate(&mut self, path: &mut Vec<usize>) {
@@ -174,7 +186,6 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         } else {
             self.children = Some(vec![Some(child)]);
 
-            #[cfg(debug_assertions)]
             if id > 0 {
                 eprintln!(
                     "You're trying to add a child to component {:?} at index {}, but not enough children are present.",
@@ -356,19 +367,48 @@ pub enum PreonComponentRenderStage {
     },
 }
 
-pub trait PreonCustomComponentStack: Debug {
-    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(comp: &mut PreonComponent<T>);
-    fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
-        stage: PreonComponentRenderStage,
-        component: &mut PreonComponent<T>,
-        pass: &mut PreonRenderPass,
-    );
+pub trait PreonCustomComponentStack: Debug + Sized {
+    fn custom_layout(_comp: &mut PreonComponent<Self>) {}
+    fn custom_render(
+        _stage: PreonComponentRenderStage,
+        _component: &mut PreonComponent<Self>,
+        _pass: &mut PreonRenderPass,
+    ) {
+    }
+    fn custom_display<'a>(_data: &Self) -> (String, String) {
+        (String::new(), String::new())
+    }
 
-    fn layout<T: PreonCustomComponentStack + Any + 'static>(mut component: &mut PreonComponent<T>) {
+    fn display<'a>(data: &PreonComponentStack<Self>) -> (String, String) {
+        let (name, attributes) = match *data {
+            PreonComponentStack::Custom(ref d) => return Self::custom_display(d),
+            PreonComponentStack::Dummy => ("Dummy", String::new()),
+            PreonComponentStack::Label {
+                ref text,
+                font_index,
+            } => ("Label", format!("font: {}, text: \"{}\"", font_index, text)),
+            PreonComponentStack::StaticTexture { texture_index } => {
+                ("StaticTexture", format!("index: {}", texture_index))
+            }
+            PreonComponentStack::Panel { color } => ("Panel", format!("color: \"{}\"", color)),
+            PreonComponentStack::HBox { align, cross_align } => (
+                "HBox",
+                format!("align: {}, cross_align: {}", align, cross_align),
+            ),
+            PreonComponentStack::VBox { align, cross_align } => (
+                "VBox",
+                format!("align: {}, cross_align: {}", align, cross_align),
+            ),
+        };
+
+        (String::from_str(name).unwrap(), attributes)
+    }
+
+    fn layout(mut component: &mut PreonComponent<Self>) {
         component.index_updates.clear();
 
         match component.data {
-            PreonComponentStack::Custom(_) => T::custom_layout::<T>(&mut component),
+            PreonComponentStack::Custom(_) => Self::custom_layout(component),
             PreonComponentStack::Panel { .. } => {
                 if component.children.is_some() {
                     let mut children = component.children.take().unwrap();
@@ -574,7 +614,7 @@ pub trait PreonCustomComponentStack: Debug {
         if let Some(mut children) = component.children.take() {
             for child in children.iter_mut() {
                 if let Some(child) = child.as_mut() {
-                    T::layout(child);
+                    Self::layout(child);
                 }
             }
 
@@ -582,10 +622,7 @@ pub trait PreonCustomComponentStack: Debug {
         }
     }
 
-    fn render<T: PreonCustomComponentStack + 'static>(
-        component: &mut PreonComponent<T>,
-        pass: &mut PreonRenderPass,
-    ) {
+    fn render(component: &mut PreonComponent<Self>, pass: &mut PreonRenderPass) {
         let mut stages = vec![
             PreonComponentRenderStage::Border {
                 position: component.get_border_position(),
@@ -604,7 +641,7 @@ pub trait PreonCustomComponentStack: Debug {
 
         stages.drain(..).for_each(|stage| match stage {
             PreonComponentRenderStage::Background { position, size } => match component.data {
-                PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
+                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
                 PreonComponentStack::Panel { color } => pass.push(PreonShape::Rect {
                     position,
                     size,
@@ -629,12 +666,12 @@ pub trait PreonCustomComponentStack: Debug {
                     size,
                     text: text.clone(),
                 }),
-                PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
+                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
                 _ => {}
             },
             #[allow(clippy::single_match)]
             PreonComponentRenderStage::Border { .. } => match component.data {
-                PreonComponentStack::Custom(_) => T::custom_render::<T>(stage, component, pass),
+                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
                 _ => {}
             },
         });
@@ -672,10 +709,10 @@ pub trait PreonCustomComponentStack: Debug {
                     .drain(..)
                     .map(|mut f| {
                         let mut comp = f.take().unwrap();
-                        T::render(&mut comp, pass);
+                        Self::render(&mut comp, pass);
                         Some(comp)
                     })
-                    .collect::<Vec<Option<PreonComponent<T>>>>(),
+                    .collect::<Vec<Option<PreonComponent<Self>>>>(),
             );
         }
     }
@@ -1055,14 +1092,4 @@ impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum NoCustomComponents {}
-
-impl PreonCustomComponentStack for NoCustomComponents {
-    fn custom_layout<T: PreonCustomComponentStack + Any + 'static>(_: &mut PreonComponent<T>) {}
-
-    fn custom_render<T: PreonCustomComponentStack + Any + 'static>(
-        _: PreonComponentRenderStage,
-        _: &mut PreonComponent<T>,
-        _: &mut PreonRenderPass,
-    ) {
-    }
-}
+impl PreonCustomComponentStack for NoCustomComponents {}

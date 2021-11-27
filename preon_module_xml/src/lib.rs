@@ -2,7 +2,7 @@ use std::{borrow::Cow, str::FromStr};
 
 use log::{error, info};
 use preon_engine::{
-    components::{AddHBox, AddPanel, AddVBox, PreonComponentBuilder, PreonCustomComponentStack},
+    components::{AddHBox, AddPanel, AddVBox, NoCustomComponents, PreonComponentBuilder},
     rendering::PreonStaticRenderData,
     types::{PreonBorder, PreonColor, PreonVector, PreonVectorAble},
     PreonEngine,
@@ -11,23 +11,6 @@ use quick_xml::{
     events::{attributes::Attribute, Event},
     Reader,
 };
-
-#[derive(Debug, Clone)]
-pub enum XMLComponentStack {}
-
-impl PreonCustomComponentStack for XMLComponentStack {
-    fn custom_layout<T: PreonCustomComponentStack + std::any::Any + 'static>(
-        comp: &mut preon_engine::components::PreonComponent<T>,
-    ) {
-    }
-
-    fn custom_render<T: PreonCustomComponentStack + std::any::Any + 'static>(
-        stage: preon_engine::components::PreonComponentRenderStage,
-        component: &mut preon_engine::components::PreonComponent<T>,
-        pass: &mut preon_engine::rendering::PreonRenderPass,
-    ) {
-    }
-}
 
 pub trait ParseXMLAttribute {
     fn parse_xml(input: String) -> Self;
@@ -89,7 +72,7 @@ pub fn get_variable<T: ParseXMLAttribute>(value: String) -> Option<T> {
     }
 }
 
-pub fn get_engine_from_xml(file_buffer: &str) -> PreonEngine<XMLComponentStack> {
+pub fn get_engine_from_xml(file_buffer: &str) -> PreonEngine<NoCustomComponents> {
     let mut reader = Reader::from_str(file_buffer);
     reader.trim_text(true);
     reader.expand_empty_elements(true);
@@ -115,10 +98,12 @@ pub fn get_engine_from_xml(file_buffer: &str) -> PreonEngine<XMLComponentStack> 
                                             String::from_utf8(
                                                 e.attributes()
                                                     .find(|a| a.as_ref().unwrap().key == b"color")
-                                                    .unwrap_or(Ok(Attribute {
-                                                        key: b"color",
-                                                        value: Cow::Owned(b"#ff0000".to_vec()),
-                                                    }))
+                                                    .unwrap_or_else(|| {
+                                                        Ok(Attribute {
+                                                            key: b"color",
+                                                            value: Cow::Owned(b"#ff0000".to_vec()),
+                                                        })
+                                                    })
                                                     .unwrap()
                                                     .value
                                                     .to_vec(),

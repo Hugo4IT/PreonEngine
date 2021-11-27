@@ -5,7 +5,5 @@ fn main() {
     env_logger::init();
 
     let engine = get_engine_from_xml(include_str!("../res/exampleApp.xml"));
-    preon::run(engine, |_, _, _| {
-
-    });
+    preon::run(engine, |_, _, _| {});
 }
