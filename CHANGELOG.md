@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PreonComponent::print_tree() -> String`
 - `PreonColor::into_rgba8_tuple() -> (u8, u8, u8, u8)`
 - `PreonAlignment::display()`
-- `AddPanel::panel_color()` -> Change panel color after `AddPanel::start_panel()`
+- `AddPanel::panel_color()` - Change panel color after `AddPanel::start_panel()`
 - `preon_module_xml` - Use XML files to create an app ([gh](https://github.com/Hugo4IT/PreonEngine/milestone/1))
 
 ### Changed
