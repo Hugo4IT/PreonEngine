@@ -53,5 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `preon_data` crate
+- `PreonComponent::get_child_recursive` and `PreonComponent::get_child` - Too hard to understand, completely unnecessary
 
 [Unreleased]: https://github.com/Hugo4IT/PreonEngine/

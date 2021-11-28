@@ -85,7 +85,7 @@ impl ShapeManager {
 
     /// Translate PreonRenderPass to instanced wgpu::RenderPass instructions, and apply z_index
     pub fn build(&mut self, pass: &PreonRenderPass, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let z_step = 1.0 / pass.len() as f32; // French DejaVu
+        let z_step = 1.0 / (pass.len() + 1) as f32;
 
         self.rect.instance_buffer.begin();
         self.static_texture.instance_buffer.begin();

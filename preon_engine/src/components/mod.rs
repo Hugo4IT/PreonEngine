@@ -82,25 +82,14 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         path.reverse();
     }
 
-    pub fn get_child_recursive(&mut self, path: &[usize]) -> PreonComponent<T> {
-        let mut _path = path.to_owned();
-        let index = _path.pop().unwrap();
-
-        if path.len() == 1 {
-            self.get_child(index)
-        } else {
-            self.get_child_ref_mut(index).get_child_recursive(&_path)
-        }
-    }
-
-    pub fn get_child_ref_recursive(&mut self, path: &[usize]) -> &PreonComponent<T> {
+    pub fn get_child_ref_recursive(&self, path: &[usize]) -> &PreonComponent<T> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
             self.get_child_ref(index)
         } else {
-            self.get_child_ref_mut(index)
+            self.get_child_ref(index)
                 .get_child_ref_recursive(&_path)
         }
     }
@@ -117,24 +106,11 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn return_child_recursive(&mut self, child: PreonComponent<T>, path: &[usize]) {
-        let mut _path = path.to_owned();
-        let index = _path.pop().unwrap();
-
-        if path.len() == 1 {
-            self.return_child(index, child)
-        } else {
-            self.get_child_ref_mut(index)
-                .return_child_recursive(child, &_path)
-        }
-    }
-
     pub fn get_child(&mut self, id: usize) -> PreonComponent<T> {
         self.children
             .as_mut()
             .unwrap()
             .get_mut(id)
-            .take()
             .unwrap()
             .take()
             .unwrap()
@@ -160,60 +136,27 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             .unwrap()
     }
 
-    pub fn return_child(&mut self, id: usize, child: PreonComponent<T>) {
-        let mut children = self.children.take().unwrap();
-        children[id] = Some(child);
-        self.children = Some(children);
-    }
-
     pub fn add_child(&mut self, child: PreonComponent<T>) {
-        if self.children.is_some() {
-            let mut children = self.children.take().unwrap();
+        if let Some(children) = self.children.as_mut() {
             children.push(Some(child));
-            self.children = Some(children);
         } else {
-            self.children = Some(vec![Some(child)]);
+            self.children.replace(vec![Some(child)]);
         }
     }
 
     pub fn insert_child(&mut self, id: usize, child: PreonComponent<T>) {
-        if self.children.is_some() {
-            let mut children = self.children.take().unwrap();
+        if let Some(children) = self.children.as_mut() {
             children.insert(id, Some(child));
-            self.children = Some(children);
-
-            self.index_updates.insert(0, id as isize);
         } else {
-            self.children = Some(vec![Some(child)]);
-
-            if id > 0 {
-                eprintln!(
-                    "You're trying to add a child to component {:?} at index {}, but not enough children are present.",
-                    self,
-                    id
-                );
-            }
+            self.children.replace(vec![Some(child)]);
         }
     }
 
     pub fn remove_child(&mut self, id: usize) {
-        if self.children.is_some() {
-            let mut children = self.children.take().unwrap();
+        if let Some(children) = self.children.as_mut() {
             children.remove(id);
-
-            if children.is_empty() {
-                self.children = None;
-            } else {
-                self.children = Some(children);
-            }
-
-            self.index_updates.insert(0, -(id as isize));
         } else {
-            eprintln!(
-                "You're trying to remove a child at index {} from component {:?}, but no child was found at the specified index.",
-                id,
-                self
-            );
+            eprintln!("component.remove_child was called, but the component had no children!")
         }
     }
 
@@ -351,6 +294,7 @@ impl<T: PreonCustomComponentStack> Default for PreonComponent<T> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum PreonComponentRenderStage {
     Background {
         position: PreonVector<i32>,
@@ -375,11 +319,11 @@ pub trait PreonCustomComponentStack: Debug + Sized {
         _pass: &mut PreonRenderPass,
     ) {
     }
-    fn custom_display<'a>(_data: &Self) -> (String, String) {
+    fn custom_display(_data: &Self) -> (String, String) {
         (String::new(), String::new())
     }
 
-    fn display<'a>(data: &PreonComponentStack<Self>) -> (String, String) {
+    fn display(data: &PreonComponentStack<Self>) -> (String, String) {
         let (name, attributes) = match *data {
             PreonComponentStack::Custom(ref d) => return Self::custom_display(d),
             PreonComponentStack::Dummy => ("Dummy", String::new()),
@@ -404,39 +348,35 @@ pub trait PreonCustomComponentStack: Debug + Sized {
         (String::from_str(name).unwrap(), attributes)
     }
 
-    fn layout(mut component: &mut PreonComponent<Self>) {
+    fn layout(component: &mut PreonComponent<Self>) {
         component.index_updates.clear();
 
         match component.data {
             PreonComponentStack::Custom(_) => Self::custom_layout(component),
             PreonComponentStack::Panel { .. } => {
-                if component.children.is_some() {
-                    let mut children = component.children.take().unwrap();
-
-                    component.children = Some(
-                        children
-                            .drain(..)
-                            .map(|mut ch| {
-                                let mut child = ch.take().unwrap();
-                                child.set_outer_position(component.get_content_position());
-                                child.set_outer_size(component.get_content_size());
-                                Some(child)
-                            })
-                            .collect(),
-                    );
+                let position = component.get_content_position();
+                let size = component.get_content_size();
+                if let Some(children) = component.children.as_mut() {
+                    for child in children.iter_mut() {
+                        if let Some(child) = child.as_mut() {
+                            child.set_outer_position(position);
+                            child.set_outer_size(size);
+                        } else {
+                            eprintln!("A child was not returned before PreonEngine::update()!")
+                        }
+                    }
                 }
             }
             PreonComponentStack::VBox { align, cross_align } => {
-                if let Some(mut children) = component.children.take() {
+                if component.children.is_some() {
                     let mut height = 0;
                     let mut width = 0;
                     let mut expanding_children = 0;
                     let mut leftover_height = 0;
 
                     // Gather some data on the children
-                    children.iter_mut().for_each(|ch| {
-                        let child = ch.as_mut().unwrap();
-
+                    for child in component.children.as_ref().unwrap().iter() {
+                        let child = child.as_ref().unwrap();
                         let s = child.get_outer_size();
 
                         if child.model.has_flag(size::vertical::EXPAND) {
@@ -452,7 +392,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                         } else {
                             width = width.max(child.model.min_size.x);
                         }
-                    });
+                    }
 
                     let position = component.get_content_position();
                     let mut size = component.get_content_size();
@@ -469,8 +409,8 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                     // Correctly position everything
                     let mut y = 0;
 
-                    children.iter_mut().for_each(|ch| {
-                        let child = ch.as_mut().unwrap();
+                    for child in component.children.as_mut().unwrap().iter_mut() {
+                        let child = child.as_mut().unwrap();
 
                         if child.model.has_flag(size::vertical::EXPAND) {
                             child.set_outer_size_y((size.y - leftover_height) / expanding_children);
@@ -512,21 +452,19 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         y += child_size.y;
-                    });
-
-                    component.children = Some(children);
+                    }
                 }
             }
             PreonComponentStack::HBox { align, cross_align } => {
-                if let Some(mut children) = component.children.take() {
+                if component.children.is_some() {
                     let mut height = 0;
                     let mut width = 0;
                     let mut expanding_children = 0;
                     let mut leftover_width = 0;
 
                     // Gather some data on the children
-                    children.iter_mut().for_each(|ch| {
-                        let child = ch.as_mut().unwrap();
+                    for child in component.children.as_ref().unwrap().iter() {
+                        let child = child.as_ref().unwrap();
 
                         let s = child.get_outer_size();
 
@@ -543,7 +481,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                         } else {
                             height = height.max(child.model.min_size.y);
                         }
-                    });
+                    }
 
                     let position = component.get_content_position();
                     let mut size = component.get_content_size();
@@ -560,8 +498,8 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                     // Correctly position everything
                     let mut x = 0;
 
-                    children.iter_mut().for_each(|ch| {
-                        let child = ch.as_mut().unwrap();
+                    for child in component.children.as_mut().unwrap().iter_mut() {
+                        let child = child.as_mut().unwrap();
 
                         if child.model.has_flag(size::horizontal::EXPAND) {
                             child.set_outer_size_x((size.x - leftover_width) / expanding_children);
@@ -603,27 +541,21 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                         child.set_outer_position(position + PreonVector::new(x_position, y_position));
 
                         x += child_size.x;
-                    });
-
-                    component.children = Some(children);
+                    }
                 }
             }
             _ => {}
         }
 
-        if let Some(mut children) = component.children.take() {
+        if let Some(children) = component.children.as_mut() {
             for child in children.iter_mut() {
-                if let Some(child) = child.as_mut() {
-                    Self::layout(child);
-                }
+                Self::layout(child.as_mut().unwrap());
             }
-
-            component.children = Some(children);
         }
     }
 
     fn render(component: &mut PreonComponent<Self>, pass: &mut PreonRenderPass) {
-        let mut stages = vec![
+        let stages = [
             PreonComponentRenderStage::Border {
                 position: component.get_border_position(),
                 size: component.get_border_size(),
@@ -639,42 +571,42 @@ pub trait PreonCustomComponentStack: Debug + Sized {
             },
         ];
 
-        stages.drain(..).for_each(|stage| match stage {
-            PreonComponentRenderStage::Background { position, size } => match component.data {
-                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
-                PreonComponentStack::Panel { color } => pass.push(PreonShape::Rect {
-                    position,
-                    size,
-                    color,
-                }),
-                PreonComponentStack::StaticTexture { texture_index } => {
-                    pass.push(PreonShape::StaticTexture {
+        for stage in stages {
+            if let PreonComponentStack::Custom(_) = component.data {
+                Self::custom_render(stage, component, pass);
+            }
+
+            match stage {
+                PreonComponentRenderStage::Background { position, size } => match component.data {
+                    PreonComponentStack::Panel { color } => pass.push(PreonShape::Rect {
                         position,
                         size,
-                        index: texture_index,
-                    })
-                }
-                _ => {}
-            },
-            PreonComponentRenderStage::Foreground { position, size } => match component.data {
-                PreonComponentStack::Label {
-                    ref text,
-                    font_index,
-                } => pass.push(PreonShape::Text {
-                    font_index,
-                    position,
-                    size,
-                    text: text.clone(),
-                }),
-                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
-                _ => {}
-            },
-            #[allow(clippy::single_match)]
-            PreonComponentRenderStage::Border { .. } => match component.data {
-                PreonComponentStack::Custom(_) => Self::custom_render(stage, component, pass),
-                _ => {}
-            },
-        });
+                        color,
+                    }),
+                    PreonComponentStack::StaticTexture { texture_index } => {
+                        pass.push(PreonShape::StaticTexture {
+                            position,
+                            size,
+                            index: texture_index,
+                        })
+                    }
+                    _ => {}
+                },
+                PreonComponentRenderStage::Foreground { position, size } => match component.data {
+                    PreonComponentStack::Label {
+                        ref text,
+                        font_index,
+                    } => pass.push(PreonShape::Text {
+                        font_index,
+                        position,
+                        size,
+                        text: text.clone(),
+                    }),
+                    _ => {}
+                },
+                PreonComponentRenderStage::Border { .. } => ()
+            }
+        }
 
         #[cfg(feature = "debug")]
         {
@@ -703,17 +635,10 @@ pub trait PreonCustomComponentStack: Debug + Sized {
             });
         }
 
-        if let Some(mut children) = component.children.take() {
-            component.children = Some(
-                children
-                    .drain(..)
-                    .map(|mut f| {
-                        let mut comp = f.take().unwrap();
-                        Self::render(&mut comp, pass);
-                        Some(comp)
-                    })
-                    .collect::<Vec<Option<PreonComponent<Self>>>>(),
-            );
+        if let Some(children) = component.children.as_mut() {
+            for child in children.iter_mut() {
+                Self::render(child.as_mut().unwrap(), pass)
+            }
         }
     }
 }
@@ -922,6 +847,16 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         self.stack.push(component);
 
         new_id
+    }
+
+    pub fn with_mut<F>(mut self, callback: F) -> PreonComponentBuilder<T>
+    where
+        F: FnOnce(&mut PreonComponent<T>),
+    {
+        let mut component = self.stack.pop().unwrap();
+        callback(&mut component);
+        self.stack.push(component);
+        self
     }
 
     pub fn end(mut self) -> PreonComponentBuilder<T> {

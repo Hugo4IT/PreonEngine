@@ -1,13 +1,4 @@
-use preon_engine::{
-    components::{
-        AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents,
-        PreonComponentBuilder, PreonComponentStack,
-    },
-    events::{PreonEvent, PreonUserEvent},
-    rendering::PreonStaticRenderData,
-    types::{PreonBorder, PreonColor},
-    PreonEngine,
-};
+use preon_engine::{PreonEngine, components::{AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponent, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, types::{PreonBorder, PreonColor}};
 use preon_module_wgpu::preon;
 use rand::Rng;
 
@@ -61,14 +52,23 @@ pub fn app() {
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()
-                        .start_label_str("This is some very epic textalicious writing, get on my level shakespeare.")
+                        .start_label_str("Such art.")
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()
                         .store_path(&mut panel_list)
                     .end()
                 .end()
-                .empty_panel_hex("#d3d3d3")
+                .start_panel_hex("#d3d3d3")
+                    .expand()
+                    .start_vbox()
+                        .expand_horizontally()
+                        .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent<NoCustomComponents>>()))
+                            .expand_horizontally()
+                            .with_min_size(0, 200)
+                        .end()
+                    .end()
+                .end()
             .end()
         .build(),
     );
@@ -77,26 +77,21 @@ pub fn app() {
         PreonEvent::WindowOpened => {
             println!("Over the hills far away, Ferris came to play!");
 
-            let mut panel = tree.get_child_recursive(&first_panel);
             let list = tree.get_child_ref_mut_recursive(&panel_list);
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#da0037"),
-            })
-            .with_min_size(0, 48)
-            .expand_horizontally()
-            .build();
+            }).with_min_size(0, 48).expand_horizontally().build();
 
             list.insert_child(0, new_component);
+            tree.validate(&mut first_panel); // Update path after inserting new child
 
-            if let PreonComponentStack::Panel { ref mut color } = panel.data {
-                *color = PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0);
-            }
-
-            tree.validate(&mut first_panel);
-            tree.return_child_recursive(panel, &first_panel);
+            tree.get_child_ref_mut_recursive(&first_panel).data = PreonComponentStack::Panel {
+                color: PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0)
+            };
 
             user_events.push(PreonUserEvent::ForceUpdate);
         }
+        PreonEvent::WindowResized(_) => println!("RESIZE"),
         PreonEvent::WindowClosed => println!("Then he died..."),
         _ => {}
     });

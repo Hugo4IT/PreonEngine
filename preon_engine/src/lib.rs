@@ -196,7 +196,7 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
     }
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
-        let mut tree = self.tree.take().unwrap();
+        let tree = self.tree.as_mut().unwrap();
 
         let rerender = if !user_events.is_empty() || !self.events.is_empty() {
             let mut update_layout = false;
@@ -221,16 +221,18 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
             });
 
             if update_layout {
+                info!("Relayout!");
+
                 tree.set_outer_size(PreonVector::new(
                     self.window_inner_size.x as i32,
                     self.window_inner_size.y as i32,
                 ));
                 tree.set_outer_position(PreonVector::zero());
-                T::layout(&mut tree);
+
+                T::layout(tree);
+                T::render(tree, &mut self.render_pass);
 
                 self.events.push(PreonEvent::LayoutUpdate);
-
-                T::render(&mut tree, &mut self.render_pass);
                 self.render_pass.flip();
             }
 
@@ -242,7 +244,6 @@ impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
             false
         };
 
-        self.tree = Some(tree);
         rerender
     }
 }

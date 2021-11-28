@@ -37,7 +37,7 @@ impl TextShape {
             ref text,
         } = shape
         {
-            let mut brush = self.brushes[font_index].take().unwrap();
+            let brush = self.brushes.get_mut(font_index).unwrap().as_mut().unwrap();
 
             brush.queue(Section {
                 screen_position: (position.x as f32, position.y as f32),
@@ -48,8 +48,6 @@ impl TextShape {
                     .with_scale(32.0)
                     .with_z(z_index)],
             });
-
-            self.brushes[font_index] = Some(brush);
         }
     }
 
@@ -60,26 +58,20 @@ impl TextShape {
         view: &wgpu::TextureView,
         screen_size: PreonVector<i32>,
     ) {
-        self.brushes = self
-            .brushes
-            .drain(..)
-            .map(|mut b| {
-                let mut brush = b.take().unwrap();
-
-                brush
-                    .draw_queued(
-                        device,
-                        &mut self.staging_belt,
-                        encoder,
-                        view,
-                        screen_size.x as u32,
-                        screen_size.y as u32,
-                    )
-                    .unwrap();
-
-                Some(brush)
-            })
-            .collect::<Vec<Option<GlyphBrush<()>>>>();
+        for brush in self.brushes.iter_mut() {
+            brush
+                .as_mut()
+                .unwrap()
+                .draw_queued(
+                    device,
+                    &mut self.staging_belt,
+                    encoder,
+                    view,
+                    screen_size.x as u32,
+                    screen_size.y as u32,
+                )
+                .unwrap();
+        }
 
         self.staging_belt.finish();
     }

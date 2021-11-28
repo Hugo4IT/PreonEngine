@@ -54,13 +54,11 @@ pub mod preon {
                 user_events.flip();
 
                 if engine.update(&user_events) {
-                    let mut tree = engine.tree.take().unwrap();
+                    let tree = engine.tree.as_mut().unwrap();
 
                     engine.events.pull(|event| {
-                        callback(&mut tree, event, &mut user_events);
+                        callback(tree, event, &mut user_events);
                     });
-
-                    engine.tree = Some(tree);
 
                     if renderer.render(&mut engine.render_pass) {
                         *control_flow = ControlFlow::Exit;
@@ -85,6 +83,7 @@ pub mod preon {
                 WindowEvent::CloseRequested => {
                     user_events.push(PreonUserEvent::WindowClosed);
                     await_close = true;
+
                     window.request_redraw();
                 }
                 WindowEvent::Resized(physical_size) => {
@@ -93,6 +92,9 @@ pub mod preon {
                         physical_size.width,
                         physical_size.height,
                     )));
+
+                    *control_flow = ControlFlow::Wait;
+                    window.request_redraw();
                 }
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     renderer.resize(**new_inner_size);
@@ -100,6 +102,9 @@ pub mod preon {
                         new_inner_size.width,
                         new_inner_size.height,
                     )));
+
+                    *control_flow = ControlFlow::Wait;
+                    window.request_redraw();
                 }
                 WindowEvent::CursorMoved { position, .. } => {
                     user_events.push(PreonUserEvent::MouseMove(PreonVector::new(
@@ -158,9 +163,9 @@ pub mod preon {
                         *control_flow = ControlFlow::Exit;
                     }
                 }
-                _ => {}
+                _ => ()
             },
-            _ => {}
+            _ => ()
         });
     }
 }
