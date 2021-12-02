@@ -19,114 +19,23 @@ impl TextShape {
         let mut brushes = Vec::new();
 
         for font in fonts.iter() {
-            if let Some(data) = font.w100 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
+            macro_rules! add_font {
+                ($($target:ident),*) => {
+                    $(
+                    if let Some(data) = font.$target {
+                        brushes.push(Some(
+                            GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                                .build(device, format),
+                        ));
+                    }
+                    )*
+                }
             }
-            if let Some(data) = font.w100i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w200 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w200i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w300 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w300i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w400 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w400i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w500 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w500i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w600 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w600i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w700 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w700i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w800 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w800i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w900 {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
-            if let Some(data) = font.w900i {
-                brushes.push(Some(
-                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                        .build(device, format),
-                ));
-            }
+
+            add_font!(
+                w100, w100i, w200, w200i, w300, w300i, w400, w400i, w500, w500i, w600, w600i, w700,
+                w700i, w800, w800i, w900, w900i
+            );
         }
 
         let staging_belt = wgpu::util::StagingBelt::new(1024);
