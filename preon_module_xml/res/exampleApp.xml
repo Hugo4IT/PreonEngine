@@ -16,6 +16,7 @@
                         <panel color="#c4c4c4" expand="horizontal" minSize="0 48"/>
                         <panel color="#c4c4c4" expand="horizontal" minSize="0 48"/>
                         <panel color="#c4c4c4" expand="horizontal" minSize="0 48"/>
+                        <label text="Hello, World!" expand="horizontal" minSize="0 48"/>
                     </vbox>
                 </panel>
                 <panel expand="both" color="#d3d3d3"/>

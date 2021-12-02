@@ -39,12 +39,11 @@
 //!
 //! **Modules currently in development (names may change) are:**
 //!
-//! Official? | Crate name | Description
-//! :--|:--|:--
-//! Yes | preon_module_locale | A fast language system, has PreonDesigner integration
-//! Yes | preon_module_designer | Loads .preon files, created in PreonDesigner
-
-use std::any::Any;
+//! Official? | Progress | Crate name             | Description
+//! :--       |:--       |:--                     |:--
+//! Yes       | 33% ([gh](https://github.com/Hugo4IT/PreonEngine/milestone/1)) | preon_module_xml       | Create apps from an .xml file, familiar to html developers
+//! Yes       | 0%       | preon_module_locale    | A fast language system, has PreonDesigner integration
+//! Yes       | 0%       | preon_module_designer  | Loads .preon files, created in PreonDesigner
 
 use components::{PreonComponent, PreonCustomComponentStack};
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
@@ -180,7 +179,7 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
     pub static_render_data: PreonStaticRenderData,
 }
 
-impl<T: PreonCustomComponentStack + Any + 'static> PreonEngine<T> {
+impl<T: PreonCustomComponentStack> PreonEngine<T> {
     pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent<T>) -> Self {
         if log_enabled!(log::Level::Info) {
             info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1))

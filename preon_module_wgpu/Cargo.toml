@@ -11,6 +11,7 @@ android = ["ndk-glue"]
 bytemuck = { version = "1.7.2", features = [ "derive" ] }
 ndk-glue = { version = "0.3.0", optional = true }
 preon_engine = { path = "../preon_engine" }
+directories = "4.0.1"
 wgpu_glyph = "0.15.1"
 pollster = "0.2.4"
 image = "0.23.14"

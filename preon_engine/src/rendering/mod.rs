@@ -24,6 +24,10 @@ pub enum PreonShape {
     },
 }
 
+/// Data that gets bundled inside the executable at compile-time, this removes the need
+/// for bundling extra files with your application, making the executable the only thing
+/// the user needs for your application (no installers!)
+///
 /// ## Example
 ///
 /// ```

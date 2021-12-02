@@ -89,8 +89,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         if path.len() == 1 {
             self.get_child_ref(index)
         } else {
-            self.get_child_ref(index)
-                .get_child_ref_recursive(&_path)
+            self.get_child_ref(index).get_child_ref_recursive(&_path)
         }
     }
 
@@ -439,17 +438,19 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                             y
                         } else {
                             match align {
-                               PreonAlignment::Start => y,
-                               PreonAlignment::Center => size.y / 2 - height / 2 + y,
-                               PreonAlignment::End => (size.y - height) + y,
-                               PreonAlignment::Spread => {
-                                   let time = 1f32 / y as f32;
-                                   ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
-                               },
-                           }
+                                PreonAlignment::Start => y,
+                                PreonAlignment::Center => size.y / 2 - height / 2 + y,
+                                PreonAlignment::End => (size.y - height) + y,
+                                PreonAlignment::Spread => {
+                                    let time = 1f32 / y as f32;
+                                    ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
+                                }
+                            }
                         };
 
-                        child.set_outer_position(position + PreonVector::new(x_position, y_position));
+                        child.set_outer_position(
+                            position + PreonVector::new(x_position, y_position),
+                        );
 
                         y += child_size.y;
                     }
@@ -534,11 +535,13 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                                 PreonAlignment::Spread => {
                                     let time = 1f32 / x as f32;
                                     ((1f32 - time) * x as f32 + time * (size.x - x) as f32) as i32
-                                },
+                                }
                             }
                         };
 
-                        child.set_outer_position(position + PreonVector::new(x_position, y_position));
+                        child.set_outer_position(
+                            position + PreonVector::new(x_position, y_position),
+                        );
 
                         x += child_size.x;
                     }
@@ -604,7 +607,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                     }),
                     _ => {}
                 },
-                PreonComponentRenderStage::Border { .. } => ()
+                PreonComponentRenderStage::Border { .. } => (),
             }
         }
 
@@ -647,7 +650,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
 pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Custom(T),
     Dummy,
-    Label {
+    Label { // <-- Largest item, making the size of this enum 32 bytes :/
         text: String,
         font_index: usize,
     },
@@ -655,7 +658,7 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
         texture_index: usize,
     },
     Panel {
-        color: PreonColor, // <-- Largest item, making the size of this enum 16 bytes :/
+        color: PreonColor,
     },
     HBox {
         align: PreonAlignment,

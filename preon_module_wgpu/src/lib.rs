@@ -18,7 +18,6 @@ pub mod preon {
         PreonEngine,
     };
     use winit::{
-        dpi::PhysicalSize,
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -35,7 +34,6 @@ pub mod preon {
     {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_inner_size(PhysicalSize::new(800u32, 600u32))
             .with_visible(false)
             .build(&event_loop)
             .unwrap();
@@ -46,6 +44,10 @@ pub mod preon {
         let (mut ctrl, mut shift, mut logo, mut alt) = (false, false, false, false);
         let mut user_events = PreonEventEmitter::new();
         user_events.push(PreonUserEvent::WindowOpened);
+        user_events.push(PreonUserEvent::WindowResized(PreonVector {
+            x: window.inner_size().width,
+            y: window.inner_size().height,
+        }));
 
         let mut await_close = false;
 
@@ -163,9 +165,9 @@ pub mod preon {
                         *control_flow = ControlFlow::Exit;
                     }
                 }
-                _ => ()
+                _ => (),
             },
-            _ => ()
+            _ => (),
         });
     }
 }
@@ -201,26 +203,23 @@ impl PreonRendererWGPU {
         let backend = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
         let instance = wgpu::Instance::new(backend);
         let surface = unsafe { instance.create_surface(window) };
-        let adapter = pollster::block_on(async {
-            wgpu::util::initialize_adapter_from_env_or_default(&instance, backend, Some(&surface))
-                .await
-                .expect("No suitable graphics adapters found.")
-        });
+        let adapter = pollster::block_on(wgpu::util::initialize_adapter_from_env_or_default(
+            &instance,
+            backend,
+            Some(&surface),
+        ))
+        .expect("No suitable graphics adapters found.");
 
-        let (device, queue) = pollster::block_on(async {
-            adapter
-                .request_device(
-                    &wgpu::DeviceDescriptor {
-                        features: wgpu::Features::empty(),
-                        limits: wgpu::Limits::downlevel_webgl2_defaults()
-                            .using_resolution(adapter.limits()),
-                        label: None,
-                    },
-                    None,
-                )
-                .await
-                .unwrap()
-        });
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                features: wgpu::Features::empty(),
+                limits:
+                    wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
+                label: None,
+            },
+            None,
+        ))
+        .unwrap();
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,

@@ -34,8 +34,8 @@ pub struct Transform {
 }
 
 impl Transform {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let uniform = TransformationUniform::new(1.0, 1.0);
+    pub fn new(device: &wgpu::Device, width: f32, height: f32) -> Self {
+        let uniform = TransformationUniform::new(width, height);
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Rect Transform Uniform"),

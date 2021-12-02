@@ -45,7 +45,7 @@ impl ShapeManager {
         let depth_texture = Texture::new_depth(device, config);
 
         info!("Initializing buffers...");
-        let transform = Transform::new(device);
+        let transform = Transform::new(device, config.width as f32, config.height as f32);
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Rect Vertex Buffer"),
             contents: bytemuck::cast_slice(RECT_VERTICES),

@@ -1,4 +1,13 @@
-use preon_engine::{PreonEngine, components::{AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponent, PreonComponentBuilder, PreonComponentStack}, events::{PreonEvent, PreonUserEvent}, rendering::PreonStaticRenderData, types::{PreonBorder, PreonColor}};
+use preon_engine::{
+    components::{
+        AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponent,
+        PreonComponentBuilder, PreonComponentStack,
+    },
+    events::{PreonEvent, PreonUserEvent},
+    rendering::PreonStaticRenderData,
+    types::{PreonBorder, PreonColor},
+    PreonEngine,
+};
 use preon_module_wgpu::preon;
 use rand::Rng;
 
@@ -80,13 +89,16 @@ pub fn app() {
             let list = tree.get_child_ref_mut_recursive(&panel_list);
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#da0037"),
-            }).with_min_size(0, 48).expand_horizontally().build();
+            })
+            .with_min_size(0, 48)
+            .expand_horizontally()
+            .build();
 
             list.insert_child(0, new_component);
             tree.validate(&mut first_panel); // Update path after inserting new child
 
             tree.get_child_ref_mut_recursive(&first_panel).data = PreonComponentStack::Panel {
-                color: PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0)
+                color: PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0),
             };
 
             user_events.push(PreonUserEvent::ForceUpdate);
