@@ -2,7 +2,7 @@ use std::{borrow::Cow, str::FromStr};
 
 use log::{error, info};
 use preon_engine::{
-    components::{AddHBox, AddPanel, AddVBox, NoCustomComponents, PreonComponentBuilder, AddLabel},
+    components::{AddHBox, AddLabel, AddPanel, AddVBox, NoCustomComponents, PreonComponentBuilder},
     rendering::PreonStaticRenderData,
     types::{PreonBorder, PreonColor, PreonVector, PreonVectorAble},
     PreonEngine,
@@ -115,20 +115,20 @@ pub fn get_engine_from_xml(file_buffer: &str) -> PreonEngine<NoCustomComponents>
                                 }
                                 b"label" => {
                                     component_builder = component_builder.start_label(
-                                            String::from_utf8(
-                                                e.attributes()
-                                                    .find(|a| a.as_ref().unwrap().key == b"text")
-                                                    .unwrap_or_else(|| {
-                                                        Ok(Attribute {
-                                                            key: b"text",
-                                                            value: Cow::Owned(b"UNSET".to_vec()),
-                                                        })
+                                        String::from_utf8(
+                                            e.attributes()
+                                                .find(|a| a.as_ref().unwrap().key == b"text")
+                                                .unwrap_or_else(|| {
+                                                    Ok(Attribute {
+                                                        key: b"text",
+                                                        value: Cow::Owned(b"UNSET".to_vec()),
                                                     })
-                                                    .unwrap()
-                                                    .value
-                                                    .to_vec(),
-                                            )
-                                            .unwrap(),
+                                                })
+                                                .unwrap()
+                                                .value
+                                                .to_vec(),
+                                        )
+                                        .unwrap(),
                                     )
                                 }
                                 _ => error!("Unrecognized component {:?}", other),

@@ -4,6 +4,7 @@ use preon_engine::{
         PreonComponentBuilder, PreonComponentStack,
     },
     events::{PreonEvent, PreonUserEvent},
+    preon_font,
     rendering::PreonStaticRenderData,
     types::{PreonBorder, PreonColor},
     PreonEngine,
@@ -27,7 +28,7 @@ pub fn app() {
                 include_bytes!("../../res/juan.png"),
             ],
             fonts: &[
-                include_bytes!("../../res/Montserrat-Regular.ttf")
+                preon_font!("../../res/Montserrat", "otf")
             ]
         },
         PreonComponentBuilder::new()
@@ -75,6 +76,7 @@ pub fn app() {
                         .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent<NoCustomComponents>>()))
                             .expand_horizontally()
                             .with_min_size(0, 200)
+                            .bold()
                         .end()
                     .end()
                 .end()

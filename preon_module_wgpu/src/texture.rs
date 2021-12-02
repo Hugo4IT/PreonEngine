@@ -206,7 +206,10 @@ impl TextureSheet {
         queue: &wgpu::Queue,
         label: String,
     ) -> Self {
-        let cache_path = directories::BaseDirs::new().unwrap().cache_dir().join(Path::new(&(label + ".preonc")));
+        let cache_path = directories::BaseDirs::new()
+            .unwrap()
+            .cache_dir()
+            .join(Path::new(&(label + ".preonc")));
 
         if cache_path.exists() {
             Self::from_cache(cache_path, device, queue)
@@ -258,7 +261,10 @@ impl TextureSheet {
         queue: &wgpu::Queue,
         label: String,
     ) -> TextureSheet {
-        let cache_path = directories::BaseDirs::new().unwrap().cache_dir().join(Path::new(&(label + ".preonc" + env!("CARGO_PKG_NAME"))));
+        let cache_path = directories::BaseDirs::new()
+            .unwrap()
+            .cache_dir()
+            .join(Path::new(&(label + ".preonc" + env!("CARGO_PKG_NAME"))));
 
         if cache_path.exists() {
             Self::from_cache(cache_path, device, queue)

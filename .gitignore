@@ -6,3 +6,4 @@ cache.bmp
 log.log
 /.vscode
 /cache
+**/.DS_Store

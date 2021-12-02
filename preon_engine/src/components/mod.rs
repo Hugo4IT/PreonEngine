@@ -2,6 +2,10 @@ use std::{fmt::Debug, str::FromStr};
 
 use log::info;
 
+// extern crate num;
+// #[macro_use]
+// extern crate num_derive;
+
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
     size,
@@ -598,9 +602,9 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                 PreonComponentRenderStage::Foreground { position, size } => match component.data {
                     PreonComponentStack::Label {
                         ref text,
-                        text_settings: font_index,
+                        text_settings,
                     } => pass.push(PreonShape::Text {
-                        font_index,
+                        text_settings,
                         position,
                         size,
                         text: text.clone(),
@@ -650,7 +654,8 @@ pub trait PreonCustomComponentStack: Debug + Sized {
 pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Custom(T),
     Dummy,
-    Label { // <-- Largest item, making the size of this enum 32 bytes :/
+    Label {
+        // <-- Largest item, making the size of this enum 32 bytes :/
         text: String,
         text_settings: u64,
     },
@@ -993,41 +998,97 @@ impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder
     }
 }
 
-/// Human-readable text configuration
-///
-/// 64 bytes, full text configuration, best memory layout I could think of.
+/// Human-readable text configuration. After encoding it will look like this (u64):
 ///
 /// ```txt
-/// 0000000000 0 0 00 00 00000000|00000000|00000000|00000000 0000000000000000
-///            ¯ ¯ ¯¯ ¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-///            | | |  |   text color [u8; 4]                 font_index: u16
-///            | | |  ^> vertical_align: PreonAlignment (2 bytes, 4 options)
-///            | | ^> horizontal_align: PreonAlignment (2 bytes, 4 options)
-///            | ^> italic: bool
-///            ^> bold: bool
+/// 0000000000 0 0 00 00 00000000 00000000 00000000 00000000 0000000000000000
+/// ¯¯¯¯¯¯¯¯¯¯ ¯ ¯ ¯¯ ¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+/// |          | | |  |  |        |        |        |        |
+/// |          | | |  |  |        |        |        |        `> size: u16
+/// |          | | |  |  |        |        |        `> Alpha: u8
+/// |          | | |  |  |        |        `> Blue: u8
+/// |          | | |  |  |        `> Green: u8
+/// |          | | |  |  `> Red: u8
+/// |          | | |  `> vertical_align: PreonAlignment (2 bits, 4 options)
+/// |          | | `> horizontal_align: PreonAlignment (2 bits, 4 options)
+/// |          | `> italic: bool
+/// |          `> bold: bool
+/// `> font_index: u10 (rust type: u16, but can only hold 10 bits in practice)
 /// ```
 #[derive(Debug, Clone, Copy)]
-pub struct AddLabelConfig {
+pub struct LabelConfig {
+    pub size: u16,
     pub font_index: u16,
-    pub color_rgba8: PreonColor,
+    pub color: PreonColor,
     pub bold: bool,
     pub italic: bool,
     pub vertical_align: PreonAlignment,
     pub horizontal_align: PreonAlignment,
 }
 
-impl AddLabelConfig {
+impl LabelConfig {
     pub fn encode(&self) -> u64 {
         let mut result: [u8; 8] = [0u8; 8];
 
-        let mut flags: u8 = 0u8;
-        flags |= (self.bold as u8) << 5;
-        flags |= (self.italic as u8) << 4;
-        flags |= (self.vertical_align as u8) << 2;
-        flags |= self.horizontal_align as u8;
+        let font_index: [u8; 2] = self.font_index.to_le_bytes();
+        result[0] = font_index[0];
+
+        let flags: u8 = 0u8
+            | ((font_index[1] & 0b00000011) << 7)
+            | ((self.bold as u8) << 5)
+            | ((self.italic as u8) << 4)
+            | ((self.vertical_align as u8) << 2)
+            | (self.horizontal_align as u8);
         result[1] = flags;
 
+        let (r, g, b, a) = self.color.into_rgba8_tuple();
+        result[2] = r;
+        result[3] = g;
+        result[4] = b;
+        result[5] = a;
+
+        let size: [u8; 2] = self.size.to_le_bytes();
+        result[6] = size[0];
+        result[7] = size[1];
+
         u64::from_le_bytes(result)
+    }
+
+    pub fn decode(input: u64) -> LabelConfig {
+        let buffer: [u8; 8] = input.to_le_bytes();
+        let font_index = u16::from_le_bytes([buffer[0], (buffer[1] & 0b11000000) >> 6]);
+        let bold = (buffer[1] & 0b00100000) == 0b00100000;
+        let italic = (buffer[1] & 0b00010000) == 0b00010000;
+        let vertical_align: PreonAlignment =
+            num::FromPrimitive::from_u8((buffer[1] & 0b00001100) >> 2).unwrap();
+        let horizontal_align: PreonAlignment =
+            num::FromPrimitive::from_u8(buffer[1] & 0b00000011).unwrap();
+        let color = PreonColor::from_rgba8(buffer[2], buffer[3], buffer[4], buffer[5]);
+        let size = u16::from_le_bytes([buffer[6], buffer[7]]);
+
+        LabelConfig {
+            size,
+            font_index,
+            color,
+            bold,
+            italic,
+            vertical_align,
+            horizontal_align,
+        }
+    }
+}
+
+impl Default for LabelConfig {
+    fn default() -> Self {
+        Self {
+            size: 16,
+            font_index: 0,
+            color: PreonColor::from_rgba8(255, 255, 255, 255),
+            bold: false,
+            italic: false,
+            vertical_align: PreonAlignment::Start,
+            horizontal_align: PreonAlignment::Start,
+        }
     }
 }
 
@@ -1036,22 +1097,14 @@ pub trait AddLabel<T: PreonCustomComponentStack> {
     fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
     fn empty_label(self, text: String) -> PreonComponentBuilder<T>;
     fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
-    fn start_label_cfg(self, text: String, config: AddLabelConfig) -> PreonComponentBuilder<T>;
+    fn start_label_cfg(self, text: String, config: LabelConfig) -> PreonComponentBuilder<T>;
+    fn bold(self) -> PreonComponentBuilder<T>;
+    fn italic(self) -> PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
-    fn start_label(mut self, text: String) -> PreonComponentBuilder<T> {
-        info!("start label: {}", text);
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::Label {
-                text,
-                text_settings: 0,
-            },
-            ..Default::default()
-        });
-
-        self
+    fn start_label(self, text: String) -> PreonComponentBuilder<T> {
+        self.start_label_cfg(text, LabelConfig::default())
     }
 
     fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
@@ -1066,16 +1119,56 @@ impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
         self.start_label_str(text).end()
     }
 
-    fn start_label_cfg(mut self, text: String, config: AddLabelConfig) -> PreonComponentBuilder<T> {
+    fn start_label_cfg(mut self, text: String, config: LabelConfig) -> PreonComponentBuilder<T> {
         info!("Start label with config {:?}", config);
 
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Label {
                 text,
-                text_settings: config.encode()
+                text_settings: config.encode(),
             },
             ..Default::default()
         });
+
+        self
+    }
+
+    fn bold(mut self) -> PreonComponentBuilder<T> {
+        if let Some(mut comp) = self.stack.pop() {
+            if let PreonComponentStack::Label {
+                text,
+                text_settings,
+            } = comp.data
+            {
+                comp.data = PreonComponentStack::Label {
+                    text,
+                    text_settings: text_settings
+                        | 0b0000000000100000000000000000000000000000000000000000000000000000,
+                }
+            }
+
+            self.stack.push(comp);
+        }
+
+        self
+    }
+
+    fn italic(mut self) -> PreonComponentBuilder<T> {
+        if let Some(mut comp) = self.stack.pop() {
+            if let PreonComponentStack::Label {
+                text,
+                text_settings,
+            } = comp.data
+            {
+                comp.data = PreonComponentStack::Label {
+                    text,
+                    text_settings: text_settings
+                        | 0b0000000000010000000000000000000000000000000000000000000000000000,
+                }
+            }
+
+            self.stack.push(comp);
+        }
 
         self
     }

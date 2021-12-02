@@ -1,4 +1,8 @@
-use preon_engine::{rendering::PreonShape, types::PreonVector};
+use preon_engine::{
+    components::LabelConfig,
+    rendering::{PreonFont, PreonShape},
+    types::PreonVector,
+};
 use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Layout, Section, Text};
 
 pub struct TextShape {
@@ -9,16 +13,120 @@ pub struct TextShape {
 impl TextShape {
     pub fn new(
         device: &wgpu::Device,
-        fonts: &'static [&'static [u8]],
+        fonts: &'static [&'static PreonFont],
         format: wgpu::TextureFormat,
     ) -> Self {
         let mut brushes = Vec::new();
 
         for font in fonts.iter() {
-            brushes.push(Some(
-                GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(*font).unwrap())
-                    .build(device, format),
-            ));
+            if let Some(data) = font.w100 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w100i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w200 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w200i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w300 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w300i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w400 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w400i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w500 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w500i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w600 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w600i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w700 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w700i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w800 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w800i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w900 {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
+            if let Some(data) = font.w900i {
+                brushes.push(Some(
+                    GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
+                        .build(device, format),
+                ));
+            }
         }
 
         let staging_belt = wgpu::util::StagingBelt::new(1024);
@@ -31,21 +139,29 @@ impl TextShape {
 
     pub fn build(&mut self, shape: PreonShape, z_index: f32) {
         if let PreonShape::Text {
-            font_index,
+            text_settings,
             position,
             size,
             ref text,
         } = shape
         {
-            let brush = self.brushes.get_mut(font_index).unwrap().as_mut().unwrap();
+            let settings = LabelConfig::decode(text_settings);
+            let brush = self
+                .brushes
+                .get_mut(settings.font_index as usize)
+                .unwrap()
+                .as_mut()
+                .unwrap();
+
+            let (r, g, b, a) = settings.color.into_f32_tuple();
 
             brush.queue(Section {
                 screen_position: (position.x as f32, position.y as f32),
                 bounds: (size.x as f32, size.y as f32),
                 layout: Layout::default_wrap(),
                 text: vec![Text::new(text)
-                    .with_color([0.0, 0.0, 0.0, 1.0])
-                    .with_scale(32.0)
+                    .with_color([r, g, b, a])
+                    .with_scale(settings.size as f32)
                     .with_z(z_index)],
             });
         }

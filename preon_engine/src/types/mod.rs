@@ -3,6 +3,8 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
+use num_derive::FromPrimitive;
+
 use crate::size;
 
 pub trait PreonVectorAble:
@@ -628,7 +630,7 @@ impl Display for PreonBox {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, FromPrimitive)]
 pub enum PreonAlignment {
     Start,
     Center,
