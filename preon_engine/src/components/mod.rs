@@ -328,7 +328,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
             PreonComponentStack::Dummy => ("Dummy", String::new()),
             PreonComponentStack::Label {
                 ref text,
-                font_index,
+                text_settings: font_index,
             } => ("Label", format!("font: {}, text: \"{}\"", font_index, text)),
             PreonComponentStack::StaticTexture { texture_index } => {
                 ("StaticTexture", format!("index: {}", texture_index))
@@ -598,7 +598,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
                 PreonComponentRenderStage::Foreground { position, size } => match component.data {
                     PreonComponentStack::Label {
                         ref text,
-                        font_index,
+                        text_settings: font_index,
                     } => pass.push(PreonShape::Text {
                         font_index,
                         position,
@@ -652,7 +652,7 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
     Dummy,
     Label { // <-- Largest item, making the size of this enum 32 bytes :/
         text: String,
-        font_index: usize,
+        text_settings: u64,
     },
     StaticTexture {
         texture_index: usize,
@@ -993,11 +993,50 @@ impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder
     }
 }
 
+/// Human-readable text configuration
+///
+/// 64 bytes, full text configuration, best memory layout I could think of.
+///
+/// ```txt
+/// 0000000000 0 0 00 00 00000000|00000000|00000000|00000000 0000000000000000
+///            ¯ ¯ ¯¯ ¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+///            | | |  |   text color [u8; 4]                 font_index: u16
+///            | | |  ^> vertical_align: PreonAlignment (2 bytes, 4 options)
+///            | | ^> horizontal_align: PreonAlignment (2 bytes, 4 options)
+///            | ^> italic: bool
+///            ^> bold: bool
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct AddLabelConfig {
+    pub font_index: u16,
+    pub color_rgba8: PreonColor,
+    pub bold: bool,
+    pub italic: bool,
+    pub vertical_align: PreonAlignment,
+    pub horizontal_align: PreonAlignment,
+}
+
+impl AddLabelConfig {
+    pub fn encode(&self) -> u64 {
+        let mut result: [u8; 8] = [0u8; 8];
+
+        let mut flags: u8 = 0u8;
+        flags |= (self.bold as u8) << 5;
+        flags |= (self.italic as u8) << 4;
+        flags |= (self.vertical_align as u8) << 2;
+        flags |= self.horizontal_align as u8;
+        result[1] = flags;
+
+        u64::from_le_bytes(result)
+    }
+}
+
 pub trait AddLabel<T: PreonCustomComponentStack> {
     fn start_label(self, text: String) -> PreonComponentBuilder<T>;
     fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
     fn empty_label(self, text: String) -> PreonComponentBuilder<T>;
     fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
+    fn start_label_cfg(self, text: String, config: AddLabelConfig) -> PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
@@ -1007,7 +1046,7 @@ impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
         self.stack.push(PreonComponent {
             data: PreonComponentStack::Label {
                 text,
-                font_index: 0,
+                text_settings: 0,
             },
             ..Default::default()
         });
@@ -1025,6 +1064,20 @@ impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
 
     fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
         self.start_label_str(text).end()
+    }
+
+    fn start_label_cfg(mut self, text: String, config: AddLabelConfig) -> PreonComponentBuilder<T> {
+        info!("Start label with config {:?}", config);
+
+        self.stack.push(PreonComponent {
+            data: PreonComponentStack::Label {
+                text,
+                text_settings: config.encode()
+            },
+            ..Default::default()
+        });
+
+        self
     }
 }
 
