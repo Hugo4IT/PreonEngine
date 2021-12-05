@@ -24,9 +24,60 @@ pub enum PreonShape {
     },
 }
 
+/// ### Actual definition
+///
+/// ```
+/// macro_rules! preon_font {
+///     ($path:expr, $ext:expr) => { /* Code */ }
+/// }
+/// ```
+///
+/// ### Readable definition
+///
+/// ```
+/// preon_font!(path: &'const str, ext: &'const str);
+/// ```
+///
+/// ---
+///
+/// Automatically includes all font files following this naming scheme:
+///
+/// field       | filename
+/// :---------- | :------------------------------
+/// **`w100`**  | `{path}-Thin.{ext}`
+/// **`w100i`** | `{path}-ThinItalic.{ext}`
+/// **`w200`**  | `{path}-ExtraLight.{ext}`
+/// **`w200i`** | `{path}-ExtraLightItalic.{ext}`
+/// **`w300`**  | `{path}-Light.{ext}`
+/// **`w300i`** | `{path}-LightItalic.{ext}`
+/// **`w400`**  | `{path}-Regular.{ext}`
+/// **`w400i`** | `{path}-Italic.{ext}`
+/// **`w500`**  | `{path}-Medium.{ext}`
+/// **`w500i`** | `{path}-MediumItalic.{ext}`
+/// **`w600`**  | `{path}-SemiBold.{ext}`
+/// **`w600i`** | `{path}-SemiBoldItalic.{ext}`
+/// **`w700`**  | `{path}-Bold.{ext}`
+/// **`w700i`** | `{path}-BoldItalic.{ext}`
+/// **`w800`**  | `{path}-ExtraBold.{ext}`
+/// **`w800i`** | `{path}-ExtraBoldItalic.{ext}`
+/// **`w900`**  | `{path}-Black.{ext}`
+/// **`w900i`** | `{path}-BlackItalic.{ext}`
+///
+/// # Example
+///
+/// ```
+/// let render_data = PreonStaticRenderData {
+///     textures: &[],
+///     fonts: &[
+///         preon_font!("../../res/Montserrat", "otf")
+///     ]
+/// };
+/// ```
+///
+/// [1]: https://docs.microsoft.com/en-us/typography/opentype/spec/os2#usweightclass
 #[macro_export]
 macro_rules! preon_font {
-    ($path:expr $(,)?, $ext:expr $(,)?) => {
+    ($path:expr, $ext:expr) => {
         &preon_engine::rendering::PreonFont {
             w100: Some(include_bytes!(concat!($path, "-Thin.", $ext))),
             w100i: Some(include_bytes!(concat!($path, "-ThinItalic.", $ext))),
@@ -50,7 +101,18 @@ macro_rules! preon_font {
     };
 }
 
-/// Define a font with multiple weights, normal and italic versions
+/// Define a font with multiple weights, normal and italic versions.
+///
+/// ## Field names
+///
+/// Fields are named like this: `w{weight}[i]`, `weight` being the thickness ([Like CSS][1]), and `i`
+/// stating if the font it italic (_skewed_).
+///
+/// ## Avoiding boiler-plate
+///
+/// Check the [`preon_font`] macro to automatically fill in the slots.
+///
+/// [1]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight
 pub struct PreonFont {
     /// Weight 100 | Thin
     pub w100: Option<&'static [u8]>,
@@ -88,6 +150,31 @@ pub struct PreonFont {
     pub w900: Option<&'static [u8]>,
     /// Weight 900 Italic | BlackItalic
     pub w900i: Option<&'static [u8]>,
+}
+
+impl Default for PreonFont {
+    fn default() -> Self {
+        Self {
+            w100: None,
+            w100i: None,
+            w200: None,
+            w200i: None,
+            w300: None,
+            w300i: None,
+            w400: None,
+            w400i: None,
+            w500: None,
+            w500i: None,
+            w600: None,
+            w600i: None,
+            w700: None,
+            w700i: None,
+            w800: None,
+            w800i: None,
+            w900: None,
+            w900i: None,
+        }
+    }
 }
 
 /// Data that gets bundled inside the executable at compile-time, this removes the need
