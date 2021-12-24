@@ -3,19 +3,6 @@ name = "preon_module_wgpu"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-default = []
-android = ["ndk-glue"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck = { version = "1.7.2", features = [ "derive" ] }
-ndk-glue = { version = "0.5.0", optional = true }
-preon_engine = { path = "../preon_engine" }
-directories = "4.0.1"
-wgpu_glyph = "0.15.1"
-pollster = "0.2.4"
-image = "0.23.14"
-winit = "0.26.0"
-sheep = "0.3.0"
-wgpu = "0.11.0"
-log = "0.4.14"

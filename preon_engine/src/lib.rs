@@ -1,248 +1,162 @@
-// #![warn(missing_docs)]
-//! A modular, zero-dependency User Interface engine
-//!
-//! # Compatibility
-//!
-//! PreonEngine does not include a renderer by default, you need to attach a render module for that (e.g. preon_module_wgpu), so **compatibility depends on the render module of choice**. For now, only an official [WGPU](https://github.com/gfx-rs/wgpu/#supported-platforms) renderer exists, but making a renderer is extremely easy, as only 1 function is required. See [`rendering`] for more information and a tutorial.
-//!
-//! ### Render module?
-//!
-//! Rendering means drawing stuff to the screen, so "rendering a triangle" means drawing a triangle to the screen. PreonEngine only creates a list of shapes to render, you need a module (See ["Modules"](#modules) below) to take that list, and render all the shapes in the correct order.
-//!
-//! # Why "engine"?
-//!
-//! Recent UI solutions have opted for the word "framework", personally I hate this word as it indicates something pre-existing, with the developer having to adapt their code to fit the frames. I think code should adapt to the developer, not the other way around. PreonEngine can be used with just a single function: `engine.update(user_events)`, which returns a boolean indicating if any visual changes were present, to save on rerendering. For advanced interactivity, another function (`engine.events.pull(|event| {..})`) can be used, where `event` is an enum which you can `match` to get exactly what happened. Thats it!
-//!
-//! # Base features
-//!
-//! Without any modules attached, PreonEngine can get you:
-//!
-//! - A decently sized component library
-//! - Custom components with a very easy to use rendering system that doesn't impact performance
-//! - Full ownership of UI components in your mainloop
-//! - Extremely optimized component reference system
-//! - A super easy, clean way of designing your app inside of Rust
-//!
-//! # Modules
-//!
-//! PreonEngine is designed to have only the least amount of features by itself, not even rendering is included. You can add features by attaching modules like [`preon_module_wgpu`](https://crates.io/crates/preon_module_wgpu) for rendering or [`preon_module_locale`](https://crates.io/crates/preon_module_locale) for multi-language support. PreonEngine is also made to be fast by default, with minimal extra work. This also makes writing a custom renderer to, for example, include PreonEngine as the UI solution of choice for your custom game engine.
-//!
-//! > **Note:** A PreonEngine "module" is not the same as a rust "module", PreonEngine modules are just crates with extra functionality, rust modules are ways of organizing code.
-//!
-//! If you need something that isn't yet available, feel free to make you own module! If you feel like everyone can benefit from it, make a new [issue](https://github.com/Hugo4IT/PreonEngine-rs/issues) on GitHub so I can add it here.
-//!
-//! **Currently available modules are:**
-//!
-//! Official? | Crate name | Description
-//! :--|:--|:--
-//! Yes | preon_module_wgpu | Opens a window and draws the specified PreonRenderPass generated with `PreonEngine::render()`. Uses [WGPU](https://github.com/gfx-rs/wgpu/) as a rendering backend, so it is cross-platform with support for Vulkan, Metal, DirectX11, DirectX12 and OpenGLES3.
-//!
-//! **Modules currently in development (names may change) are:**
-//!
-//! Official? | Progress | Crate name             | Description
-//! :--       |:--       |:--                     |:--
-//! Yes       | 33% ([gh](https://github.com/Hugo4IT/PreonEngine/milestone/1)) | preon_module_xml       | Create apps from an .xml file, familiar to html developers
-//! Yes       | 0%       | preon_module_locale    | A fast language system, has PreonDesigner integration
-//! Yes       | 0%       | preon_module_designer  | Loads .preon files, created in PreonDesigner
+#![no_std]
 
-use components::{PreonComponent, PreonCustomComponentStack};
-use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
-use log::{info, log_enabled};
-use rendering::{PreonRenderPass, PreonStaticRenderData};
+//! A #![no_std] (using `alloc`) User Interface engine
 
-use self::types::PreonVector;
+use core::{any::Any, cell::RefCell};
 
-/// All default components.
+use alloc::{boxed::Box, rc::Rc, vec::Vec};
+use types::{
+    color::Color,
+    misc::Corners,
+    vectors::{Position, Size},
+};
+extern crate alloc;
+
 pub mod components;
-
-/// Traits and enums to make your own renderer.
-pub mod rendering;
-
-/// Mini event system.
-pub mod events;
-
-/// All Preon* utility structs like PreonVector<T>, PreonColor and PreonBox.
 pub mod types;
 
-/// Size flags shortcuts.
-pub mod size {
-    /// Only apply a specific size flag to the X axis.
-    pub mod horizontal {
-        /// Automatically resize to fit children horizontally.
-        pub const FIT: u8 = 0b00000001;
-
-        /// Expand to horizontally fill leftover space in parent.
-        pub const EXPAND: u8 = 0b00000010;
-
-        /// Resize to fit children, but expand to available space.
-        pub const FIT_EXPAND: u8 = FIT + EXPAND;
-    }
-
-    /// Only apply a specific size flag to the Y axis.
-    pub mod vertical {
-        /// Automatically resize to fit children vertically.
-        pub const FIT: u8 = 0b00000100;
-
-        /// Expand to vertically fill leftover space in parent.
-        pub const EXPAND: u8 = 0b00001000;
-
-        /// Resize to fit children, but expand to available space.
-        pub const FIT_EXPAND: u8 = FIT + EXPAND;
-    }
-
-    /// Automatically resize to fit children.
-    pub const FIT: u8 = horizontal::FIT + vertical::FIT;
-
-    /// Expand to fill leftover space in parent.
-    pub const EXPAND: u8 = horizontal::EXPAND + vertical::EXPAND;
-
-    /// Resize to fit children, but expand to available space.
-    pub const FIT_EXPAND: u8 = FIT + EXPAND;
+pub struct PreonEngine {
+    fn_init: Vec<fn(Box<dyn Any>) -> Box<dyn Any>>,
+    fn_update: Vec<fn(&mut Box<dyn Any>)>,
+    fn_render: Vec<fn(&Box<dyn Any>, &mut RenderPass)>,
+    fn_destroy: Vec<fn(Box<dyn Any>)>,
+    component_data: Vec<ComponentDataHolder>,
 }
 
-/// A container for all variables & functions needed for managing your UI at runtime.
-///
-/// # Ownership
-///
-/// PreonEngine tries to make managing ownership of important variables like UI components as easy as possible. This is why you see some variables wrapped in `Option<T>`, it makes it possible to swap the original variable with `None` temporarily, granting you full ownership of the variable until you decide to return it.
-///
-/// ![like this](https://c.tenor.com/eqLNYv0A9TQAAAAC/swap-indiana-jones.gif)
-///
-/// For an example of how this works, see [`PreonComponent::get_child()`].
-///
-/// # Writing modules
-///
-/// As you may have noticed, there is no `PreonModule` trait or anything like it. With PreonEngine, you have the freedom to implement a module in the way **you** like it. Some utilities have been put in place, as to not throw you completely in the dark by yourself. Communicating with PreonEngine (e.g. telling it the window has been resized) is done through events. There are 2 types of events in PreonEngine:
-///
-/// - [`PreonEvent`] - Written to by PreonEngine, read by the user.
-/// - [`PreonUserEvent`] - Written by the user, read by PreonEngine.
-///
-/// If your module needs to communicate with PreonEngine, create a function like this:
-///
-/// ```rust
-/// pub struct EpicModule {}
-/// impl EpicModule {
-/// #   pub fn new() -> Self { Self { } }
-///     pub fn update(user_events: &mut PreonEventEmitter<PreonUserEvent>) {
-/// #       let has_window_resized = true;
-///         // -- snip --
-///
-///         if has_window_resized {
-/// #           let new_size = PreonVector::new(800, 600);
-///             user_events.push(PreonUserEvent::WindowResized(new_size));
-///         }
-///     }
-/// }
-/// ```
-///
-/// So the user can do this:
-///
-/// ```no_run
-/// # fn main() {
-/// # let mut engine = PreonEngine::<NoComponentStack>::new(
-/// # PreonComponentBuilder::new()
-/// #   .start_hbox()
-/// #       .expand()
-/// #       .start_panel()
-/// #           .expand()
-/// #           .panel_color("#f00")
-/// #       .end()
-/// #       .start_panel()
-/// #           .expand()
-/// #           .panel_color("#0f0")
-/// #       .end()
-/// #       .start_panel()
-/// #           .expand()
-/// #           .panel_color("#00f")
-/// #       .end()
-/// #   .end()
-/// # .build()
-/// # );
-/// # let mut user_events = PreonEventEmitter::<PreonUserEvent>::new();
-/// // After engine intialization
-/// let epic_module = EpicModule::new();
-///
-/// // In the main loop
-/// epic_module.update(&mut user_events);
-/// # }
-/// ```
-pub struct PreonEngine<T: PreonCustomComponentStack> {
-    /// The component tree
-    pub tree: Option<PreonComponent<T>>,
-    /// Will be filled with events after `engine.update()`. See [`PreonEventEmitter`] and [`PreonEvent`]
-    pub events: PreonEventEmitter<PreonEvent>,
-    /// The size of the viewport, title bar not included.
-    pub window_inner_size: PreonVector<u32>,
-    /// Pass this to your renderer module of choice after executing `engine.update()`. See [`PreonEventEmitter`] and [`PreonShape`](`rendering::PreonShape`)
-    pub render_pass: PreonRenderPass,
-    /// Data for StaticLabel and StaticTexture
-    pub static_render_data: PreonStaticRenderData,
-}
-
-impl<T: PreonCustomComponentStack> PreonEngine<T> {
-    pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent<T>) -> Self {
-        if log_enabled!(log::Level::Info) {
-            info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1))
-        }
-
-        Self {
-            tree: Some(tree),
-            events: PreonEventEmitter::new(),
-            window_inner_size: PreonVector::zero(),
-            render_pass: PreonRenderPass::new(),
-            static_render_data,
+impl PreonEngine {
+    fn _new() -> PreonEngine {
+        PreonEngine {
+            fn_init: Vec::new(),
+            fn_update: Vec::new(),
+            fn_render: Vec::new(),
+            fn_destroy: Vec::new(),
+            component_data: Vec::new(),
         }
     }
 
-    pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
-        let tree = self.tree.as_mut().unwrap();
+    pub fn new() -> PreonEngine {
+        let mut engine = PreonEngine::_new();
 
-        let rerender = if !user_events.is_empty() || !self.events.is_empty() {
-            let mut update_layout = false;
+        engine.add_type::<components::panel::Panel>();
 
-            user_events.pull(|f| match f {
-                PreonUserEvent::WindowResized(new_size) => {
-                    if new_size != self.window_inner_size {
-                        self.window_inner_size = new_size;
-                        self.events.push(PreonEvent::WindowResized(new_size));
-                    }
-                    update_layout = true
-                }
-                PreonUserEvent::ForceUpdate => update_layout = true,
-                PreonUserEvent::WindowOpened => {
-                    self.events.push(PreonEvent::WindowOpened);
-                    update_layout = true
-                }
-                PreonUserEvent::WindowClosed => {
-                    self.events.push(PreonEvent::WindowClosed);
-                }
-                _ => {}
-            });
-
-            if update_layout {
-                info!("Relayout!");
-
-                tree.set_outer_size(PreonVector::new(
-                    self.window_inner_size.x as i32,
-                    self.window_inner_size.y as i32,
-                ));
-                tree.set_outer_position(PreonVector::zero());
-
-                T::layout(tree);
-                T::render(tree, &mut self.render_pass);
-
-                self.events.push(PreonEvent::LayoutUpdate);
-                self.render_pass.flip();
-            }
-
-            self.events.push(PreonEvent::Update);
-            self.events.flip();
-
-            true
-        } else {
-            false
-        };
-
-        rerender
+        engine
     }
+
+    pub fn add_type<T: Component>(&mut self) -> usize {
+        self.add_type_directly(T::init, T::update, T::render, T::destroy)
+    }
+
+    pub fn add_type_directly(
+        &mut self,
+        init_function: fn(Box<dyn Any>) -> Box<dyn Any>,
+        update_function: fn(&mut Box<dyn Any>),
+        render_function: fn(&Box<dyn Any>, &mut RenderPass),
+        destroy_function: fn(Box<dyn Any>),
+    ) -> usize {
+        let current_index = self.fn_init.len();
+
+        self.fn_init.push(init_function);
+        self.fn_update.push(update_function);
+        self.fn_render.push(render_function);
+        self.fn_destroy.push(destroy_function);
+
+        current_index
+    }
+
+    pub fn add_component(
+        &mut self,
+        parent: Option<ComponentReference>,
+        component_type: usize,
+        input_data: Box<dyn Any>,
+    ) -> ComponentReference {
+        let reference_index = Rc::new(RefCell::new(self.component_data.len()));
+        let reference_clone = reference_index.clone();
+
+        self.component_data.push(ComponentDataHolder {
+            reference_index,
+            component_type,
+            children: Vec::new(),
+            parent,
+            data: self.fn_init.get(component_type).unwrap()(input_data),
+        });
+
+        reference_clone
+    }
+
+    pub fn insert_component(
+        &mut self,
+        parent: Option<ComponentReference>,
+        index: usize,
+        component_type: usize,
+        input_data: Box<dyn Any>,
+    ) -> ComponentReference {
+        let reference_index = Rc::new(RefCell::new(index));
+        let reference_clone = reference_index.clone();
+
+        for i in index..self.component_data.len() {
+            let data = self.component_data.get_mut(i).unwrap();
+            *data.reference_index.borrow_mut() += 1;
+        }
+
+        self.component_data.insert(
+            index,
+            ComponentDataHolder {
+                reference_index,
+                component_type,
+                children: Vec::new(),
+                parent,
+                data: self.fn_init.get(component_type).unwrap()(input_data),
+            },
+        );
+
+        reference_clone
+    }
+
+    pub fn get_component(&self, reference: &ComponentReference) -> &ComponentDataHolder {
+        self.component_data.get(*(*reference).borrow()).unwrap()
+    }
+
+    pub fn start(&mut self) {
+        for ComponentDataHolder {
+            component_type,
+            data,
+            ..
+        } in self.component_data.iter_mut()
+        {
+            self.fn_update.get_mut(*component_type).unwrap()(data);
+        }
+    }
+}
+
+pub struct ComponentDataHolder {
+    reference_index: ComponentReference,
+    component_type: usize,
+    children: Vec<ComponentReference>,
+    parent: Option<ComponentReference>,
+    data: Box<dyn Any>,
+}
+
+impl ComponentDataHolder {
+    pub fn get_data<T: Any>(&self) -> &T {
+        self.data.downcast_ref::<T>().unwrap()
+    }
+}
+
+pub type ComponentReference = Rc<RefCell<usize>>;
+
+pub trait Component {
+    fn init(input: Box<dyn Any>) -> Box<dyn Any>;
+    fn update(data: &mut Box<dyn Any>);
+    fn render(data: &Box<dyn Any>, pass: &mut RenderPass);
+    fn destroy(data: Box<dyn Any>);
+}
+
+pub struct RenderPass {
+    buffer: Vec<Shape>,
+    pass: Vec<Shape>,
+}
+
+pub enum Shape {
+    Rect(Position, Size, Color),
+    RoundedRect(Position, Size, Color, Corners),
 }

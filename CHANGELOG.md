@@ -5,14 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Since 2021-11-17
+## [Unreleased]
+A full rewrite of PreonEngine
+
+### Removed
+- Basically everything
+
+### Changed
+- Instead of using enums for storing component data and matching them for functionality, PreonEngine now uses a system very reminiscent of an [ECS](https://en.wikipedia.org/wiki/Entity_component_system).
+
+## [0.1.0] - 2021-12-05
 
 ### Notes
-
 - My parents bought a Macbook (Air 2021, M1) for publishing iOS games, but this also means I can test PreonEngine on MacOS (I now have Window 10, MacOS, Android and Linux)
 
 ### Added
-
 - This file
 - TextureSheet caching for slightly faster startup times
 - Documentation about building shaders
@@ -26,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `preon_module_xml` - Use XML files to create an app ([gh](https://github.com/Hugo4IT/PreonEngine/milestone/1))
 
 ### Changed
-
 - Window now waits until it is fully initialized before showing
 - Unused `Copy` trait now no longer required for `PreonEventListener<E>`
 - `render_pass` is now handled inside (and owned by) `ShapeManager`
@@ -44,15 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added default implementations for functions in `PreonCustomComponentStack`
 
 ### Fixed
-
 - Incorrect image data parsing from `.preonc` format, resulting in misaligned StaticTextureShapes
 - `env_logger` startup error on initialization when modules are attached
 - Window not correct size on Window 10 & MacOS
 - My incorrect usage of `env_logger` (again)
 
 ### Removed
-
 - `preon_data` crate
 - `PreonComponent::get_child_recursive` and `PreonComponent::get_child` - Too hard to understand, completely unnecessary
 
 [Unreleased]: https://github.com/Hugo4IT/PreonEngine/
+[0.1.0]: https://github.com/Hugo4IT/PreonEngine/compare/v0.1.0-deprectated...HEAD
