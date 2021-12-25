@@ -93,9 +93,14 @@ impl PreonEngine {
         let reference_index = Rc::new(RefCell::new(index));
         let reference_clone = reference_index.clone();
 
+        if let Some(parent) = parent.clone() {
+            self.get_component_mut(&parent)
+                .children
+                .push(reference_index.clone());
+        }
+
         for i in index..self.component_data.len() {
-            let data = self.component_data.get_mut(i).unwrap();
-            *data.reference_index.borrow_mut() += 1;
+            *self.get_component_raw_mut(i).reference_index.borrow_mut() += 1;
         }
 
         self.component_data.insert(
@@ -112,8 +117,31 @@ impl PreonEngine {
         reference_clone
     }
 
+    pub fn remove_component(&mut self, reference: ComponentReference) {
+        let index = *reference.borrow();
+        for i in index + 1..self.component_data.len() {
+            *self.get_component_raw_mut(i).reference_index.borrow_mut() -= 1;
+        }
+        self.component_data.remove(index);
+    }
+
     pub fn get_component(&self, reference: &ComponentReference) -> &ComponentDataHolder {
-        self.component_data.get(*(*reference).borrow()).unwrap()
+        self.get_component_raw(*(*reference).borrow())
+    }
+
+    pub fn get_component_raw(&self, index: usize) -> &ComponentDataHolder {
+        self.component_data.get(index).unwrap()
+    }
+
+    pub fn get_component_mut(
+        &mut self,
+        reference: &ComponentReference,
+    ) -> &mut ComponentDataHolder {
+        self.get_component_raw_mut(*(*reference).borrow())
+    }
+
+    pub fn get_component_raw_mut(&mut self, index: usize) -> &mut ComponentDataHolder {
+        self.component_data.get_mut(index).unwrap()
     }
 
     pub fn start(&mut self) {
