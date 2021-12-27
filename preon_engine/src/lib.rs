@@ -5,14 +5,13 @@
 use core::{any::Any, cell::RefCell};
 
 use alloc::{boxed::Box, rc::Rc, vec::Vec};
-use types::{
-    color::Color,
-    misc::Corners,
-    vectors::{Position, Size},
-};
+use components::panel::Panel;
+use rendering::RenderPass;
+
 extern crate alloc;
 
 pub mod components;
+pub mod rendering;
 pub mod types;
 
 pub struct PreonEngine {
@@ -37,7 +36,7 @@ impl PreonEngine {
     pub fn new() -> PreonEngine {
         let mut engine = PreonEngine::_new();
 
-        engine.add_type::<components::panel::Panel>();
+        engine.add_type::<Panel>();
 
         engine
     }
@@ -65,7 +64,7 @@ impl PreonEngine {
 
     pub fn add_component(
         &mut self,
-        parent: Option<ComponentReference>,
+        parent: Option<&ComponentReference>,
         component_type: usize,
         input_data: Box<dyn Any>,
     ) -> ComponentReference {
@@ -76,7 +75,7 @@ impl PreonEngine {
             reference_index,
             component_type,
             children: Vec::new(),
-            parent,
+            parent: parent.and(Some(parent.unwrap().clone())),
             data: self.fn_init.get(component_type).unwrap()(input_data),
         });
 
@@ -144,7 +143,9 @@ impl PreonEngine {
         self.component_data.get_mut(index).unwrap()
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self) {}
+
+    pub fn update(&mut self) {
         for ComponentDataHolder {
             component_type,
             data,
@@ -153,6 +154,10 @@ impl PreonEngine {
         {
             self.fn_update.get_mut(*component_type).unwrap()(data);
         }
+    }
+
+    pub fn render(&mut self) {
+        let render_pass = RenderPass::new();
     }
 }
 
@@ -177,14 +182,4 @@ pub trait Component {
     fn update(data: &mut Box<dyn Any>);
     fn render(data: &Box<dyn Any>, pass: &mut RenderPass);
     fn destroy(data: Box<dyn Any>);
-}
-
-pub struct RenderPass {
-    buffer: Vec<Shape>,
-    pass: Vec<Shape>,
-}
-
-pub enum Shape {
-    Rect(Position, Size, Color),
-    RoundedRect(Position, Size, Color, Corners),
 }

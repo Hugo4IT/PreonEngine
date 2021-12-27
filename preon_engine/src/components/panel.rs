@@ -1,8 +1,8 @@
-use core::any::Any;
+use core::{any::Any, borrow::Borrow};
 
 use alloc::boxed::Box;
 
-use crate::{types::color::Color, Component, RenderPass};
+use crate::{types::Color, Component, RenderPass};
 
 #[derive(Default, Debug)]
 pub struct Panel(pub Color);
@@ -15,7 +15,12 @@ impl Panel {
 
 impl Component for Panel {
     fn init(input: Box<dyn Any>) -> Box<dyn Any> {
-        input
+        Box::new(Panel(
+            *input
+                .downcast::<Color>()
+                .expect("input_data must be of type Color when creating a Panel.")
+                .borrow(),
+        ))
     }
 
     fn update(data: &mut Box<dyn Any>) {
