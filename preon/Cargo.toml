@@ -1,0 +1,12 @@
+[package]
+name = "preon"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = [ "logging" ]
+logging = [ "env_logger" ]
+
+[dependencies]
+preon_engine = { path = "../preon_engine" }
+env_logger = { version = "0.9.*", optional = true }

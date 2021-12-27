@@ -6,6 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-preon_engine = { path = "../preon_engine" }
-env_logger = "0.9.*"
-log = "0.4.*"
+preon = { path = "../preon" }
