@@ -1,11 +1,5 @@
 [workspace]
-members = [
-    "preon_module_wgpu",
-    "preon_module_xml",
-    "preon_engine",
-    "preon",
-    "demo"
-]
+members = ["preon_module_wgpu", "preon_module_xml", "preon_engine", "demo"]
 resolver = "2"
 
 [profile.dev.package."*"]

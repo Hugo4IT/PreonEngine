@@ -4,7 +4,7 @@
 
 use core::{any::Any, cell::RefCell};
 
-use alloc::{boxed::Box, rc::Rc, vec::Vec};
+use alloc::{boxed::Box, rc::Rc, string::String, vec::Vec};
 use components::panel::Panel;
 use rendering::RenderPass;
 
@@ -20,6 +20,7 @@ pub struct PreonEngine {
     fn_render: Vec<fn(&Box<dyn Any>, &mut RenderPass)>,
     fn_destroy: Vec<fn(Box<dyn Any>)>,
     component_data: Vec<ComponentDataHolder>,
+    root_component: Option<ComponentReference>,
 }
 
 impl PreonEngine {
@@ -30,6 +31,7 @@ impl PreonEngine {
             fn_render: Vec::new(),
             fn_destroy: Vec::new(),
             component_data: Vec::new(),
+            root_component: None,
         }
     }
 
@@ -141,6 +143,32 @@ impl PreonEngine {
 
     pub fn get_component_raw_mut(&mut self, index: usize) -> &mut ComponentDataHolder {
         self.component_data.get_mut(index).unwrap()
+    }
+
+    pub fn print_tree(&self) -> String {
+        let mut output = String::new();
+        self._print_tree_recursive(
+            self.get_component(self.root_component.as_ref().unwrap()),
+            &mut output,
+            0,
+        );
+        output
+    }
+
+    fn _print_tree_recursive(
+        &self,
+        current: &ComponentDataHolder,
+        input: &mut String,
+        indent: usize,
+    ) {
+        input.push_str(&"  ".repeat(indent));
+        input.push('+');
+        input.push(' ');
+        input.push_str(current.get_data())
+
+        for child in current.children.iter() {
+            self._print_tree_recursive(self.get_component(child), input, indent + 1);
+        }
     }
 
     pub fn start(&mut self) {}
