@@ -1,11 +1,4 @@
-/target
-Cargo.lock
-/.sublime
-**/*.spv
-cache.bmp
-log.log
-/.vscode
-/cache
+**/target
 **/.DS_Store
-/tests
-**/*.old
+**/.vscode
+**/.sublime

@@ -1,9 +1,3 @@
 [workspace]
-members = ["preon_module_wgpu", "preon_module_xml", "preon_engine", "demo"]
+members = ["preon_engine"]
 resolver = "2"
-
-[profile.dev.package."*"]
-opt-level = 3 # Almost the same compile time as 0, much faster runtime
-
-[profile.release.package."*"]
-opt-level = 3
