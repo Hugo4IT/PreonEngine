@@ -21,6 +21,7 @@ pub struct PreonContext {
     pub changed: bool,
     pub renderer: Renderer,
     layout: Vec<ElementLayout>,
+    layout_origin: PhysicalPosition<f64>,
     layout_providers: Vec<LayoutProvider>,
     element_index: usize,
 }
@@ -34,6 +35,7 @@ impl PreonContext {
 
             renderer: Renderer::new(&window),
             layout: Vec::new(),
+            layout_origin: PhysicalPosition::default(),
             layout_providers: Vec::new(),
             element_index: 0,
         }
@@ -45,6 +47,7 @@ impl PreonContext {
     }
 
     pub(crate) fn prepare_render(&mut self) {
+        self.layout_origin = PhysicalPosition::default();
         self.state = PreonContextState::Render;
         self.element_index = 0;
 
@@ -62,6 +65,7 @@ impl PreonContext {
     }
 
     pub(crate) fn prepare_layout(&mut self) {
+        self.layout_origin = PhysicalPosition::default();
         self.state = PreonContextState::Layout;
         self.element_index = 0;
         self.layout.clear();
@@ -73,30 +77,56 @@ impl PreonContext {
         self.end_vertical()
     }
 
-    pub(crate) fn push_layout_provider(&mut self, provider: LayoutProvider) {
-        self.layout_providers.push(provider)
+    pub fn push_layout_provider(&mut self, provider: fn(PhysicalPosition<f64>)->LayoutProvider) {
+        match self.state {
+            PreonContextState::Layout => {
+                if let Some(last) = self.layout_providers.last_mut() {
+                    last.push_element(ElementLayoutDescriptor::default());
+                }
+                self.layout_providers.push(provider(self.layout_origin));
+            },
+            _ => {
+                println!("Layout Provider.");
+                let layout = self.get_layout();
+                self.layout_origin = layout.position;
+            }
+        }
     }
 
-    pub(crate) fn pop_layout_provider(&mut self) {
-        let provider = self.layout_providers.pop().unwrap();
-        let (layouts, combined_size) = provider.collect_layouts();
+    pub fn pop_layout_provider(&mut self) {
+        match self.state {
+            PreonContextState::Layout => {
+                let provider = self.layout_providers.pop().unwrap();
+                let (layouts, combined_size) = provider.collect_layouts();
+        
+                if let Some(previous) = self.layout_providers.last_mut() {
+                    previous.push_element(ElementLayoutDescriptor {
+                        min_size: combined_size,
+                        ..Default::default()
+                    });
+                }
 
-        if let Some(previous) = self.layout_providers.last_mut() {
-            previous.push_element(ElementLayoutDescriptor {
-                min_size: combined_size,
-                ..Default::default()
-            });
+                self.layout.extend(layouts.into_iter());
+            },
+            _ => {
+                self.get_layout();
+            }
         }
-
-        self.layout.extend(layouts.into_iter());
     }
 
     /// Calling `self.get_layout` is **required** for any non-Layout state element update
     #[inline]
     pub fn get_layout(&mut self) -> ElementLayout {
         let layout = self.layout[self.element_index];
+        println!("Layout: {:?}, Origin: {:?}", layout, self.layout_origin);
         self.element_index += 1;
-        layout
+        ElementLayout {
+            position: PhysicalPosition::new(
+                layout.position.x + self.layout_origin.x,
+                layout.position.y + self.layout_origin.y,
+            ),
+            size: layout.size,
+        }
     }
 
     pub fn set_layout(&mut self, layout: ElementLayoutDescriptor) {
@@ -110,6 +140,7 @@ impl PreonContext {
         self.changed = false;
         self.element_index = 0;
         self.state = PreonContextState::Update;
+        self.layout_origin = PhysicalPosition::default();
     }
 
     pub(crate) fn finish_update(&mut self) -> bool {
@@ -186,13 +217,15 @@ pub type LayoutProviderFunction =
 pub struct LayoutProvider {
     elements: Vec<ElementLayoutDescriptor>,
     function: LayoutProviderFunction,
+    origin: PhysicalPosition<f64>,
 }
 
 impl LayoutProvider {
-    pub fn new(function: LayoutProviderFunction) -> LayoutProvider {
+    pub fn new(function: LayoutProviderFunction, origin: PhysicalPosition<f64>) -> LayoutProvider {
         LayoutProvider {
             elements: Vec::new(),
             function,
+            origin
         }
     }
 

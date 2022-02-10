@@ -29,8 +29,9 @@ fn vs_main(
     out.color = model.color;
 
     let pivot_offset = vec3<f32>(instance.size.x * 0.5, -instance.size.y * 0.5, 1.0);
-    let position = model.v_position * vec3<f32>(instance.size, 1.0) + pivot_offset + instance.i_position;
-    let screen_position = (position - vec3<f32>(screen.s_size.x * 0.5, -screen.s_size.y * 0.5, 0.0)) * vec3<f32>(2.0, 2.0, 1.0);
+    let inverted_y = vec3<f32>(instance.i_position.x, -instance.i_position.y, instance.i_position.z);
+    let position = model.v_position * vec3<f32>(instance.size, 1.0) + pivot_offset + inverted_y;
+    let screen_position = position * vec3<f32>(2.0, 2.0, 1.0) - vec3<f32>(screen.s_size.x, -screen.s_size.y, 0.0);
     let transformed_position = screen_position / vec3<f32>(screen.s_size, 1.0);
 
     out.clip_position = vec4<f32>(transformed_position, 1.0);

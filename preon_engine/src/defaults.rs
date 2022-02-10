@@ -12,21 +12,11 @@ pub trait VerticalSupport {
 
 impl VerticalSupport for PreonContext {
     fn begin_vertical(&mut self) {
-        match self.state {
-            PreonContextState::Layout => self.push_layout_provider(VerticalLayout::provider()),
-            _ => {
-                // self.get_layout();
-            }
-        }
+        self.push_layout_provider(VerticalLayout::provider);
     }
 
     fn end_vertical(&mut self) {
-        match self.state {
-            PreonContextState::Layout => self.pop_layout_provider(),
-            _ => {
-                self.get_layout();
-            }
-        }
+        self.pop_layout_provider();
     }
 }
 
@@ -61,8 +51,8 @@ impl VerticalLayout {
         )
     }
 
-    pub fn provider() -> LayoutProvider {
-        LayoutProvider::new(VerticalLayout::layout)
+    pub fn provider(origin: PhysicalPosition<f64>) -> LayoutProvider {
+        LayoutProvider::new(VerticalLayout::layout, origin)
     }
 }
 
@@ -73,21 +63,11 @@ pub trait HorizontalSupport {
 
 impl HorizontalSupport for PreonContext {
     fn begin_horizontal(&mut self) {
-        match self.state {
-            PreonContextState::Layout => self.push_layout_provider(HorizontalLayout::provider()),
-            _ => {
-                // self.get_layout();
-            }
-        }
+        self.push_layout_provider(HorizontalLayout::provider);
     }
 
     fn end_horizontal(&mut self) {
-        match self.state {
-            PreonContextState::Layout => self.pop_layout_provider(),
-            _ => {
-                self.get_layout();
-            }
-        }
+        self.pop_layout_provider();
     }
 }
 
@@ -122,8 +102,8 @@ impl HorizontalLayout {
         )
     }
 
-    pub fn provider() -> LayoutProvider {
-        LayoutProvider::new(HorizontalLayout::layout)
+    pub fn provider(origin: PhysicalPosition<f64>) -> LayoutProvider {
+        LayoutProvider::new(HorizontalLayout::layout, origin)
     }
 }
 

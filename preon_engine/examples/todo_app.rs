@@ -3,7 +3,6 @@ use preon_engine::{app::App, context::PreonContext, defaults::*};
 #[derive(Debug, Clone)]
 pub struct MyAppState {
     todos: Vec<(bool, String)>,
-    frame: usize,
 }
 
 fn main() {
@@ -17,18 +16,17 @@ fn main() {
             (false, String::from("Item 2")),
             (false, String::from("Item 3")),
         ],
-        frame: 0,
     });
     app.start();
 }
 
 fn ui(ctx: &mut PreonContext, state: &mut MyAppState) {
-    ctx.begin_horizontal();
     for (done, _label) in state.todos.iter_mut() {
+        ctx.begin_horizontal();
         ctx.checkbox(done);
+        ctx.checkbox(done);
+        ctx.end_horizontal();
     }
-    ctx.end_horizontal();
 
-    state.frame += 1;
     println!("{:?}", state);
 }
