@@ -1,5 +1,5 @@
 use winit::{
-    dpi::{LogicalSize, PhysicalPosition, PhysicalSize},
+    dpi::{PhysicalPosition, PhysicalSize},
     window::Window,
 };
 
@@ -40,7 +40,7 @@ impl PreonContext {
     }
 
     #[inline]
-    pub(crate) fn resize(&mut self, new_size: LogicalSize<u32>) {
+    pub(crate) fn resize(&mut self, new_size: PhysicalSize<u32>) {
         self.renderer.resize(new_size);
     }
 

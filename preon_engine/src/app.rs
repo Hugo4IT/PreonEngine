@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::{Instant, Duration}, thread};
+use std::collections::HashMap;
 
 use log::info;
 use winit::{
@@ -109,12 +109,12 @@ impl<T: 'static> App<T> {
                 }
                 WindowEvent::Resized(new_size) => {
                     let holder = windows.get_mut(&window_id).unwrap();
-                    holder.context.resize(new_size.to_logical(holder.window.scale_factor()));
+                    holder.context.resize(new_size);
                     holder.request_redraw();
                 }
-                WindowEvent::ScaleFactorChanged { new_inner_size, scale_factor } => {
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     let holder = windows.get_mut(&window_id).unwrap();
-                    holder.context.resize(new_inner_size.to_logical(holder.window.scale_factor()));
+                    holder.context.resize(*new_inner_size);
                     holder.request_redraw();
                 }
                 _ => (),
