@@ -7,7 +7,7 @@ use winit::{
     window::{Window, WindowBuilder, WindowId},
 };
 
-use crate::context::{PreonContext, input::MouseButton};
+use crate::context::{input::MouseButton, PreonContext};
 
 pub type WindowFunction<T> = fn(&mut PreonContext, &mut T);
 
@@ -83,11 +83,7 @@ impl<T: 'static> App<T> {
                     let holder = windows.get_mut(&window_id).unwrap();
                     holder.context.input.mouse.position = position;
                 }
-                WindowEvent::MouseInput {
-                    button,
-                    state,
-                    ..
-                } => {
+                WindowEvent::MouseInput { button, state, .. } => {
                     let holder = windows.get_mut(&window_id).unwrap();
                     let index = match button {
                         winit::event::MouseButton::Left => MouseButton::Left,
@@ -100,11 +96,11 @@ impl<T: 'static> App<T> {
                         winit::event::ElementState::Pressed => {
                             holder.context.input.mouse.button[index].pressed = true;
                             holder.context.input.mouse.button[index].just_pressed = true;
-                        },
+                        }
                         winit::event::ElementState::Released => {
                             holder.context.input.mouse.button[index].pressed = false;
                             holder.context.input.mouse.button[index].just_released = true;
-                        },
+                        }
                     }
                 }
                 WindowEvent::Resized(new_size) => {

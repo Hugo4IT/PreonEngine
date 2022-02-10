@@ -47,6 +47,8 @@ impl PreonContext {
     pub(crate) fn prepare_render(&mut self) {
         self.state = PreonContextState::Render;
         self.element_index = 0;
+
+        self.renderer.prepare_render();
     }
 
     pub(crate) fn finish_render(&mut self) {
@@ -123,6 +125,10 @@ impl PreonContext {
     #[inline]
     pub fn get_mouse(&self) -> MouseState {
         self.input.mouse
+    }
+
+    pub fn draw_rectangle(&mut self, rect: ElementLayout) {
+        self.renderer.rect.queue_render(rect);
     }
 }
 

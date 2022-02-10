@@ -30,7 +30,7 @@ impl MouseState {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PreonContextInput {
-    pub mouse: MouseState
+    pub mouse: MouseState,
 }
 
 impl PreonContextInput {

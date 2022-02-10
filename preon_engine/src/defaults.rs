@@ -25,7 +25,7 @@ impl VerticalSupport for PreonContext {
             PreonContextState::Layout => self.pop_layout_provider(),
             _ => {
                 self.get_layout();
-            },
+            }
         }
     }
 }
@@ -86,7 +86,7 @@ impl HorizontalSupport for PreonContext {
             PreonContextState::Layout => self.pop_layout_provider(),
             _ => {
                 self.get_layout();
-            },
+            }
         }
     }
 }
@@ -149,6 +149,7 @@ impl CheckBoxSupport for PreonContext {
             }),
             PreonContextState::Render => {
                 let layout = self.get_layout();
+                self.renderer.rect.queue_render(layout);
             }
         }
     }

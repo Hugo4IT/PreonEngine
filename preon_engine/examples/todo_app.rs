@@ -17,7 +17,7 @@ fn main() {
             (false, String::from("Item 2")),
             (false, String::from("Item 3")),
         ],
-        frame: 0
+        frame: 0,
     });
     app.start();
 }
@@ -28,7 +28,7 @@ fn ui(ctx: &mut PreonContext, state: &mut MyAppState) {
         ctx.checkbox(done);
     }
     ctx.end_horizontal();
-    
+
     state.frame += 1;
     println!("{:?}", state);
 }
