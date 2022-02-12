@@ -80,9 +80,9 @@ impl PreonContext {
     pub fn push_layout_provider(&mut self, provider: fn(PhysicalPosition<f64>)->LayoutProvider) {
         match self.state {
             PreonContextState::Layout => {
-                if let Some(last) = self.layout_providers.last_mut() {
-                    last.push_element(ElementLayoutDescriptor::default());
-                }
+                // if let Some(last) = self.layout_providers.last_mut() {
+                //     last.push_element(ElementLayoutDescriptor::default());
+                // }
                 self.layout_providers.push(provider(self.layout_origin));
             },
             _ => {
@@ -99,17 +99,21 @@ impl PreonContext {
                 let provider = self.layout_providers.pop().unwrap();
                 let (layouts, combined_size) = provider.collect_layouts();
         
-                if let Some(previous) = self.layout_providers.last_mut() {
-                    previous.push_element(ElementLayoutDescriptor {
-                        min_size: combined_size,
-                        ..Default::default()
-                    });
-                }
+                // if let Some(previous) = self.layout_providers.last_mut() {
+                //     previous.push_element(ElementLayoutDescriptor {
+                //         min_size: combined_size,
+                //         ..Default::default()
+                //     });
+                // }
 
+                self.layout.push(ElementLayout {
+                    position: PhysicalPosition::default(),
+                    size: combined_size,
+                });
                 self.layout.extend(layouts.into_iter());
             },
             _ => {
-                self.get_layout();
+                self.layout_origin = self.get_layout().position;
             }
         }
     }
@@ -215,6 +219,7 @@ pub type LayoutProviderFunction =
 
 #[derive(Debug)]
 pub struct LayoutProvider {
+    layout_buffer: Vec<ElementLayout>,
     elements: Vec<ElementLayoutDescriptor>,
     function: LayoutProviderFunction,
     origin: PhysicalPosition<f64>,
@@ -223,6 +228,7 @@ pub struct LayoutProvider {
 impl LayoutProvider {
     pub fn new(function: LayoutProviderFunction, origin: PhysicalPosition<f64>) -> LayoutProvider {
         LayoutProvider {
+            layout_buffer: Vec::new(),
             elements: Vec::new(),
             function,
             origin
@@ -235,5 +241,11 @@ impl LayoutProvider {
 
     pub fn collect_layouts(&self) -> (Vec<ElementLayout>, PhysicalSize<f64>) {
         self.function.clone()(self.elements.clone())
+    }
+
+    pub fn append_buffers
+
+    pub fn get_buffers(&self) -> Vec<ElementLayout> {
+
     }
 }
