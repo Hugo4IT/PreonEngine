@@ -118,7 +118,7 @@ impl PreonContext {
     #[inline]
     pub fn get_layout(&mut self) -> ElementLayout {
         let layout = self.layout[self.element_index];
-        println!("Layout: {:?}, Origin: {:?}", layout, self.layout_origin);
+        println!("Layout: {:#?}, Origin: {:?}", layout, self.layout_origin);
         self.element_index += 1;
         ElementLayout {
             position: PhysicalPosition::new(
