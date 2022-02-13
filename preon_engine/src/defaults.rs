@@ -12,7 +12,7 @@ pub trait VerticalSupport {
 
 impl VerticalSupport for PreonContext {
     fn begin_vertical(&mut self) {
-        self.push_layout_provider(VerticalLayout::provider);
+        self.push_layout_provider(VerticalLayout::provider());
     }
 
     fn end_vertical(&mut self) {
@@ -51,8 +51,8 @@ impl VerticalLayout {
         )
     }
 
-    pub fn provider(origin: PhysicalPosition<f64>) -> LayoutProvider {
-        LayoutProvider::new(VerticalLayout::layout, origin)
+    pub fn provider() -> LayoutProvider {
+        LayoutProvider::new(VerticalLayout::layout)
     }
 }
 
@@ -63,7 +63,7 @@ pub trait HorizontalSupport {
 
 impl HorizontalSupport for PreonContext {
     fn begin_horizontal(&mut self) {
-        self.push_layout_provider(HorizontalLayout::provider);
+        self.push_layout_provider(HorizontalLayout::provider());
     }
 
     fn end_horizontal(&mut self) {
@@ -102,8 +102,8 @@ impl HorizontalLayout {
         )
     }
 
-    pub fn provider(origin: PhysicalPosition<f64>) -> LayoutProvider {
-        LayoutProvider::new(HorizontalLayout::layout, origin)
+    pub fn provider() -> LayoutProvider {
+        LayoutProvider::new(HorizontalLayout::layout)
     }
 }
 

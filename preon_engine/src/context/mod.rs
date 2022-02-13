@@ -21,9 +21,12 @@ pub struct PreonContext {
     pub changed: bool,
     pub renderer: Renderer,
     layout: Vec<ElementLayout>,
-    layout_origin: PhysicalPosition<f64>,
+    layout_index: usize,
     layout_providers: Vec<LayoutProvider>,
-    element_index: usize,
+
+    current_layout_origin: PhysicalPosition<f64>,
+    layout_origins: Vec<PhysicalPosition<f64>>,
+    layout_origin_index: usize,
 }
 
 impl PreonContext {
@@ -35,9 +38,12 @@ impl PreonContext {
 
             renderer: Renderer::new(&window),
             layout: Vec::new(),
-            layout_origin: PhysicalPosition::default(),
+            layout_index: 0,
             layout_providers: Vec::new(),
-            element_index: 0,
+
+            current_layout_origin: PhysicalPosition::default(),
+            layout_origins: Vec::new(),
+            layout_origin_index: 0,
         }
     }
 
@@ -47,14 +53,18 @@ impl PreonContext {
     }
 
     pub(crate) fn prepare_render(&mut self) {
-        self.layout_origin = PhysicalPosition::default();
         self.state = PreonContextState::Render;
-        self.element_index = 0;
+        self.layout_origin_index = 0;
+        self.layout_index = 0;
 
         self.renderer.prepare_render();
+
+        self.begin_vertical();
     }
 
     pub(crate) fn finish_render(&mut self) {
+        self.end_vertical();
+
         match self.renderer.render() {
             Ok(_) => (),
             Err(wgpu::SurfaceError::Outdated) => self.renderer.reconfigure(),
@@ -65,9 +75,9 @@ impl PreonContext {
     }
 
     pub(crate) fn prepare_layout(&mut self) {
-        self.layout_origin = PhysicalPosition::default();
         self.state = PreonContextState::Layout;
-        self.element_index = 0;
+        self.layout_origin_index = 0;
+        self.layout_index = 0;
         self.layout.clear();
 
         self.begin_vertical();
@@ -77,18 +87,14 @@ impl PreonContext {
         self.end_vertical()
     }
 
-    pub fn push_layout_provider(&mut self, provider: fn(PhysicalPosition<f64>)->LayoutProvider) {
+    pub fn push_layout_provider(&mut self, provider: LayoutProvider) {
         match self.state {
             PreonContextState::Layout => {
-                // if let Some(last) = self.layout_providers.last_mut() {
-                //     last.push_element(ElementLayoutDescriptor::default());
-                // }
-                self.layout_providers.push(provider(self.layout_origin));
+                self.layout_providers.push(provider);
             },
             _ => {
                 println!("Layout Provider.");
-                let layout = self.get_layout();
-                self.layout_origin = layout.position;
+                self.current_layout_origin = self.get_origin();
             }
         }
     }
@@ -99,37 +105,40 @@ impl PreonContext {
                 let provider = self.layout_providers.pop().unwrap();
                 let (layouts, combined_size) = provider.collect_layouts();
         
-                // if let Some(previous) = self.layout_providers.last_mut() {
-                //     previous.push_element(ElementLayoutDescriptor {
-                //         min_size: combined_size,
-                //         ..Default::default()
-                //     });
-                // }
+                if let Some(previous) = self.layout_providers.last_mut() {
+                    previous.push_element(ElementLayoutDescriptor {
+                        min_size: combined_size,
+                        ..Default::default()
+                    });
+                }
 
-                self.layout.push(ElementLayout {
-                    position: PhysicalPosition::default(),
-                    size: combined_size,
-                });
                 self.layout.extend(layouts.into_iter());
+
             },
-            _ => {
-                self.layout_origin = self.get_layout().position;
-            }
+            _ => ()
         }
+    }
+
+    #[inline]
+    pub fn get_origin(&mut self) -> PhysicalPosition<f64> {
+        let origin = self.layout_origins[self.layout_origin_index];
+        self.layout_origin_index += 1;
+        origin
     }
 
     /// Calling `self.get_layout` is **required** for any non-Layout state element update
     #[inline]
     pub fn get_layout(&mut self) -> ElementLayout {
-        let layout = self.layout[self.element_index];
-        println!("Layout: {:#?}, Origin: {:?}", layout, self.layout_origin);
-        self.element_index += 1;
+        let layout = self.layout[self.layout_index];
+        println!("Layout: {:#?}, Origin: {:?}", layout, self.current_layout_origin);
+        self.layout_index += 1;
         ElementLayout {
             position: PhysicalPosition::new(
-                layout.position.x + self.layout_origin.x,
-                layout.position.y + self.layout_origin.y,
+                layout.position.x + self.current_layout_origin.x,
+                layout.position.y + self.current_layout_origin.y,
             ),
             size: layout.size,
+            is_provider: layout.is_provider
         }
     }
 
@@ -142,12 +151,16 @@ impl PreonContext {
 
     pub(crate) fn prepare_update(&mut self) {
         self.changed = false;
-        self.element_index = 0;
+        self.layout_index = 0;
+        self.layout_origin_index = 0;
         self.state = PreonContextState::Update;
-        self.layout_origin = PhysicalPosition::default();
+
+        self.begin_vertical();
     }
 
     pub(crate) fn finish_update(&mut self) -> bool {
+        self.end_vertical();
+
         self.input.reset();
         self.changed
     }
@@ -171,6 +184,7 @@ impl PreonContext {
 pub struct ElementLayout {
     pub position: PhysicalPosition<f64>,
     pub size: PhysicalSize<f64>,
+    is_provider: bool,
 }
 
 impl ElementLayout {
@@ -219,19 +233,15 @@ pub type LayoutProviderFunction =
 
 #[derive(Debug)]
 pub struct LayoutProvider {
-    layout_buffer: Vec<ElementLayout>,
     elements: Vec<ElementLayoutDescriptor>,
     function: LayoutProviderFunction,
-    origin: PhysicalPosition<f64>,
 }
 
 impl LayoutProvider {
-    pub fn new(function: LayoutProviderFunction, origin: PhysicalPosition<f64>) -> LayoutProvider {
+    pub fn new(function: LayoutProviderFunction) -> LayoutProvider {
         LayoutProvider {
-            layout_buffer: Vec::new(),
             elements: Vec::new(),
             function,
-            origin
         }
     }
 
@@ -241,11 +251,5 @@ impl LayoutProvider {
 
     pub fn collect_layouts(&self) -> (Vec<ElementLayout>, PhysicalSize<f64>) {
         self.function.clone()(self.elements.clone())
-    }
-
-    pub fn append_buffers
-
-    pub fn get_buffers(&self) -> Vec<ElementLayout> {
-
     }
 }
