@@ -1,3 +1,0 @@
-[workspace]
-members = ["preon_engine"]
-resolver = "2"
