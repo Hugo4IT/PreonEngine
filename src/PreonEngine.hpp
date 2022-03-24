@@ -8,17 +8,9 @@
 #define GEN_COMPONENT(x) static inline int typeID() { return IDCounter<preon::Component>::next<x>(); } inline int getTypeID() { return typeID(); }
 #endif
 
-// #ifndef COMPONENT_ID
-// #define COMPONENT_ID(x) preon::IDCounter<preon::Component>::next<x>()
-// #endif
-
 #ifndef GEN_SYSTEM
 #define GEN_SYSTEM(x) static inline int typeID() { return IDCounter<preon::System>::next<x>(); } inline int getTypeID() { return typeID(); }
 #endif
-
-// #ifndef SYSTEM_ID
-// #define SYSTEM_ID(x) preon::IDCounter<preon::System>::next<x>()
-// #endif
 
 namespace preon {
     // Static counter so we can store entities and systems as vectors
@@ -109,29 +101,40 @@ namespace preon {
     class System {
     public:
         virtual inline int getTypeID() { return IDCounter<System>::next<System>(); }
+
+        virtual std::vector<int> query() { return std::vector<int>(); }
+        virtual void system(std::vector<Component*> components) {}
     };
 
     class Entity {
     private:
-        std::vector<Component*> components;
+        std::vector<int> components;
 
     public:
         Entity() {}
-        void addComponent(Component* component);
-        std::vector<Component*> *getComponents();
+        void addComponent(int cIndex);
+        std::vector<int> getComponents();
     };
 
     class Page {
     private:
         std::string title;
         std::vector<Entity> entities;
+        std::vector<Component*> components;
+        std::vector<System*> systems;
+        std::vector< std::vector< std::vector<int> > > systemCache;
+        int ecsUpdates;
 
     public:
         Page(std::string title);
         ~Page();
 
         void addEntity(Entity entity);
-        std::vector<int> find(int typeID);
+        int allocateComponent(Component *component);
+        void addSystem(System *system);
+
+        void update();
+
         Entity *lastEntity();
     };
 }

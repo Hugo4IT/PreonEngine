@@ -4,14 +4,14 @@
 
 using namespace preon;
 
-Entity *ButtonSpawner::newButton(Page& destination, std::string label) {
+Entity *ButtonSpawner::newButton(Page& page, std::string label) {
     debug("Creating button \"%s\"", label.c_str());
 
     Entity e;
-    e.addComponent(new Position(10, 50));
-    e.addComponent(new Collider(Vector2(10, 50), Vector2(100, 50)));
-    e.addComponent(new Button(label));
-    destination.addEntity(e);
-    
-    return destination.lastEntity();
+    e.addComponent(page.allocateComponent(new Position(10, 50)));
+    e.addComponent(page.allocateComponent(new Collider(Vector2(10, 50), Vector2(100, 50))));
+    e.addComponent(page.allocateComponent(new Button(label)));
+    page.addEntity(e);
+
+    return page.lastEntity();
 }
