@@ -29,9 +29,7 @@ public:
     PrinterSystem(){}
 
     inline std::vector<int> query() {
-        std::vector<int> requestedComponents;
-        requestedComponents.push_back(Printer::typeID());
-        return requestedComponents;
+        return std::vector<int>(1, Printer::typeID());
     }
 
     inline void system(std::vector<Component*> components) {
@@ -41,9 +39,6 @@ public:
 };
 
 int main() {
-    std::cout << IDCounter<System>::next<PrinterSystem>() << std::endl;
-    std::cout << IDCounter<System>::next<System>() << std::endl;
-
     Page home("Home");
     ButtonSpawner::newButton(home, "To Options");
 
@@ -63,10 +58,10 @@ int main() {
 
     options.addSystem(new PrinterSystem());
 
-    while (1) {
-        options.update();
-        sleep(1);
-    }
+    App app;
+    app.addPage(&home);
+    app.addPage(&options);
+    app.mainloop();
 
     return 0;
 }

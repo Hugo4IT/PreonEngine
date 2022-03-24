@@ -49,8 +49,6 @@ void Page::update() {
         std::vector< std::vector<int> > systemsRequestingComponents;
         for (unsigned long i = 0; i < this->systems.size(); i++) {
             System *s = this->systems[i];
-            
-            std::cout << s->getTypeID() << std::endl;
 
             std::vector<int> requestedComponents = s->query();
 
@@ -120,4 +118,52 @@ Entity *Page::lastEntity() {
 
 Page::~Page() {
 
+}
+
+App::App() {
+    this->currentPage = 0;
+    this->window = NULL;
+}
+
+void App::addPage(Page *page) {
+    this->pages.push_back(*page);
+}
+
+void App::setPage(int index) {
+    this->currentPage = index;
+}
+
+void App::mainloop() {
+    if (!glfwInit()) {
+        std::cerr << "Could not initialize GLFW3!" << std::endl;
+        return;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    this->window = glfwCreateWindow(640, 480, "Hello, Window!", NULL, NULL);
+    glfwMakeContextCurrent(this->window);
+    glfwSwapInterval(1); // VSync
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+    }
+
+    glViewport(0, 0, 640, 480);
+    glClearColor(0.086274, 0.113725, 0.152941, 1.0);
+
+    while (!glfwWindowShouldClose(this->window)) {
+        this->pages[this->currentPage].update();
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glfwSwapBuffers(this->window);
+        glfwPollEvents();
+    }
 }

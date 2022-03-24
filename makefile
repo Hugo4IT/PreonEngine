@@ -1,7 +1,21 @@
 CC = g++
 CCFLAGS = -MF bin/$*.d -MP -MMD -fPIC -Wall -Wextra -std=c++14
 LINKFLAGS = -shared -fPIC
+EXT_LIBS = -L/opt/homebrew/Cellar/glfw/3.3.6/lib -lglfw -framework OpenGL
 LIB = bin/libpreonengine.dylib
+
+ifeq ($(OS),Windows_NT)
+	EXT_LIBS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
+    @echo "[WARNING] Windows build not tested yet"
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        EXT_LIBS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        EXT_LIBS = -L/opt/homebrew/Cellar/glfw/3.3.6/lib -lglfw -framework OpenGL
+    endif
+endif
 
 PREFIX = @
 
@@ -39,7 +53,7 @@ build: postBuild
 
 $(LIB): $(OBJECTS)
 	@echo "[LINKING] $^ -> $@"
-	$(PREFIX) $(CC) $(LINKFLAGS) -o $@ $^
+	$(PREFIX) $(CC) $(LINKFLAGS) $(EXT_LIBS) -o $@ $^
 
 TEST_SOURCES = $(wildcard test/*.cpp)
 TEST_DEPENDS = $(patsubst test/%.cpp,bin/test/%.d,$(TEST_SOURCES))
@@ -55,6 +69,6 @@ bin/test/%.o: test/%.cpp makefile
 
 test: $(TEST_OBJECTS)
 	@echo "[LINKING] $^ -> bin/demo"
-	$(PREFIX) $(CC) $(TEST_LINKFLAGS) -o bin/demo $^
+	$(PREFIX) $(CC) $(TEST_LINKFLAGS) $(EXT_LIBS) -o bin/demo $^
 	@echo "[INFO] Running..."
 	$(PREFIX) ./bin/demo

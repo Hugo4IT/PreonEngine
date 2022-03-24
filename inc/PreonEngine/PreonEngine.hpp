@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "glad.hpp"
+#include "glfw3.hpp"
+
 #ifndef GEN_COMPONENT
 #define GEN_COMPONENT(x) static inline int typeID() { return IDCounter<preon::Component>::next<x>(); } inline int getTypeID() { return typeID(); }
 #endif
@@ -135,5 +138,19 @@ namespace preon {
         Entity *lastEntity();
 
         void update();
+    };
+
+    class App {
+    private:
+        std::vector<Page> pages;
+        GLFWwindow *window;
+        int currentPage;
+    
+    public:
+        App();
+
+        void addPage(Page *page);
+        void setPage(int index);
+        void mainloop();
     };
 }
