@@ -16,28 +16,34 @@ using namespace preon;
 struct Printer : public Component {
     GEN_COMPONENT(Printer)
 
+public:
     std::string message;
 
     Printer(std::string message) : message(message) {}
 };
 
 class PrinterSystem : public System {
+public:
     GEN_SYSTEM(PrinterSystem)
 
-public:
     PrinterSystem(){}
 
-    std::vector<int> query() {
-        return std::vector<int>(Printer::typeID());
+    inline std::vector<int> query() {
+        std::vector<int> requestedComponents;
+        requestedComponents.push_back(Printer::typeID());
+        return requestedComponents;
     }
 
-    void system(std::vector<Component*> components) {
+    inline void system(std::vector<Component*> components) {
         Printer *ph = (Printer*)components[0];
         std::cout << ph->message << std::endl;
     }
 };
 
 int main() {
+    std::cout << IDCounter<System>::next<PrinterSystem>() << std::endl;
+    std::cout << IDCounter<System>::next<System>() << std::endl;
+
     Page home("Home");
     ButtonSpawner::newButton(home, "To Options");
 

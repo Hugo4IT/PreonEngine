@@ -26,20 +26,15 @@ void Page::addEntity(Entity entity) {
 }
 
 int Page::allocateComponent(Component *component) {
-    int i = this->components.size();
     this->components.push_back(component);
     this->ecsUpdates++;
 
-    return i;
+    return this->components.size() - 1;
 }
 
 void Page::addSystem(System *system) {
     this->systems.push_back(system);
     this->ecsUpdates++;
-}
-
-Entity *Page::lastEntity() {
-    return &this->entities.back();
 }
 
 void Page::update() {
@@ -55,15 +50,17 @@ void Page::update() {
         for (unsigned long i = 0; i < this->systems.size(); i++) {
             System *s = this->systems[i];
             
+            std::cout << s->getTypeID() << std::endl;
+
             std::vector<int> requestedComponents = s->query();
 
-            int highestIndex = 0;
+            unsigned long highestIndex = 0;
             for (int r : requestedComponents)
-                if (r > highestIndex)
+                if ((unsigned long)r > highestIndex)
                     highestIndex = r;
 
             if (systemsRequestingComponents.size() <= highestIndex)
-                systemsRequestingComponents.resize(highestIndex + 1);
+                systemsRequestingComponents.resize(highestIndex + 1, std::vector<int>());
             
             for (int r : requestedComponents) {
                 systemsRequestingComponents[r].push_back(i);
@@ -72,9 +69,9 @@ void Page::update() {
 
         // Second pass: Create systemCache:
         // list(list(list(int))) - Indexed by System::typeID();
-        //      list(list(int))  - List of componenents for each entity
-        //           list(int)   - A list of systems that request that component
-        //                int    - The System::typeID() of that system
+        //      list(list(int))  - List of entities that apply to that system
+        //           list(int)   - A list of the components that will be used
+        //                int    - Indices of the components in this->components
         for (unsigned long i = 0; i < this->entities.size(); i++) {
             Entity e = this->entities[i];
             std::vector<int> components = e.getComponents();
@@ -82,15 +79,15 @@ void Page::update() {
             for (unsigned long j = 0; j < components.size(); j++) {
                 int componentIndex = components[j];
                 Component *component = this->components[componentIndex];
-                std::vector<int> systems = systemsRequestingComponents[component->getTypeID()];
+                if (component->getTypeID() < systemsRequestingComponents.size()) {
+                    std::vector<int> systems = systemsRequestingComponents[component->getTypeID()];
 
-                for (int system : systems) {
-                    if (this->systemCache.size() <= system) {
-                        this->systemCache.resize(system + 1);
-                        if (this->systemCache[system].size() <= i) {
+                    for (int system : systems) {
+                        if (this->systemCache.size() <= system)
+                            this->systemCache.resize(system + 1);
+                        if (this->systemCache[system].size() <= i)
                             this->systemCache[system].resize(i + 1);
-                            this->systemCache[system][i].push_back(componentIndex);
-                        }
+                        this->systemCache[system][i].push_back(componentIndex);
                     }
                 }
             }
@@ -102,30 +99,23 @@ void Page::update() {
     }
 
     for (unsigned long i = 0; i < this->systems.size(); i++) {
-        std::vector< std::vector<int> > cache = this->systemCache[i];
-        for (unsigned long j = 0; j < cache.size(); j++) {
-            std::vector<Component*> components;
-            for (int cIndex : cache[j]) {
-                components.push_back(this->components[cIndex]);
+        if (i < this->systemCache.size()) {
+            std::vector< std::vector<int> > cache = this->systemCache[i];
+            for (unsigned long j = 0; j < cache.size(); j++) {
+                std::vector<Component*> components;
+                for (int cIndex : cache[j]) {
+                    components.push_back(this->components[cIndex]);
+                }
+                if (components.size() > 0) {
+                    this->systems[i]->system(components);
+                }
             }
-            this->systems[i]->system(components);
         }
     }
+}
 
-    // std::vector<int> indices;
-    // debug("Finding components with type ID %d in %lu entities", typeID, this->entities.size());
-    // for (unsigned long i = 0; i < this->entities.size(); i++) {
-    //     Entity e = this->entities[i];
-    //     debug("Found entity with %lu components", e.getComponents()->size());
-    //     for (Component *c : *e.getComponents()) {
-    //         debug("Found component with type ID: %d", c->getTypeID());
-    //         if (c->getTypeID() == typeID) {
-    //             indices.push_back(i);
-    //         }
-    //     }
-    // }
-
-    // return indices;
+Entity *Page::lastEntity() {
+    return &this->entities[this->entities.size() - 1];
 }
 
 Page::~Page() {

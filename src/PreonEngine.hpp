@@ -102,8 +102,8 @@ namespace preon {
     public:
         virtual inline int getTypeID() { return IDCounter<System>::next<System>(); }
 
-        virtual std::vector<int> query() { return std::vector<int>(); }
-        virtual void system(std::vector<Component*> components) {}
+        virtual inline std::vector<int> query() { return std::vector<int>(); }
+        virtual inline void system(std::vector<Component*> components) {}
     };
 
     class Entity {
@@ -132,9 +132,8 @@ namespace preon {
         void addEntity(Entity entity);
         int allocateComponent(Component *component);
         void addSystem(System *system);
+        Entity *lastEntity();
 
         void update();
-
-        Entity *lastEntity();
     };
 }
