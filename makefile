@@ -6,7 +6,6 @@ LIB = bin/libpreonengine.dylib
 
 ifeq ($(OS),Windows_NT)
 	EXT_LIBS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
-    @echo "[WARNING] Windows build not tested yet"
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Linux)
