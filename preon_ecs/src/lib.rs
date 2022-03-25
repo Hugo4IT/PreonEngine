@@ -24,12 +24,18 @@ pub trait IntoSystem {
 /// trait auto-implementations.
 macro_rules! gen_impls {
     (($lidx:tt => $left:ident), $(($ridx:tt => $right:ident),)*) => {
+        // Iteration 1 - impl<A: Any, B: Any, C: Any> IntoComponentList for (A, B, C)
+        // Iteration 2 - impl<B: Any, C: Any> IntoComponentList for (B, C)
+        // Iteration 3 - impl<C: Any> IntoComponentList for (C)
         impl<$left, $($right),*> IntoComponentList for ($left, $($right),*)
         where
             $left: std::any::Any,
             $($right: std::any::Any),*
         {
             fn apply(self, ecs: &mut ECS) -> Vec<ComponentId> {
+                // Iteration 1 - vec!(ecs.add(self.2), ecs.add(self.1), ecs.add(self.0))
+                // Iteration 2 - vec!(ecs.add(self.1), ecs.add(self.0))
+                // Iteration 3 - vec!(ecs.add(self.0))
                 vec![
                     ecs.add_component(self.$lidx),
                     $(ecs.add_component(self.$ridx)),*
@@ -37,12 +43,28 @@ macro_rules! gen_impls {
             }
         }
 
+        // Iteration 1 - impl<A: Any, B: Any, C: Any> IntoSystem for fn(&mut A, &mut B, &mut C)->()
+        // Iteration 2 - impl<B: Any, C: Any> IntoSystem for fn(&mut B, &mut C)->()
+        // Iteration 3 - impl<C: Any> IntoSystem for fn(&mut C)->()
         impl<$left, $($right),*> IntoSystem for fn(&mut $left, $(&mut $right),*)->()
         where
             $left: std::any::Any,
             $($right: std::any::Any,)*
         {
             fn exec(self, mut comps: Vec<&mut Component>) {
+                // paste::paste! concatenates identifiers [<{left} {right}>] to {left}{right}
+                //
+                // Iteration 1 - let c_2: &mut A = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               let c_1: &mut B = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               let c_0: &mut C = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               self(c_2, c_1, c_0)
+                //
+                // Iteration 2 - let c_1: &mut B = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               let c_0: &mut C = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               self(c_1, c_0)
+                //
+                // Iteration 3 - let c_0: &mut C = comps.pop().unwrap().data.downcast_mut().unwrap();
+                //               self(c_0)
                 paste::paste! {
                     let [<c_ $lidx>]: &mut $left = comps.pop().unwrap().data.downcast_mut().unwrap();
                     $(let [<c_ $ridx>]: &mut $right = comps.pop().unwrap().data.downcast_mut().unwrap();)*
@@ -51,6 +73,9 @@ macro_rules! gen_impls {
             }
 
             fn query() -> Vec<TypeId> {
+                // Iteration 1 - vec![TypeId::of::<A>(), TypeId::of::<B>(), TypeId::of::<C>()]
+                // Iteration 2 - vec![TypeId::of::<B>(), TypeId::of::<C>()]
+                // Iteration 3 - vec![TypeId::of::<C>()]
                 vec![
                     TypeId::of::<$left>(),
                     $(TypeId::of::<$right>(),)*
@@ -58,6 +83,9 @@ macro_rules! gen_impls {
             }
         }
 
+        // Iteration 1 - gen_impls!((2 => A), (1 => B), (0 => C))
+        // Iteration 2 - gen_impls!((1 => B), (0 => C))
+        // Iteration 3 - gen_impls!((0 => C))
         gen_impls!($(($ridx => $right),)*);
     };
     () => {};
@@ -75,15 +103,15 @@ macro_rules! gen_impls {
 ///     print(f"({i+1}) => {{fn(" + ", ".join(["&mut _" for _i in range(i+1)]) + ")};")
 /// ```
 #[macro_export] macro_rules! fn_with_args {
-    (1) => {fn(&mut _)};
-    (2) => {fn(&mut _, &mut _)};
-    (3) => {fn(&mut _, &mut _, &mut _)};
-    (4) => {fn(&mut _, &mut _, &mut _, &mut _)};
-    (5) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _)};
-    (6) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
-    (7) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
-    (8) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
-    (9) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
+    ( 1) => {fn(&mut _)};
+    ( 2) => {fn(&mut _, &mut _)};
+    ( 3) => {fn(&mut _, &mut _, &mut _)};
+    ( 4) => {fn(&mut _, &mut _, &mut _, &mut _)};
+    ( 5) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _)};
+    ( 6) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
+    ( 7) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
+    ( 8) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
+    ( 9) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
     (10) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
     (11) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
     (12) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
@@ -140,10 +168,10 @@ macro_rules! gen_impls {
 /// //   Hello, ECS!
 /// fn main() {
 ///     let ecs = ECS::new();
-///     let entity = ecs.add_entity((
+///     ecs.add_system(printer as fn_with_args!(1), printer::system);
+///     ecs.add_entity((
 ///         Printer(String::from("Hello, ECS!")),
 ///     ));
-///     let printer_system = ecs.add_system(printer as fn_with_args!(1), printer::system);
 /// 
 ///     ecs.update(); // Update once
 /// }
