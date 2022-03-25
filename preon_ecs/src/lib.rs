@@ -7,24 +7,21 @@ pub mod component;
 pub mod system;
 pub use paste;
 
+/// Auto-implemented trait to convert a tuple of components (max 26)
+/// into a vector of Ids.
 pub trait IntoComponentList {
     fn apply(self, ecs: &mut ECS) -> Vec<ComponentId>;
 }
 
+/// Auto-implemented trait to convert a function taking max 26 arguments
+/// into a system, automatically generating a query and handler function.
 pub trait IntoSystem {
     fn exec(self, comps: Vec<&mut Component>);
     fn query() -> Vec<TypeId>;
 }
 
-// impl<A: Any> IntoSystem for fn(A) {
-//     fn apply(self, ecs: &mut ECS) -> SystemId {
-//         ecs.add_system_raw(|comps| {
-//             let c_0: &mut A = comps[0].data.downcast_mut().unwrap();
-//             self(c_0);
-//         }, vec![TypeId::of::<A>()])
-//     }
-// }
-
+/// A recursive macro to generate all the IntoComponentList and IntoSystem
+/// trait auto-implementations.
 macro_rules! gen_impls {
     (($lidx:tt => $left:ident), $(($ridx:tt => $right:ident),)*) => {
         impl<$left, $($right),*> IntoComponentList for ($left, $($right),*)
@@ -66,6 +63,17 @@ macro_rules! gen_impls {
     () => {};
 }
 
+/// Convenience macro, because for some reason Rust functions have their own type.
+/// To make them work, they'll need to be converted to a primitive type.
+/// 
+/// ### Contributors
+/// 
+/// This macro is generated with this python snippet:
+/// 
+/// ```py
+/// for i in range(26):
+///     print(f"({i+1}) => {{fn(" + ", ".join(["&mut _" for _i in range(i+1)]) + ")};")
+/// ```
 #[macro_export] macro_rules! fn_with_args {
     (1) => {fn(&mut _)};
     (2) => {fn(&mut _, &mut _)};
@@ -95,6 +103,51 @@ macro_rules! gen_impls {
     (26) => {fn(&mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _, &mut _)};
 }
 
+/// To squeeze some extra bit of performance out of preon_ecs, systems are stored
+/// as static function pointers, this means it uses the `fn(...)` type instead of
+/// `Box<dyn Fn(...)>`, this way function pointers can be stored on the stack.
+/// This macro will automatically generate such a function.
+/// 
+/// # Usage
+/// 
+/// Specify the name of the system function and the number of arguments it has (see
+/// fn_with_args! for more info). The system function must have at least one argument
+/// but no more than 26 arguments, the arguments must mutable references (`&mut {type}`).
+/// If the system function meets those requirements, it will automatically implement the
+/// [`IntoSystem`] trait.
+/// 
+/// ```
+/// system!(function_name, number_of_arguments);
+/// ```
+/// 
+/// # Example
+/// 
+/// ```
+/// # use preon_ecs::{system, ECS, fn_with_args};
+/// // Generates printer::system
+/// system!(printer, 1);
+/// 
+/// // printer(..) will automatically implement IntoSystem,
+/// // see Usage (scroll up a bit) for more info
+/// fn printer(printer: &mut Printer) {
+///     println!("{}", printer.0);
+/// }
+/// 
+/// // Component
+/// struct Printer(pub String);
+///
+/// // Output:
+/// //   Hello, ECS!
+/// fn main() {
+///     let ecs = ECS::new();
+///     let entity = ecs.add_entity((
+///         Printer(String::from("Hello, ECS!")),
+///     ));
+///     let printer_system = ecs.add_system(printer as fn_with_args!(1), printer::system);
+/// 
+///     ecs.update(); // Update once
+/// }
+/// ```
 #[macro_export] macro_rules! system {
     ($name:ident, $argcount:tt) => {
         mod $name {
@@ -179,6 +232,7 @@ impl ECS {
         c_id
     }
 
+    /// See the [`system!`] macro docs
     #[inline]
     pub fn add_system<T>(&mut self, _system_function: T, caller_function: SysFunc) -> SystemId
     where

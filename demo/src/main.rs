@@ -3,7 +3,7 @@ use preon_ecs::{system, ECS, fn_with_args};
 struct Printer(pub String);
 
 system!(printer, 2);
-fn printer(printer: &mut Printer, printer2: &mut Printer) { 
+fn printer(printer: &mut Printer, printer2: &mut Printer) {
 }
 
 fn main() {
