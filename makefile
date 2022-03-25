@@ -2,16 +2,18 @@ CC = g++
 CCFLAGS = -MF bin/$*.d -MP -MMD -fPIC -Wall -Wextra -std=c++14
 LINKFLAGS = -shared -fPIC
 EXT_LIBS = -L/opt/homebrew/Cellar/glfw/3.3.6/lib -lglfw -framework OpenGL
-LIB = bin/libpreonengine.dylib
+LIB = bin/libpreonengine.so
 
 ifeq ($(OS),Windows_NT)
 	EXT_LIBS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Linux)
-        EXT_LIBS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
+		LIB = bin/libpreonengine.so
+        EXT_LIBS = -lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl
     endif
     ifeq ($(UNAME_S),Darwin)
+		LIB = bin/libpreonengine.dylib
         EXT_LIBS = -L/opt/homebrew/Cellar/glfw/3.3.6/lib -lglfw -framework OpenGL
     endif
 endif
@@ -58,7 +60,8 @@ TEST_SOURCES = $(wildcard test/*.cpp)
 TEST_DEPENDS = $(patsubst test/%.cpp,bin/test/%.d,$(TEST_SOURCES))
 TEST_OBJECTS = $(patsubst test/%.cpp,bin/test/%.o,$(TEST_SOURCES))
 TEST_CCFLAGS = -MF bin/test/$*.d -MP -MMD -I inc
-TEST_LINKFLAGS = -Lbin -l preonengine
+TEST_LINKFLAGS =
+# -Lbin -l preonengine
 
 bin/test/%.o: test/%.cpp makefile
 	@echo "[BUILDING] $< -> $@"
@@ -66,7 +69,7 @@ bin/test/%.o: test/%.cpp makefile
 
 -include $(TEST_DEPENDS)
 
-test: $(TEST_OBJECTS)
+test: $(TEST_OBJECTS) $(OBJECTS)
 	@echo "[LINKING] $^ -> bin/demo"
 	$(PREFIX) $(CC) $(TEST_LINKFLAGS) $(EXT_LIBS) -o bin/demo $^
 	@echo "[INFO] Running..."

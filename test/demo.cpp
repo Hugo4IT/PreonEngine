@@ -34,7 +34,6 @@ public:
 
     inline void system(std::vector<Component*> components) {
         Printer *ph = (Printer*)components[0];
-        std::cout << ph->message << std::endl;
     }
 };
 
@@ -48,9 +47,13 @@ int main() {
     ButtonSpawner::newButton(options, "To Home");
     ButtonSpawner::newButton(options, "To Home");
 
-    Entity helloPrinter;
-    helloPrinter.addComponent(options.allocateComponent(new Printer("hello")));
-    options.addEntity(helloPrinter);
+    std::cout << "Creating UI" << std::endl;
+
+    for (int i = 0; i < 1000000; i++) {
+        Entity helloPrinter;
+        helloPrinter.addComponent(options.allocateComponent(new Printer("hello")));
+        options.addEntity(helloPrinter);
+    }
 
     Entity hiPrinter;
     hiPrinter.addComponent(options.allocateComponent(new Printer("hi")));
@@ -58,10 +61,23 @@ int main() {
 
     options.addSystem(new PrinterSystem());
 
-    App app;
-    app.addPage(&home);
-    app.addPage(&options);
-    app.mainloop();
+    // App app;
+    // app.addPage(&home);
+    // app.addPage(&options);
+    // app.mainloop();
+
+    std::cout << "Done!" << std::endl;
+
+    int frame = 0;
+    while(1) {
+        std::cout << "Processing..." << std::endl;
+
+        options.update();
+
+        // sleep(1);
+
+        std::cout << "Frame " << frame++ << " processed!" << std::endl;
+    }
 
     return 0;
 }

@@ -38,8 +38,9 @@ void Page::addSystem(System *system) {
 }
 
 void Page::update() {
-    debug("Detected %d change(s)", this->ecsUpdates);
     if (this->ecsUpdates) {
+        debug("Detected %d change(s)", this->ecsUpdates);
+        
         this->systemCache.clear();
 
         // First pass: Create list of components mapping to systems:
@@ -98,10 +99,9 @@ void Page::update() {
 
     for (unsigned long i = 0; i < this->systems.size(); i++) {
         if (i < this->systemCache.size()) {
-            std::vector< std::vector<int> > cache = this->systemCache[i];
-            for (unsigned long j = 0; j < cache.size(); j++) {
+            for (unsigned long j = 0; j < this->systemCache[i].size(); j++) {
                 std::vector<Component*> components;
-                for (int cIndex : cache[j]) {
+                for (int cIndex : this->systemCache[i][j]) {
                     components.push_back(this->components[cIndex]);
                 }
                 if (components.size() > 0) {
