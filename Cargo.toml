@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "preon_engine",
+    "preon_ecs",
+    "demo"
+]
+
+[profile.release]
+strip = true

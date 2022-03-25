@@ -1,0 +1,8 @@
+[package]
+name = "demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+preon_engine = { path = "../preon_engine" }
+preon_ecs = { path = "../preon_ecs" }
