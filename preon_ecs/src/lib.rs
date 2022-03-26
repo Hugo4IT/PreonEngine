@@ -1,11 +1,20 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
-use self::{system::{System, SystemId, SysFunc}, component::{Component, ComponentId}, entity::{Entity, EntityId}};
+use self::{
+    component::{Component, ComponentId},
+    entity::{Entity, EntityId},
+    system::{SysFunc, System, SystemId},
+};
 
-pub mod entity;
 pub mod component;
+pub mod entity;
+pub mod query;
 pub mod system;
 pub use paste;
+use query::Query;
 
 /// Auto-implemented trait to convert a tuple of components (max 26)
 /// into a vector of Ids.
@@ -16,7 +25,7 @@ pub trait IntoComponentList {
 /// Auto-implemented trait to convert a function taking max 26 arguments
 /// into a system, automatically generating a query and handler function.
 pub trait IntoSystem {
-    fn exec(self, comps: Vec<&mut Component>);
+    fn exec(self, comps: &mut Vec<Option<Component>>);
     fn query() -> Vec<TypeId>;
 }
 
@@ -51,7 +60,7 @@ macro_rules! gen_impls {
             $left: std::any::Any,
             $($right: std::any::Any,)*
         {
-            fn exec(self, mut comps: Vec<&mut Component>) {
+            fn exec(self, comps: &mut Vec<Option<Component>>) {
                 // paste::paste! concatenates identifiers [<{left} {right}>] to {left}{right}
                 //
                 // Iteration 1 - let c_2: &mut A = comps.pop().unwrap().data.downcast_mut().unwrap();
@@ -66,8 +75,9 @@ macro_rules! gen_impls {
                 // Iteration 3 - let c_0: &mut C = comps.pop().unwrap().data.downcast_mut().unwrap();
                 //               self(c_0)
                 paste::paste! {
-                    let [<c_ $lidx>]: &mut $left = comps.pop().unwrap().data.downcast_mut().unwrap();
-                    $(let [<c_ $ridx>]: &mut $right = comps.pop().unwrap().data.downcast_mut().unwrap();)*
+                    let mut iterator = comps.iter_mut();
+                    let [<c_ $lidx>]: &mut $left = iterator.next().unwrap().as_mut().unwrap().data.downcast_mut().unwrap();
+                    $(let [<c_ $ridx>]: &mut $right = iterator.next().unwrap().as_mut().unwrap().data.downcast_mut().unwrap();)*
                     self([<c_ $lidx>], $([<c_ $ridx>]),*)
                 }
             }
@@ -93,16 +103,17 @@ macro_rules! gen_impls {
 
 /// Convenience macro, because for some reason Rust functions have their own type.
 /// To make them work, they'll need to be converted to a primitive type.
-/// 
+///
 /// ### Contributors
-/// 
+///
 /// This macro is generated with this python snippet:
-/// 
+///
 /// ```py
 /// for i in range(26):
 ///     print(f"({i+1}) => {{fn(" + ", ".join(["&mut _" for _i in range(i+1)]) + ")};")
 /// ```
-#[macro_export] macro_rules! fn_with_args {
+#[macro_export]
+macro_rules! fn_with_args {
     ( 1) => {fn(&mut _)};
     ( 2) => {fn(&mut _, &mut _)};
     ( 3) => {fn(&mut _, &mut _, &mut _)};
@@ -135,32 +146,32 @@ macro_rules! gen_impls {
 /// as static function pointers, this means it uses the `fn(...)` type instead of
 /// `Box<dyn Fn(...)>`, this way function pointers can be stored on the stack.
 /// This macro will automatically generate such a function.
-/// 
+///
 /// # Usage
-/// 
+///
 /// Specify the name of the system function and the number of arguments it has (see
 /// fn_with_args! for more info). The system function must have at least one argument
 /// but no more than 26 arguments, the arguments must mutable references (`&mut {type}`).
 /// If the system function meets those requirements, it will automatically implement the
 /// [`IntoSystem`] trait.
-/// 
+///
 /// ```
 /// system!(function_name, number_of_arguments);
 /// ```
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// # use preon_ecs::{system, ECS, fn_with_args};
 /// // Generates printer::system
 /// system!(printer, 1);
-/// 
+///
 /// // printer(..) will automatically implement IntoSystem,
 /// // see Usage (scroll up a bit) for more info
 /// fn printer(printer: &mut Printer) {
 ///     println!("{}", printer.0);
 /// }
-/// 
+///
 /// // Component
 /// struct Printer(pub String);
 ///
@@ -172,15 +183,16 @@ macro_rules! gen_impls {
 ///     ecs.add_entity((
 ///         Printer(String::from("Hello, ECS!")),
 ///     ));
-/// 
+///
 ///     ecs.update(); // Update once
 /// }
 /// ```
-#[macro_export] macro_rules! system {
+#[macro_export]
+macro_rules! system {
     ($name:ident, $argcount:tt) => {
         mod $name {
             use preon_ecs::fn_with_args;
-            pub fn system(comps: Vec<&mut preon_ecs::component::Component>) {
+            pub fn system(comps: &mut Vec<Option<preon_ecs::component::Component>>) {
                 use preon_ecs::IntoSystem;
                 IntoSystem::exec(super::$name as fn_with_args!($argcount), comps);
             }
@@ -219,7 +231,7 @@ gen_impls!(
 
 pub struct ECS {
     entities: Vec<Entity>,
-    components: Vec<Component>,
+    components: Vec<Option<Component>>,
     systems: Vec<System>,
 }
 
@@ -228,12 +240,49 @@ impl ECS {
         ECS {
             entities: Vec::new(),
             components: Vec::new(),
-            systems: Vec::new()
+            systems: Vec::new(),
         }
     }
 
     pub fn update(&mut self) {
-        
+        let mut map: HashMap<SystemId, (Vec<TypeId>, Vec<Vec<ComponentId>>)> = HashMap::new();
+        for system in self.systems.iter() {
+            map.insert(
+                system.id,
+                (system.query.requirements.clone(), Vec::new()),
+            );
+        }
+
+        for (_key, (query, entities)) in map.iter_mut() {
+            let mut buffer = Vec::with_capacity(query.capacity());
+            for entity in self.entities.iter() {
+                let mut satisfied = 0;
+                for t_id in query.iter() {
+                    for ComponentId(id, c_id) in entity.components.iter() {
+                        if *t_id == *c_id {
+                            satisfied += 1;
+                            buffer.push(ComponentId(*id, *c_id));
+                        }
+                    }
+                }
+                if satisfied == query.len() {
+                    entities.push(buffer.drain(..).collect());
+                }
+            }
+        }
+
+        for (key, (_query, entities)) in map {
+            for entity in entities {
+                let func = self.get_system(key).unwrap().function.clone();
+                let mut comps = entity.iter().map(|i|self.components[i.0].take()).collect::<Vec<_>>();
+                func(&mut comps);
+                for comp in comps {
+                    let comp = comp.unwrap();
+                    let id = comp.id.0;
+                    self.components[id].replace(comp);
+                }
+            }
+        }
     }
 
     #[inline]
@@ -252,10 +301,10 @@ impl ECS {
     #[inline]
     pub fn add_component<T: Any>(&mut self, data: T) -> ComponentId {
         let c_id = ComponentId(self.components.len(), data.type_id());
-        self.components.push(Component {
+        self.components.push(Some(Component {
             data: Box::new(data),
             id: c_id,
-        });
+        }));
 
         c_id
     }
@@ -264,18 +313,24 @@ impl ECS {
     #[inline]
     pub fn add_system<T>(&mut self, _system_function: T, caller_function: SysFunc) -> SystemId
     where
-        T: IntoSystem
+        T: IntoSystem,
     {
         self.add_system_raw(caller_function, T::query())
     }
 
     #[inline]
-    pub fn add_system_raw(&mut self, func: fn(Vec<&mut Component>), query: Vec<TypeId>) -> SystemId {
+    pub fn add_system_raw(
+        &mut self,
+        func: SysFunc,
+        query: Vec<TypeId>,
+    ) -> SystemId {
         let s_id = SystemId(self.systems.len());
         self.systems.push(System {
             function: func,
             id: s_id,
-            query,
+            query: Query {
+                requirements: query,
+            },
         });
 
         s_id
@@ -285,29 +340,29 @@ impl ECS {
     pub fn get_entity(&self, id: EntityId) -> Option<&Entity> {
         self.entities.get(id.0)
     }
-    
+
     #[inline]
     pub fn get_entity_mut(&mut self, id: EntityId) -> Option<&mut Entity> {
         self.entities.get_mut(id.0)
     }
 
     #[inline]
-    pub fn get_component(&self, id: EntityId) -> Option<&Component> {
-        self.components.get(id.0)
-    }
-    
-    #[inline]
-    pub fn get_component_mut(&mut self, id: EntityId) -> Option<&mut Component> {
-        self.components.get_mut(id.0)
+    pub fn get_component(&self, id: ComponentId) -> Option<&Component> {
+        self.components.get(id.0).map(|o|o.as_ref().unwrap())
     }
 
     #[inline]
-    pub fn get_system(&self, id: EntityId) -> Option<&System> {
+    pub fn get_component_mut(&mut self, id: ComponentId) -> Option<&mut Component> {
+        self.components.get_mut(id.0).map(|o|o.as_mut().unwrap())
+    }
+
+    #[inline]
+    pub fn get_system(&self, id: SystemId) -> Option<&System> {
         self.systems.get(id.0)
     }
-    
+
     #[inline]
-    pub fn get_system_mut(&mut self, id: EntityId) -> Option<&mut System> {
+    pub fn get_system_mut(&mut self, id: SystemId) -> Option<&mut System> {
         self.systems.get_mut(id.0)
     }
 }
