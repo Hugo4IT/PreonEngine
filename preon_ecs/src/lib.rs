@@ -265,15 +265,17 @@ impl ECS {
                         }
                     }
                 }
-                if satisfied == query.len() {
+                if satisfied >= query.len() {
                     entities.push(buffer.drain(..).collect());
+                } else {
+                    buffer.clear();
                 }
             }
         }
-
+        
         for (key, (_query, entities)) in map {
+            let func = self.get_system(key).unwrap().function.clone();
             for entity in entities {
-                let func = self.get_system(key).unwrap().function.clone();
                 let mut comps = entity.iter().map(|i|self.components[i.0].take()).collect::<Vec<_>>();
                 func(&mut comps);
                 for comp in comps {
