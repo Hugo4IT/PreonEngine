@@ -250,6 +250,8 @@ impl ECS {
 
     pub fn update(&mut self) {
         if !self.is_cache_valid {
+            // TODO: Look into optimizing this
+
             self.cache.clear();
             self.is_cache_valid = true;
 
@@ -278,7 +280,7 @@ impl ECS {
                             let bl = buffer.len();
                             // Position of component in buffer = buffer size - amount of components after it
                             let comp_pos = bl - buffer.iter().skip_while(|i|i.1!=*item).count();
-                            
+
                             buffer.swap(comp_pos, i);
                         }
                         entities.push(buffer.drain(..).collect());
