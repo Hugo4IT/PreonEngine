@@ -233,6 +233,8 @@ pub struct ECS {
     entities: Vec<Entity>,
     components: Vec<Option<Component>>,
     systems: Vec<System>,
+    cache: HashMap<SystemId, (Vec<TypeId>, Vec<Vec<ComponentId>>)>,
+    is_cache_valid: bool,
 }
 
 impl ECS {
@@ -241,40 +243,46 @@ impl ECS {
             entities: Vec::new(),
             components: Vec::new(),
             systems: Vec::new(),
+            cache: HashMap::new(),
+            is_cache_valid: false,
         }
     }
 
     pub fn update(&mut self) {
-        let mut map: HashMap<SystemId, (Vec<TypeId>, Vec<Vec<ComponentId>>)> = HashMap::new();
-        for system in self.systems.iter() {
-            map.insert(
-                system.id,
-                (system.query.requirements.clone(), Vec::new()),
-            );
-        }
+        if !self.is_cache_valid {
+            self.cache.clear();
+            self.is_cache_valid = true;
 
-        for (_key, (query, entities)) in map.iter_mut() {
-            let mut buffer = Vec::with_capacity(query.capacity());
-            for entity in self.entities.iter() {
-                let mut satisfied = 0;
-                for t_id in query.iter() {
-                    for ComponentId(id, c_id) in entity.components.iter() {
-                        if *t_id == *c_id {
-                            satisfied += 1;
-                            buffer.push(ComponentId(*id, *c_id));
+            for system in self.systems.iter() {
+                self.cache.insert(
+                    system.id,
+                    (system.query.requirements.clone(), Vec::new()),
+                );
+            }
+    
+            for (_key, (query, entities)) in self.cache.iter_mut() {
+                let mut buffer = Vec::with_capacity(query.capacity());
+                for entity in self.entities.iter() {
+                    let mut satisfied = 0;
+                    for t_id in query.iter() {
+                        for ComponentId(id, c_id) in entity.components.iter() {
+                            if *t_id == *c_id {
+                                satisfied += 1;
+                                buffer.push(ComponentId(*id, *c_id));
+                            }
                         }
                     }
-                }
-                if satisfied >= query.len() {
-                    entities.push(buffer.drain(..).collect());
-                } else {
-                    buffer.clear();
+                    if satisfied >= query.len() {
+                        entities.push(buffer.drain(..).collect());
+                    } else {
+                        buffer.clear();
+                    }
                 }
             }
         }
-        
-        for (key, (_query, entities)) in map {
-            let func = self.get_system(key).unwrap().function.clone();
+
+        for (key, (_query, entities)) in self.cache.iter() {
+            let func = self.get_system(*key).unwrap().function.clone();
             for entity in entities {
                 let mut comps = entity.iter().map(|i|self.components[i.0].take()).collect::<Vec<_>>();
                 func(&mut comps);
@@ -289,6 +297,8 @@ impl ECS {
 
     #[inline]
     pub fn add_entity<T: IntoComponentList>(&mut self, components: T) -> EntityId {
+        self.invalidate_cache();
+
         let ids = components.apply(self);
         let e_id = EntityId(self.entities.len());
 
@@ -302,6 +312,8 @@ impl ECS {
 
     #[inline]
     pub fn add_component<T: Any>(&mut self, data: T) -> ComponentId {
+        self.invalidate_cache();
+
         let c_id = ComponentId(self.components.len(), data.type_id());
         self.components.push(Some(Component {
             data: Box::new(data),
@@ -326,6 +338,8 @@ impl ECS {
         func: SysFunc,
         query: Vec<TypeId>,
     ) -> SystemId {
+        self.invalidate_cache();
+
         let s_id = SystemId(self.systems.len());
         self.systems.push(System {
             function: func,
@@ -345,6 +359,7 @@ impl ECS {
 
     #[inline]
     pub fn get_entity_mut(&mut self, id: EntityId) -> Option<&mut Entity> {
+        self.invalidate_cache();
         self.entities.get_mut(id.0)
     }
 
@@ -355,6 +370,7 @@ impl ECS {
 
     #[inline]
     pub fn get_component_mut(&mut self, id: ComponentId) -> Option<&mut Component> {
+        self.invalidate_cache();
         self.components.get_mut(id.0).map(|o|o.as_mut().unwrap())
     }
 
@@ -365,6 +381,12 @@ impl ECS {
 
     #[inline]
     pub fn get_system_mut(&mut self, id: SystemId) -> Option<&mut System> {
+        self.invalidate_cache();
         self.systems.get_mut(id.0)
+    }
+
+    #[inline]
+    pub fn invalidate_cache(&mut self) {
+        self.is_cache_valid = false;
     }
 }
