@@ -35,8 +35,8 @@ fn main() {
         CounterPrinter,
     ));
     ecs.add_entity((
-        Counter(0),
         CounterPrinter,
+        Counter(0),
     ));
 
     for _i in 0..5 {

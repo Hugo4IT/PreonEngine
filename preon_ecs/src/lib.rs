@@ -273,6 +273,14 @@ impl ECS {
                         }
                     }
                     if satisfied >= query.len() {
+                        // Ensure buffer is same order as query
+                        for (i, item) in query.iter().enumerate() {
+                            let bl = buffer.len();
+                            // Position of component in buffer = buffer size - amount of components after it
+                            let comp_pos = bl - buffer.iter().skip_while(|i|i.1!=*item).count();
+                            
+                            buffer.swap(comp_pos, i);
+                        }
                         entities.push(buffer.drain(..).collect());
                     } else {
                         buffer.clear();
