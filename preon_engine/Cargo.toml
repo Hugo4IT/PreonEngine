@@ -1,7 +1,7 @@
 [package]
 name = "preon_engine"
 authors = ["Hugo4IT"]
-description = "A flexible, MIT-licensed, GPU-accelerated, ECS-based User Interface solution focussed on efficiency and simplicity."
+description = "A flexible, MIT-licensed, GPU-accelerated User Interface solution focused on efficiency and simplicity."
 categories = ["gui", "graphics", "game-development"]
 keywords = ["gui", "ui", "framework", "simple", "fast"]
 repository = "https://github.com/Hugo4IT/PreonEngine"
@@ -10,4 +10,3 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-preon_ecs = { path = "../preon_ecs" }

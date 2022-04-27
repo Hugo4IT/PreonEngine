@@ -1,7 +1,6 @@
 [workspace]
 members = [
-    "preon_engine",
-    "preon_ecs"
+    "preon_engine"
 ]
 
 [profile.release]
