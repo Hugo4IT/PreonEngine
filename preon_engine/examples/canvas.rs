@@ -9,6 +9,6 @@ fn main() {
     let mut sub_canvas = canvas.derive(((30, 20), (200, 200)).into());
     sub_canvas.fill_rounded_rect(((10, 10), (170, 170)).into(), Color::from_rgb8(0xda, 0x00, 0x37), 16.0);
 
-    let instructions = canvas.end();
+    let instructions = canvas.get_instructions();
     println!("{:#?}", instructions);
 }

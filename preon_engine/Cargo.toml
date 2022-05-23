@@ -10,3 +10,8 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
+futures-util = "0.3.21"
+async-trait = "0.1.53"
+
+[dev-dependencies]
+preon_canvas_wgpu = { path = "../preon_canvas_wgpu" }
