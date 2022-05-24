@@ -10,33 +10,37 @@ pub mod renderer;
 pub mod widget;
 pub mod canvas;
 
-pub struct App<R: Renderer + Canvas> {
+pub enum Event {
+    WindowClose,
+}
+
+pub struct App<R: Renderer> {
     renderer: R,
     widgets: Vec<WidgetHolder>,
     widgets_data: Vec<Box<dyn Send + Any>>,
-    widgets_impl: Vec<WidgetImplementation<R>>,
+    widgets_impl: Vec<WidgetImplementation>,
 }
 
-impl<R: Renderer + Canvas> App<R> {
-    pub fn new(canvas: R) -> App<R> {
+impl<R: Renderer> App<R> {
+    pub fn new(renderer: R) -> App<R> {
         App {
-            renderer: canvas,
+            renderer,
             widgets: Vec::new(),
             widgets_data: Vec::new(),
             widgets_impl: Vec::new(),
         }
     }
 
-    pub fn add_widget<W: Widget<R>>(&mut self, widget: W) {
+    pub fn add_widget<W: Widget>(&mut self, widget: W) {
         
     }
 
-    pub fn add_widget_impl<W: Widget<R>>(&mut self) {
+    pub fn add_widget_impl<W: Widget>(&mut self) {
         self.widgets_impl.push(WidgetImplementation::from_type::<W>())
     }
 
     pub fn start(mut self) {
-        let waker = AtomicWaker::new();
-        // TODO: Implement a render instruction stream, for async/await functionality
+        let mut canvas = Canvas::new();
+        
     }
 }

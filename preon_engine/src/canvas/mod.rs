@@ -29,24 +29,24 @@ impl Default for Canvas {
 }
 
 impl Canvas {
-    fn draw_rect(&mut self, rect: Rect, color: Color, thickness: f32) {
+    pub fn draw_rect(&mut self, rect: Rect, color: Color, thickness: f32) {
         self.instructions
             .push(CanvasInstruction::DrawRect(rect, color, thickness));
     }
 
-    fn draw_rounded_rect(&mut self, rect: Rect, color: Color, thickness: f32, radius: f32) {
+    pub fn draw_rounded_rect(&mut self, rect: Rect, color: Color, thickness: f32, radius: f32) {
         self.instructions
             .push(CanvasInstruction::DrawRoundedRect(
                 rect, color, thickness, radius,
             ));
     }
 
-    fn fill_rect(&mut self, rect: Rect, color: Color) {
+    pub fn fill_rect(&mut self, rect: Rect, color: Color) {
         self.instructions
             .push(CanvasInstruction::FillRect(rect, color));
     }
 
-    fn fill_rounded_rect(&mut self, rect: Rect, color: Color, radius: f32) {
+    pub fn fill_rounded_rect(&mut self, rect: Rect, color: Color, radius: f32) {
         self.instructions
             .push(CanvasInstruction::FillRoundedRect(
                 rect, color, radius,

@@ -1,7 +1,9 @@
 [workspace]
 members = [
-    "preon_engine"
+    "preon_canvas_wgpu",
+    "preon_engine",
 ]
+resolver = "2"
 
 [profile.release]
 strip = true

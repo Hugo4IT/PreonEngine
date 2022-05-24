@@ -1,4 +1,4 @@
-use crate::{widget::Widget, canvas::{color::Color, Canvas, SubCanvas}};
+use crate::{widget::Widget, canvas::{color::Color, Canvas}};
 
 pub struct ColorRect {
     color: Color,
@@ -12,8 +12,8 @@ impl ColorRect {
     }
 }
 
-impl<C: Canvas> Widget<C> for ColorRect {
-    fn view(&mut self, mut canvas: SubCanvas<C>) {
+impl Widget for ColorRect {
+    fn view(&mut self, canvas: &mut Canvas) {
         canvas.fill_rect(((0, 0), (200, 200)).into(), self.color);
     }
 }

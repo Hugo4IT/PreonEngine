@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use preon_engine::{canvas::Canvas, renderer::Renderer, transform::{Size, Position}};
 use winit::{event_loop::{EventLoop, ControlFlow}, window::{WindowId, Window, WindowBuilder}, event::{Event, WindowEvent}, dpi::{PhysicalPosition, PhysicalSize}};
 
+#[derive(Debug)]
 pub struct WGPU {
     event_loop: EventLoop<()>,
     windows: HashMap<WindowId, Window>,
@@ -108,7 +109,7 @@ impl Renderer for WGPU {
         }
     }
     
-    async fn mainloop(mut self) {
+    async fn mainloop(&mut self) -> Option<preon_engine::Event> {
         self.event_loop.run(move |event, _, control_flow| match event {
             Event::RedrawRequested(window) => {
                 *control_flow = ControlFlow::Wait
@@ -136,28 +137,6 @@ impl Renderer for WGPU {
             }
             _ => (),
         })
-    }
-}
-
-impl Canvas for WGPU {
-    fn draw_rect(&mut self, rect: preon_engine::transform::Rect, color: preon_engine::canvas::color::Color, thickness: f32) {
-        println!("WGPU::draw_rect()")
-    }
-
-    fn draw_rounded_rect(&mut self, rect: preon_engine::transform::Rect, color: preon_engine::canvas::color::Color, thickness: f32, radius: f32) {
-        println!("WGPU::draw_rounded_rect()")
-    }
-
-    fn fill_rect(&mut self, rect: preon_engine::transform::Rect, color: preon_engine::canvas::color::Color) {
-        println!("WGPU::fill_rect()")
-    }
-
-    fn fill_rounded_rect(&mut self, rect: preon_engine::transform::Rect, color: preon_engine::canvas::color::Color, radius: f32) {
-        println!("WGPU::fill_rounded_rect()")
-    }
-
-    fn flush(&mut self) {
-        println!("WGPU::flush()")
     }
 }
 

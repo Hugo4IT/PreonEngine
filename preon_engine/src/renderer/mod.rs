@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::transform::{Size, Position};
+use crate::{transform::{Size, Position}, Event};
 
 #[async_trait::async_trait]
 pub trait Renderer {
@@ -13,7 +13,7 @@ pub trait Renderer {
     fn get_window_position(&self, handle: Self::Handle) -> Position;
     fn get_window_size(&self, handle: Self::Handle) -> Size;
     fn get_screen_size(&self, handle: Option<Self::Handle>) -> Size;
-    async fn mainloop(&self);
+    async fn mainloop(&mut self) -> Option<Event>;
 
     fn center_window(&mut self, handle: Self::Handle) {
         let screen_size = self.get_screen_size(Some(handle));
