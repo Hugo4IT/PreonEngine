@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "preon_canvas_wgpu",
+    "preon_canvas_cpu",
     "preon_engine",
 ]
 resolver = "2"

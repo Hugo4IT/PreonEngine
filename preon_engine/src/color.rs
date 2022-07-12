@@ -1,4 +1,4 @@
-use crate::transform::vector::Vec4;
+use crate::{transform::vector::Vec4, powf};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Color {
@@ -32,19 +32,19 @@ impl Color {
     #[inline]
     pub fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> Color {
         Color {
-            srgb_r: r.powf(2.2),
-            srgb_g: g.powf(2.2),
-            srgb_b: b.powf(2.2),
-            srgb_a: a.powf(2.2),
+            srgb_r: powf!(r, 2.2),
+            srgb_g: powf!(g, 2.2),
+            srgb_b: powf!(b, 2.2),
+            srgb_a: powf!(a, 2.2),
         }
     }
 
     #[inline]
     pub fn from_rgb(r: f32, g: f32, b: f32) -> Color {
         Color {
-            srgb_r: r.powf(2.2),
-            srgb_g: g.powf(2.2),
-            srgb_b: b.powf(2.2),
+            srgb_r: powf!(r, 2.2),
+            srgb_g: powf!(g, 2.2),
+            srgb_b: powf!(b, 2.2),
             srgb_a: 1.0,
         }
     }
@@ -95,8 +95,8 @@ impl Color {
     }
 }
 
-impl Into<Vec4> for Color {
-    fn into(self) -> Vec4 {
-        Vec4(self.srgb_r, self.srgb_g, self.srgb_b, self.srgb_a)
+impl From<Color> for Vec4 {
+    fn from(color: Color) -> Vec4 {
+        Vec4(color.srgb_r, color.srgb_g, color.srgb_b, color.srgb_a)
     }
 }

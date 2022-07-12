@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div};
+use core::ops::{Add, Sub, Mul, Div};
 
 use self::vector::{Vec2, Vec4};
 
@@ -21,8 +21,8 @@ impl Position {
 
 impl<X, Y> From<(X, Y)> for Position
 where
-    f64: std::convert::From<X>,
-    f64: std::convert::From<Y>,
+    f64: core::convert::From<X>,
+    f64: core::convert::From<Y>,
 {
     fn from((x, y): (X, Y)) -> Position {
         Position {
@@ -32,9 +32,9 @@ where
     }
 }
 
-impl Into<Vec2> for Position {
-    fn into(self) -> Vec2 {
-        Vec2(self.x, self.y)
+impl From<Position> for Vec2 {
+    fn from(position: Position) -> Vec2 {
+        Vec2(position.x, position.y)
     }
 }
 
@@ -101,16 +101,16 @@ impl Size {
     }
 }
 
-impl Into<Vec2> for Size {
-    fn into(self) -> Vec2 {
-        Vec2(self.width, self.height)
+impl From<Size> for Vec2 {
+    fn from(size: Size) -> Vec2 {
+        Vec2(size.width, size.height)
     }
 }
 
 impl<Width, Height> From<(Width, Height)> for Size
 where
-    f64: std::convert::From<Width>,
-    f64: std::convert::From<Height>,
+    f64: core::convert::From<Width>,
+    f64: core::convert::From<Height>,
 {
     fn from((width, height): (Width, Height)) -> Size {
         Size {
@@ -183,9 +183,9 @@ impl Rect {
     }
 }
 
-impl Into<Vec4> for Rect {
-    fn into(self) -> Vec4 {
-        Vec4(self.0.x, self.0.y, self.1.width, self.1.height)
+impl From<Rect> for Vec4 {
+    fn from(rect: Rect) -> Vec4 {
+        Vec4(rect.0.x, rect.0.y, rect.1.width, rect.1.height)
     }
 }
 
