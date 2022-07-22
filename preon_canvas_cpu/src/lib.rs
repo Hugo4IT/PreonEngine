@@ -3,17 +3,25 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
-use fontdue::{Font, layout::{Layout, CoordinateSystem, TextStyle}};
+use alloc::{vec::Vec, vec};
+use fontdue::{Font, layout::{Layout, CoordinateSystem, TextStyle}, FontSettings};
 
 use preon_engine::loaders::image::Image;
 
 const COLOR_MULT_LOOKUP_TABLE: &[u8; 131072] = include_bytes!("../res/color-mult-lookup-table.bin");
+const COLOR_MULT_LOOKUP_TABLE_PTR: *const u8 = COLOR_MULT_LOOKUP_TABLE.as_ptr();
 const COLOR_DIV_LOOKUP_TABLE: &[u8; 131072] = include_bytes!("../res/color-div-lookup-table.bin");
+const COLOR_DIV_LOOKUP_TABLE_PTR: *const u8 = COLOR_DIV_LOOKUP_TABLE.as_ptr();
 
+#[cfg(target_endian = "little")]
 macro_rules! color_expr {
-    (mul $x:expr, $y:expr) => ((u16::from_le_bytes([COLOR_MULT_LOOKUP_TABLE[(($x) * 256 + ($y)) as usize * 2], COLOR_MULT_LOOKUP_TABLE[(($x) * 256 + ($y)) as usize * 2 + 1]]) as u32));
-    (div $x:expr, $y:expr) => ((u16::from_le_bytes([COLOR_DIV_LOOKUP_TABLE[(($x) * 256 + ($y)) as usize * 2], COLOR_DIV_LOOKUP_TABLE[(($x) * 256 + ($y)) as usize * 2 + 1]]) as u32));
+    (mul $x:expr, $y:expr) => (unsafe { (*((COLOR_MULT_LOOKUP_TABLE_PTR as usize + (($x) as usize * 256 + ($y) as usize) as usize * 2) as *const u16)) });
+    (div $x:expr, $y:expr) => (unsafe { (*((COLOR_DIV_LOOKUP_TABLE_PTR as usize + (($x) as usize * 256 + ($y) as usize) as usize * 2) as *const u16)) });
+}
+
+#[derive(Debug)]
+pub enum GetPixelError {
+    OutOfBounds,
 }
 
 pub struct Renderer {
@@ -21,14 +29,14 @@ pub struct Renderer {
     backbuffer: Vec<u8>,
     width: usize,
     height: usize,
-    clear_color: u32,
-    pub fonts: Vec<Font>,
+    pub clear_color: u32,
+    fonts: Vec<Font>,
 }
 
 impl Renderer {
     pub fn new(framebuffer: *mut u8, width: usize, height: usize) -> Renderer {
         Renderer {
-            backbuffer: Vec::with_capacity(width * height * 4),
+            backbuffer: vec![0; width * height * 4],
             framebuffer,
             width,
             height,
@@ -37,23 +45,28 @@ impl Renderer {
         }
     }
 
+    pub fn add_font(&mut self, font: &[u8]) -> usize {
+        self.fonts.push(Font::from_bytes(font, FontSettings::default()).unwrap());
+        self.fonts.len() - 1
+    }
+
     fn convert_glyph_texture(&self, texture: Vec<u8>, color: u32) -> Vec<u32> {
         texture.into_iter().map(|l| ((l as u32)<<24)|(color&0x00FFFFFF)).collect::<Vec<u32>>()
     }
 
-    pub fn draw_char(&mut self, x: usize, y: usize, ch: char, size: f32, color: u32) {
-        let (metrics, texture) = self.fonts[0].rasterize(ch, size);
+    pub fn draw_char(&mut self, font: usize, x: usize, y: usize, ch: char, size: f32, color: u32) {
+        let (metrics, texture) = self.fonts[font].rasterize(ch, size);
         self.blit_texture_blend(x, y, metrics.width, metrics.height, self.convert_glyph_texture(texture, color).as_slice())
     }
 
-    pub unsafe fn draw_char_unchecked(&mut self, x: usize, y: usize, ch: char, size: f32, color: u32) {
-        let (metrics, texture) = self.fonts[0].rasterize(ch, size);
+    pub unsafe fn draw_char_unchecked(&mut self, font: usize, x: usize, y: usize, ch: char, size: f32, color: u32) {
+        let (metrics, texture) = self.fonts[font].rasterize(ch, size);
         self.blit_texture_blend_unchecked(x, y, metrics.width, metrics.height, self.convert_glyph_texture(texture, color).as_slice())
     }
 
-    pub fn draw_string(&mut self, x: usize, y: usize, string: &str, size: f32, color: u32) {
+    pub fn draw_string(&mut self, font: usize, x: usize, y: usize, string: &str, size: f32, color: u32) {
         let mut layout = Layout::new(CoordinateSystem::PositiveYDown);
-        layout.append(self.fonts.as_slice(), &TextStyle::new(string, size, 0));
+        layout.append(self.fonts.as_slice(), &TextStyle::new(string, size, font));
 
         for glyph in layout.glyphs() {
             let (metrics, texture) = self.fonts[glyph.font_index].rasterize_config(glyph.key);
@@ -78,9 +91,9 @@ impl Renderer {
     }
 
     pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
-        assert!(x + width <= self.width);
-        assert!(y + height <= self.height);
-        unsafe { self.fill_rect_unchecked(x, y, width, height, color) }
+        if x + width <= self.width && y + height <= self.height {
+            unsafe { self.fill_rect_unchecked(x, y, width, height, color) }
+        }
     }
 
     pub unsafe fn fill_rect_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
@@ -99,7 +112,7 @@ impl Renderer {
     }
 
     #[inline]
-    pub unsafe fn blit_image<I: Image>(&mut self, x: usize, y: usize, image: &I) {
+    pub fn blit_image<I: Image>(&mut self, x: usize, y: usize, image: &I) {
         self.blit_texture(x, y, image.get_width(), image.get_height(), image.get_texture().as_slice())
     }
 
@@ -119,9 +132,9 @@ impl Renderer {
     }
 
     pub fn blit_texture(&mut self, x: usize, y: usize, width: usize, height: usize, texture: &[u32]) {
-        assert!(x + width <= self.width);
-        assert!(y + height <= self.height);
-        unsafe { self.blit_texture_unchecked(x, y, width, height, texture) }
+        if x + width <= self.width && y + height <= self.height {
+            unsafe { self.blit_texture_unchecked(x, y, width, height, texture) }
+        }
     }
 
     pub unsafe fn blit_texture_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, texture: &[u32]) {
@@ -139,9 +152,9 @@ impl Renderer {
     }
 
     pub fn blit_texture_blend(&mut self, x: usize, y: usize, width: usize, height: usize, texture: &[u32]) {
-        assert!(x + width <= self.width);
-        assert!(y + height <= self.height);
-        unsafe { self.blit_texture_blend_unchecked(x, y, width, height, texture) }
+        if x + width <= self.width && y + height <= self.height {
+            unsafe { self.blit_texture_blend_unchecked(x, y, width, height, texture) }
+        }
     }
 
     pub unsafe fn blit_texture_blend_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, texture: &[u32]) {
@@ -151,7 +164,7 @@ impl Renderer {
 
         for y in 0..height {
             for x in 0..width {
-                let index = (offset + x + y * self.width) * 4;
+                let index = offset + (x + y * self.width) * 4;
                 let dst = buffer + index;
                 
                 let texture_color = texture[y * width + x];
@@ -161,10 +174,11 @@ impl Renderer {
         }
     }
 
+    #[inline]
     pub fn set_pixel(&mut self, x: usize, y: usize, color: u32) {
-        assert!(x <= self.width);
-        assert!(y <= self.height);
-        unsafe { self.set_pixel_unchecked(x, y, color) }
+        if x <= self.width && y <= self.height {
+            unsafe { self.set_pixel_unchecked(x, y, color) }
+        }
     }
 
     #[inline]
@@ -173,10 +187,15 @@ impl Renderer {
         core::ptr::write((self.backbuffer.as_mut_ptr() as usize + index) as *mut u32, color)
     }
 
-    pub fn get_pixel(&self, x: usize, y: usize) -> u32 {
-        assert!(x <= self.width);
-        assert!(y <= self.height);
-        unsafe { self.get_pixel_unchecked(x, y) }
+    #[must_use]
+    #[inline]
+    pub fn get_pixel(&self, x: usize, y: usize) -> Result<(), GetPixelError> {
+        if x <= self.width && y <= self.height {
+            unsafe { self.get_pixel_unchecked(x, y) };
+            Ok(())
+        } else {
+            Err(GetPixelError::OutOfBounds)
+        }
     }
 
     #[inline]
@@ -185,17 +204,10 @@ impl Renderer {
         core::ptr::read((self.backbuffer.as_ptr() as usize + index) as *mut u32)
     }
 
-    #[inline]
-    pub fn set_clear_color(&mut self, color: u32) {
-        self.clear_color = color;
-    }
-
-    pub fn clear_screen(&mut self) {
-        let mut buffer = self.backbuffer.as_mut_ptr() as usize;
-        let end = self.backbuffer.len() * 4 + buffer;
-        while buffer <= end {
-            unsafe { core::ptr::write(buffer as *mut u32, self.clear_color) };
-            buffer += 4;
+    pub fn clear(&mut self) {
+        let buffer = self.backbuffer.as_mut_ptr() as usize;
+        for i in 0..(self.width * self.height) {
+            unsafe { core::ptr::write((buffer + i * 4) as *mut u32, self.clear_color) };
         }
     }
 
@@ -206,6 +218,7 @@ impl Renderer {
         };
     }
 
+    #[allow(unused_unsafe)] // color_expr! will throw an error when not in an unsafe block, but a warning when inside one
     fn overlay_color(&self, background: u32, foreground: u32) -> u32 {
         let [fg_b, fg_g, fg_r, fg_a] = foreground.to_le_bytes();
         let [bg_b, bg_g, bg_r, bg_a] = background.to_le_bytes();
@@ -215,8 +228,8 @@ impl Renderer {
         } else if fg_a == 255 {
             foreground
         } else {
-            let (fg_r, fg_g, fg_b, fg_a) = (fg_r as u32, fg_g as u32, fg_b as u32, fg_a as u32);
-            let (bg_r, bg_g, bg_b, bg_a) = (bg_r as u32, bg_g as u32, bg_b as u32, bg_a as u32);
+            let (fg_r, fg_g, fg_b, fg_a) = (fg_r as u16, fg_g as u16, fg_b as u16, fg_a as u16);
+            let (bg_r, bg_g, bg_b, bg_a) = (bg_r as u16, bg_g as u16, bg_b as u16, bg_a as u16);
 
             let value_a = fg_a + color_expr!(mul bg_a, (255 - fg_a));
             let value_r = color_expr!(div color_expr!(mul fg_r, fg_a) + color_expr!(mul color_expr!(mul bg_r, bg_a), (255 - fg_a)), value_a);

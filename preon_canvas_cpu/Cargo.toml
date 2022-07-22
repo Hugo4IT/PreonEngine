@@ -10,3 +10,7 @@ simd = ["fontdue/simd"]
 [dependencies]
 fontdue = { version = "0.7.2", default-features = false }
 preon_engine = { path = "../preon_engine" }
+
+[dev-dependencies]
+minifb = "0.23.0"
+libm = "0.2.2"
