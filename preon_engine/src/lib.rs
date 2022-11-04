@@ -9,6 +9,7 @@ pub mod color;
 pub mod math;
 
 pub struct App {
+    
 }
 
 impl App {

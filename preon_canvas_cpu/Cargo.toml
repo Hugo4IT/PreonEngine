@@ -13,4 +13,4 @@ preon_engine = { path = "../preon_engine" }
 
 [dev-dependencies]
 minifb = "0.23.0"
-libm = "0.2.2"
+libm = "0.2.5"

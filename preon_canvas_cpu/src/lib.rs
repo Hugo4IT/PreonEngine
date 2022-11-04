@@ -19,6 +19,9 @@ macro_rules! color_expr {
     (div $x:expr, $y:expr) => (unsafe { (*((COLOR_DIV_LOOKUP_TABLE_PTR as usize + (($x) as usize * 256 + ($y) as usize) as usize * 2) as *const u16)) });
 }
 
+#[cfg(target_endian = "big")]
+compile_error!("Sorry, preon_canvas_cpu doesn't support big endian yet :/");
+
 #[derive(Debug)]
 pub enum GetPixelError {
     OutOfBounds,
@@ -111,6 +114,129 @@ impl Renderer {
         }
     }
 
+    pub fn fill_rect_blend(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
+        if x + width <= self.width && y + height <= self.height {
+            unsafe { self.fill_rect_blend_unchecked(x, y, width, height, color) }
+        }
+    }
+
+    pub unsafe fn fill_rect_blend_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
+        let offset = x * 4;
+        let start = y * self.width * 4;
+        let buffer = self.backbuffer.as_mut_ptr() as usize + start;
+
+        for y in 0..height {
+            for x in 0..width {
+                let dst = (buffer + offset + x * 4 + y * self.width * 4) as *mut u32;
+                let framebuffer_color = core::ptr::read(dst as *const u32);
+
+                core::ptr::write(
+                    dst,
+                    Self::overlay_color(framebuffer_color, color),
+                )
+            }
+        }
+    }
+
+    pub fn fill_round_rect(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32, radius: usize) {
+        if x + width <= self.width && y + height <= self.height && radius <= width / 2 && radius <= height / 2 {
+            unsafe { self.fill_round_rect_unchecked(x, y, width, height, color, radius) }
+        }
+    }
+
+    pub unsafe fn fill_round_rect_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32, radius: usize) {
+        let offset = x * 4;
+        let start = y * self.width * 4;
+        let buffer = self.backbuffer.as_mut_ptr() as usize + start;
+
+        for y in 0..height {
+            if y < radius as usize {
+                // Use pythagorean theorem to figure out width of circle at given y position
+                let corner_height = radius - y;
+                let corner = radius - preon_engine::sqrt!((radius * radius - corner_height * corner_height) as f32) as usize;
+
+                for x in 0..(width-corner-corner) {
+                    core::ptr::write(
+                        (buffer + offset + (x+corner) * 4 + y * self.width * 4) as *mut u32,
+                        color,
+                    )
+                }
+            } else if y >= height - radius as usize {
+                // Use pythagorean theorem to figure out width of circle at given y position
+                let corner_height = y + radius - height + 1;
+                let corner = radius - preon_engine::sqrt!((radius * radius - corner_height * corner_height) as f32) as usize;
+
+                for x in 0..(width-corner-corner) {
+                    core::ptr::write(
+                        (buffer + offset + (x+corner) * 4 + y * self.width * 4) as *mut u32,
+                        color,
+                    )
+                }
+            } else {
+                for x in 0..width {
+                    core::ptr::write(
+                        (buffer + offset + x * 4 + y * self.width * 4) as *mut u32,
+                        color,
+                    )
+                }
+            }
+        }
+    }
+
+    pub fn fill_round_rect_blend(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32, radius: usize) {
+        if x + width <= self.width && y + height <= self.height && radius <= width / 2 && radius <= height / 2 {
+            unsafe { self.fill_round_rect_blend_unchecked(x, y, width, height, color, radius) }
+        }
+    }
+
+    pub unsafe fn fill_round_rect_blend_unchecked(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32, radius: usize) {
+        let offset = x * 4;
+        let start = y * self.width * 4;
+        let buffer = self.backbuffer.as_mut_ptr() as usize + start;
+
+        for y in 0..height {
+            if y < radius as usize {
+                // Use pythagorean theorem to figure out width of circle at given y position
+                let corner_height = radius - y;
+                let corner = radius - preon_engine::sqrt!((radius * radius - corner_height * corner_height) as f32) as usize;
+
+                for x in 0..(width-corner-corner) {
+                    let dst = (buffer + offset + (x+corner) * 4 + y * self.width * 4) as *mut u32;
+                    let framebuffer_color = core::ptr::read(dst as *const u32);
+
+                    core::ptr::write(
+                        dst,
+                        Self::overlay_color(framebuffer_color, color),
+                    )
+                }
+            } else if y >= height - radius as usize {
+                // Use pythagorean theorem to figure out width of circle at given y position
+                let corner_height = y + radius - height + 1;
+                let corner = radius - preon_engine::sqrt!((radius * radius - corner_height * corner_height) as f32) as usize;
+
+                for x in 0..(width-corner-corner) {
+                    let dst = (buffer + offset + (x+corner) * 4 + y * self.width * 4) as *mut u32;
+                    let framebuffer_color = core::ptr::read(dst as *const u32);
+                    
+                    core::ptr::write(
+                        dst,
+                        Self::overlay_color(framebuffer_color, color),
+                    )
+                }
+            } else {
+                for x in 0..width {
+                    let dst = (buffer + offset + x * 4 + y * self.width * 4) as *mut u32;
+                    let framebuffer_color = core::ptr::read(dst as *const u32);
+
+                    core::ptr::write(
+                        dst,
+                        Self::overlay_color(framebuffer_color, color),
+                    )
+                }
+            }
+        }
+    }
+
     #[inline]
     pub fn blit_image<I: Image>(&mut self, x: usize, y: usize, image: &I) {
         self.blit_texture(x, y, image.get_width(), image.get_height(), image.get_texture().as_slice())
@@ -169,7 +295,7 @@ impl Renderer {
                 
                 let texture_color = texture[y * width + x];
                 let framebuffer_color = core::ptr::read(dst as *const u32);
-                core::ptr::write(dst as *mut u32, self.overlay_color(framebuffer_color, texture_color));
+                core::ptr::write(dst as *mut u32, Self::overlay_color(framebuffer_color, texture_color));
             }
         }
     }
@@ -219,7 +345,7 @@ impl Renderer {
     }
 
     #[allow(unused_unsafe)] // color_expr! will throw an error when not in an unsafe block, but a warning when inside one
-    fn overlay_color(&self, background: u32, foreground: u32) -> u32 {
+    pub fn overlay_color(background: u32, foreground: u32) -> u32 {
         let [fg_b, fg_g, fg_r, fg_a] = foreground.to_le_bytes();
         let [bg_b, bg_g, bg_r, bg_a] = background.to_le_bytes();
             
@@ -238,5 +364,21 @@ impl Renderer {
 
             u32::from_le_bytes([value_b.min(255) as u8, value_g.min(255) as u8, value_r.min(255) as u8, value_a.min(255) as u8])
         }
+    }
+
+    #[allow(unused_unsafe)] // color_expr! will throw an error when not in an unsafe block, but a warning when inside one
+    pub fn multiply_color(background: u32, foreground: u32) -> u32 {
+        let [fg_b, fg_g, fg_r, fg_a] = foreground.to_le_bytes();
+        let [bg_b, bg_g, bg_r, bg_a] = background.to_le_bytes();
+            
+        // let (fg_r, fg_g, fg_b, fg_a) = (fg_r as u16, fg_g as u16, fg_b as u16, fg_a as u16);
+        // let (bg_r, bg_g, bg_b, bg_a) = (bg_r as u16, bg_g as u16, bg_b as u16, bg_a as u16);
+
+        let value_a = color_expr!(mul bg_a, fg_a);
+        let value_r = color_expr!(mul bg_r, fg_r);
+        let value_g = color_expr!(mul bg_g, fg_g);
+        let value_b = color_expr!(mul bg_b, fg_b);
+
+        u32::from_le_bytes([value_b.min(255) as u8, value_g.min(255) as u8, value_r.min(255) as u8, value_a.min(255) as u8])
     }
 }

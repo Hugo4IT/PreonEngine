@@ -19,14 +19,37 @@ fn main() {
     while window.is_open() {
         canvas.clear();
         
-        canvas.fill_rect(10, 10, 32, 32, 0xffda0037);
-        canvas.draw_string(mono_regular, 52, 11, "fill_rect(32x32, #da0037)", 24.0, 0xffd3d3d3);
-        
-        canvas.blit_image(10, 52, &image);
-        canvas.draw_string(mono_regular, 52, 53, "blit_image(gradient.tga)", 24.0, 0xffd3d3d3);
-        
-        canvas.blit_image_blend(10, 94, &image);
-        canvas.draw_string(mono_regular, 52, 95, "blit_image_blend(gradient.tga)", 24.0, 0xffd3d3d3);
+        {
+            let mut y = 10;
+    
+            canvas.fill_rect(10, y, 32, 32, 0xffda0037);
+            canvas.draw_string(mono_regular, 52, y + 1, "fill_rect(32x32, #da0037)", 24.0, 0xffd3d3d3);
+            
+            y += 42;
+    
+            canvas.fill_round_rect(10, y, 32, 32, 0xffda0037, 8);
+            canvas.draw_string(mono_regular, 52, y + 1, "fill_round_rect(32x32, #da0037, 8)", 24.0, 0xffd3d3d3);
+
+            y += 42;
+    
+            canvas.fill_rect_blend(10, y, 32, 32, 0xaada0037);
+            canvas.draw_string(mono_regular, 52, y + 1, "fill_rect_blend(32x32, #aada0037)", 24.0, 0xaad3d3d3);
+
+            y += 42;
+    
+            canvas.fill_round_rect_blend(10, y, 32, 32, 0xaada0037, 8);
+            canvas.draw_string(mono_regular, 52, y + 1, "fill_round_rect_blend(32x32, #aada0037, 8)", 24.0, 0xaad3d3d3);
+    
+            y += 42;
+            
+            canvas.blit_image(10, y, &image);
+            canvas.draw_string(mono_regular, 52, y + 1, "blit_image(gradient.tga)", 24.0, 0xffd3d3d3);
+    
+            y += 42;
+            
+            canvas.blit_image_blend(10, y, &image);
+            canvas.draw_string(mono_regular, 52, y + 1, "blit_image_blend(gradient.tga)", 24.0, 0xffd3d3d3);
+        }
 
         canvas.present();
         window.update_with_buffer(&buffer[..], 640, 480).unwrap();
