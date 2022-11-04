@@ -1059,10 +1059,8 @@ impl LabelConfig {
         let font_index = u16::from_le_bytes([buffer[0], (buffer[1] & 0b11000000) >> 6]);
         let bold = (buffer[1] & 0b00100000) == 0b00100000;
         let italic = (buffer[1] & 0b00010000) == 0b00010000;
-        let vertical_align: PreonAlignment =
-            num::FromPrimitive::from_u8((buffer[1] & 0b00001100) >> 2).unwrap();
-        let horizontal_align: PreonAlignment =
-            num::FromPrimitive::from_u8(buffer[1] & 0b00000011).unwrap();
+        let vertical_align = PreonAlignment::from((buffer[1] & 0b00001100) >> 2);
+        let horizontal_align = PreonAlignment::from(buffer[1] & 0b00000011);
         let color = PreonColor::from_rgba8(buffer[2], buffer[3], buffer[4], buffer[5]);
         let size = u16::from_le_bytes([buffer[6], buffer[7]]);
 

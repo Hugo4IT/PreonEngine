@@ -1,4 +1,4 @@
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 //! A modular, zero-dependency User Interface engine
 //!
 //! # Compatibility
@@ -245,4 +245,16 @@ impl<T: PreonCustomComponentStack> PreonEngine<T> {
 
         rerender
     }
+}
+
+/// Contains all the necessary imports to quickly build an app with PreonEngine
+pub mod prelude {
+    pub use crate::components::*;
+    pub use crate::types::*;
+    pub use crate::events::*;
+    pub use crate::rendering::PreonFont;
+    pub use crate::rendering::PreonStaticRenderData;
+    pub use crate::preon_font;
+    pub use crate::size;
+    pub use crate::PreonEngine;
 }

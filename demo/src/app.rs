@@ -1,19 +1,8 @@
-use preon_engine::{
-    components::{
-        AddHBox, AddLabel, AddPanel, AddStaticTexture, AddVBox, NoCustomComponents, PreonComponent,
-        PreonComponentBuilder, PreonComponentStack,
-    },
-    events::{PreonEvent, PreonUserEvent},
-    preon_font,
-    rendering::PreonStaticRenderData,
-    types::{PreonBorder, PreonColor},
-    PreonEngine,
-};
+use preon_engine::prelude::*;
 use preon_module_wgpu::preon;
 use rand::Rng;
 
 pub fn app() {
-    #[cfg(debug_assertions)]
     env_logger::init();
 
     let mut rng = rand::thread_rng();
@@ -62,7 +51,7 @@ pub fn app() {
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()
-                        .start_label_str("Such art.")
+                        .start_label_cfg("Such art.".to_string(), LabelConfig { color: PreonColor::from_hex("#171717"), ..Default::default() })
                             .with_min_size(0, 200)
                             .expand_horizontally()
                         .end()

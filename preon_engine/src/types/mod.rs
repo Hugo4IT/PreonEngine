@@ -3,8 +3,6 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use num_derive::FromPrimitive;
-
 use crate::size;
 
 pub trait PreonVectorAble:
@@ -20,17 +18,30 @@ pub trait PreonVectorAble:
 {
 }
 
-impl PreonVectorAble for i16 {}
-impl PreonVectorAble for i32 {}
-impl PreonVectorAble for i64 {}
-impl PreonVectorAble for i128 {}
-impl PreonVectorAble for u8 {}
-impl PreonVectorAble for u16 {}
-impl PreonVectorAble for u32 {}
-impl PreonVectorAble for u64 {}
-impl PreonVectorAble for u128 {}
-impl PreonVectorAble for f32 {}
-impl PreonVectorAble for f64 {}
+// impl PreonVectorAble for i16 {}
+// impl PreonVectorAble for i32 {}
+// impl PreonVectorAble for i64 {}
+// impl PreonVectorAble for i128 {}
+// impl PreonVectorAble for u8 {}
+// impl PreonVectorAble for u16 {}
+// impl PreonVectorAble for u32 {}
+// impl PreonVectorAble for u64 {}
+// impl PreonVectorAble for u128 {}
+// impl PreonVectorAble for f32 {}
+// impl PreonVectorAble for f64 {}
+
+impl<T> PreonVectorAble for T
+where
+    T: Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + PartialOrd
+    + Copy
+    + Clone
+    + Display
+    + From<u8>
+{}
 
 // A vector (from math, not the array-one) with 2 axis. Useful for storing positions or sizes
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -630,12 +641,24 @@ impl Display for PreonBox {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, FromPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PreonAlignment {
     Start,
     Center,
     End,
     Spread,
+}
+
+impl From<u8> for PreonAlignment {
+    fn from(num: u8) -> Self {
+        match num {
+            0 => Self::Start,
+            1 => Self::Center,
+            2 => Self::End,
+            3 => Self::Spread,
+            _ => panic!("Unrecognised alignment value!"),
+        }
+    }
 }
 
 impl Default for PreonAlignment {
