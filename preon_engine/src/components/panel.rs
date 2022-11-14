@@ -55,14 +55,8 @@ pub(super) fn layout<T: PreonCustomComponentStack>(
 ) {
     let position = component.get_content_position();
     let size = component.get_content_size();
-    if let Some(children) = component.children.as_mut() {
-        for child in children.iter_mut() {
-            if let Some(child) = child.as_mut() {
-                child.set_outer_position(position);
-                child.set_outer_size(size);
-            } else {
-                log::error!("A child was not returned before PreonEngine::update()!")
-            }
-        }
+    for child in component.children.iter_mut() {
+        child.set_outer_position(position);
+        child.set_outer_size(size);
     }
 }

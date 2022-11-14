@@ -48,7 +48,7 @@ pub enum PreonComponentStack<T: PreonCustomComponentStack> {
 /// A UI component
 #[derive(Debug, Clone)]
 pub struct PreonComponentStorage<T: PreonCustomComponentStack> {
-    pub children: Option<Vec<Option<PreonComponentStorage<T>>>>,
+    pub children: Vec<PreonComponentStorage<T>>,
     pub model: PreonBox,
     pub data: PreonComponentStack<T>,
     pub inner_size: PreonVector<i32>,
@@ -59,7 +59,7 @@ pub struct PreonComponentStorage<T: PreonCustomComponentStack> {
 impl<T: PreonCustomComponentStack> PreonComponentStorage<T> {
     pub fn new(component: PreonComponentStack<T>) -> PreonComponentStorage<T> {
         PreonComponentStorage {
-            children: None,
+            children: Vec::new(),
             model: PreonBox::initial(),
             data: component,
             inner_size: PreonVector::zero(),
@@ -72,14 +72,12 @@ impl<T: PreonCustomComponentStack> PreonComponentStorage<T> {
         let indents = String::from("    ").repeat(indent_level);
         let mut children_strings = String::new();
 
-        if let Some(children) = self.children.as_ref() {
-            children
-                .iter()
-                .map(|c| c.as_ref().unwrap().print_tree(indent_level + 1))
-                .collect::<Vec<String>>()
-                .drain(..)
-                .for_each(|s| children_strings.push_str(&format!("\n{}", s)));
-        }
+        self.children
+            .iter()
+            .map(|c| c.print_tree(indent_level + 1))
+            .collect::<Vec<String>>()
+            .drain(..)
+            .for_each(|s| children_strings.push_str(&format!("\n{}", s)));
 
         let (name, attributes) = T::display(&self.data);
 
@@ -142,58 +140,38 @@ impl<T: PreonCustomComponentStack> PreonComponentStorage<T> {
         }
     }
 
-    pub fn get_child(&mut self, id: usize) -> PreonComponentStorage<T> {
-        self.children
-            .as_mut()
-            .unwrap()
-            .get_mut(id)
-            .unwrap()
-            .take()
-            .unwrap()
-    }
+    // pub fn get_child(&mut self, id: usize) -> PreonComponentStorage<T> {
+    //     self.children
+    //         .as_mut()
+    //         .unwrap()
+    //         .get_mut(id)
+    //         .unwrap()
+    //         .take()
+    //         .unwrap()
+    // }
 
     pub fn get_child_ref(&self, id: usize) -> &PreonComponentStorage<T> {
         self.children
-            .as_ref()
-            .unwrap()
             .get(id)
-            .unwrap()
-            .as_ref()
             .unwrap()
     }
 
     pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponentStorage<T> {
         self.children
-            .as_mut()
-            .unwrap()
             .get_mut(id)
-            .unwrap()
-            .as_mut()
             .unwrap()
     }
 
     pub fn add_child(&mut self, child: PreonComponentStorage<T>) {
-        if let Some(children) = self.children.as_mut() {
-            children.push(Some(child));
-        } else {
-            self.children.replace(vec![Some(child)]);
-        }
+        self.children.push(child);
     }
 
     pub fn insert_child(&mut self, id: usize, child: PreonComponentStorage<T>) {
-        if let Some(children) = self.children.as_mut() {
-            children.insert(id, Some(child));
-        } else {
-            self.children.replace(vec![Some(child)]);
-        }
+        self.children.insert(id, child);
     }
 
     pub fn remove_child(&mut self, id: usize) {
-        if let Some(children) = self.children.as_mut() {
-            children.remove(id);
-        } else {
-            log::error!("component.remove_child was called, but the component had no children!");
-        }
+        self.children.remove(id);
     }
 
     #[inline(always)]
@@ -395,10 +373,8 @@ pub trait PreonCustomComponentStack: Debug + Sized {
             _ => {}
         }
 
-        if let Some(children) = component.children.as_mut() {
-            for child in children.iter_mut() {
-                Self::layout(child.as_mut().unwrap());
-            }
+        for child in component.children.iter_mut() {
+            Self::layout(child);
         }
     }
 
@@ -483,10 +459,8 @@ pub trait PreonCustomComponentStack: Debug + Sized {
             });
         }
 
-        if let Some(children) = component.children.as_mut() {
-            for child in children.iter_mut() {
-                Self::render(child.as_mut().unwrap(), pass)
-            }
+        for child in component.children.iter_mut() {
+            Self::render(child, pass)
         }
     }
 }
@@ -602,24 +576,12 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
         log::info!("expand vertically");
 
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::vertical::EXPAND;
-        self.stack.push(component);
+        self.stack.last_mut().unwrap().model.size_flags |= size::vertical::EXPAND;
         self
     }
 
     pub fn with_child(mut self, child: PreonComponentStorage<T>) -> PreonComponentBuilder<T> {
-        let mut component = self.stack.pop().take().unwrap();
-
-        if component.children.is_none() {
-            component.children = Some(vec![Some(child)]);
-        } else {
-            let mut children = component.children.take().unwrap();
-            children.push(Some(child));
-            component.children = Some(children);
-        }
-
-        self.stack.push(component);
+        self.stack.last_mut().unwrap().children.push(child);        
         self
     }
 
@@ -651,26 +613,15 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     fn get_index(&mut self) -> usize {
-        let new_id: usize;
-
         if self.stack.len() == 1 {
             return 0;
         }
 
-        let component = self.stack.pop().take().unwrap();
-        let mut parent_component = self.stack.pop().take().unwrap();
-
-        if let Some(children) = parent_component.children {
-            new_id = children.len();
-            parent_component.children = Some(children);
-        } else {
-            new_id = 0;
-        }
-
-        self.stack.push(parent_component);
-        self.stack.push(component);
-
-        new_id
+        self.stack
+            .get(self.stack.len() - 2)
+            .unwrap()
+            .children
+            .len()
     }
 
     pub fn with_mut<F>(mut self, callback: F) -> PreonComponentBuilder<T>
