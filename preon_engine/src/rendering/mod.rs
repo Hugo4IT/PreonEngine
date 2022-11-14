@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 use crate::{
     events::PreonEventEmitter,
     types::{PreonColor, PreonVector},

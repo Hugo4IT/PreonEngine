@@ -4,8 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = []
+default = ["logging"]
 debug = []
+logging = ["log"]
+std = []
 
 [dependencies]
-log = "0.4.14"
+log = { version = "0.4.17", optional = true }
+libm = "0.2.5"

@@ -1,5 +1,5 @@
 use preon_engine::{
-    components::LabelConfig,
+    components::label::LabelConfig,
     rendering::{PreonFont, PreonShape},
     types::PreonVector,
 };

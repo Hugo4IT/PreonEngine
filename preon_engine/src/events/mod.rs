@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use alloc::vec::Vec;
+
+use core::fmt::Display;
 
 use crate::types::PreonVector;
 
@@ -12,7 +14,7 @@ pub enum PreonButtonState {
 }
 
 impl Display for PreonButtonState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}",
@@ -46,47 +48,71 @@ pub enum PreonUserEvent {
     ForceUpdate,
 }
 
+/// Contains a front- and backbuffer> Events get pushed onto
+/// the backbuffer and pulled from the frontbuffer. Use [`PreonEventEmitter::pull`]
+/// to swap the front- and backbuffer.
 #[derive(Debug)]
 pub struct PreonEventEmitter<T: Clone> {
-    events: Vec<T>,
-    buffer: Vec<T>,
+    buffers: [Vec<T>; 2],
+    current_buffer: usize,
 }
 
 #[allow(clippy::new_without_default)]
 impl<T: Clone> PreonEventEmitter<T> {
     pub fn new() -> PreonEventEmitter<T> {
         PreonEventEmitter {
-            events: Vec::new(),
-            buffer: Vec::new(),
+            buffers: [Vec::new(), Vec::new()],
+            current_buffer: 0,
         }
     }
 
     pub fn push(&mut self, event: T) {
-        self.buffer.push(event);
+        self.backbuffer_mut().push(event);
     }
 
     pub fn pull<F: FnMut(T)>(&self, mut handler: F) {
-        for item in self.events.iter() {
+        for item in self.buffer().iter() {
             handler(item.clone());
         }
     }
 
     pub fn flip(&mut self) {
-        self.events = self.buffer.drain(..).collect();
+        self.current_buffer = 1 - self.current_buffer;
+        self.backbuffer_mut().clear();
     }
 
     #[inline(always)]
     pub fn len(&self) -> usize {
-        self.events.len()
+        self.buffer().len()
     }
 
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
+        self.buffer().is_empty()
     }
 
     #[inline(always)]
     pub fn buffer_len(&self) -> usize {
-        self.buffer.len()
+        self.backbuffer().len()
+    }
+
+    #[inline(always)]
+    fn buffer(&self) -> &Vec<T> {
+        &self.buffers[self.current_buffer]
+    }
+
+    #[inline(always)]
+    fn backbuffer(&self) -> &Vec<T> {
+        &self.buffers[1 - self.current_buffer]
+    }
+
+    #[inline(always)]
+    fn buffer_mut(&mut self) -> &mut Vec<T> {
+        &mut self.buffers[self.current_buffer]
+    }
+
+    #[inline(always)]
+    fn backbuffer_mut(&mut self) -> &mut Vec<T> {
+        &mut self.buffers[1 - self.current_buffer]
     }
 }

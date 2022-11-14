@@ -117,7 +117,7 @@ impl ShapeManager {
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
-                color_attachments: &[wgpu::RenderPassColorAttachment {
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -129,7 +129,7 @@ impl ShapeManager {
                         }),
                         store: true,
                     },
-                }],
+                })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {

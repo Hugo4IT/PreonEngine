@@ -12,7 +12,7 @@ mod texture;
 
 pub mod preon {
     use preon_engine::{
-        components::{PreonComponent, PreonCustomComponentStack},
+        components::{PreonComponentStorage, PreonCustomComponentStack},
         events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
         types::PreonVector,
         PreonEngine,
@@ -29,7 +29,7 @@ pub mod preon {
     pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
     where
         T: PreonCustomComponentStack + 'static,
-        F: FnMut(&mut PreonComponent<T>, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
+        F: FnMut(&mut PreonComponentStorage<T>, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
             + 'static,
     {
         let event_loop = EventLoop::new();
@@ -223,10 +223,11 @@ impl PreonRendererWGPU {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_preferred_format(&adapter).unwrap(),
+            format: surface.get_supported_formats(&adapter).into_iter().next().unwrap(),
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Opaque,
         };
         surface.configure(&device, &config);
 

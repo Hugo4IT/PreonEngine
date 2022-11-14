@@ -3,16 +3,11 @@ use preon_engine::types::PreonVector;
 // Just because I can
 
 fn main() {
-    let original = PreonVector::new(23f32, 532f32);
+    let original = PreonVector::new(23.0, 532.0);
     let normalized = original.normalized();
-    let restored = normalized * 532f32;
+    let restored = normalized * 532.0;
 
-    println!(
-        "
-        Original: {}
-        Normalized: {}
-        Restored: {}
-        ",
-        original, normalized, restored
-    );
+    println!("Original: {}", original);
+    println!("Normalized: {}", normalized);
+    println!("Restored: {}", restored);
 }

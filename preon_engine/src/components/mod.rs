@@ -1,21 +1,54 @@
-use std::{fmt::Debug, str::FromStr};
-
-use log::info;
-
-// extern crate num;
-// #[macro_use]
-// extern crate num_derive;
+use core::{fmt::Debug, str::FromStr};
+use alloc::{vec::Vec, string::String, format, vec, borrow::ToOwned};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
     size,
     types::{PreonAlignment, PreonBorder, PreonBox, PreonColor, PreonVector},
+    log,
 };
+
+pub mod hbox;
+pub mod vbox;
+pub mod panel;
+pub mod label;
+pub mod static_texture;
+
+pub use hbox::*;
+pub use vbox::*;
+pub use panel::*;
+pub use label::*;
+pub use static_texture::*;
+
+#[derive(Debug, Clone)]
+pub enum PreonComponentStack<T: PreonCustomComponentStack> {
+    Custom(T),
+    Dummy,
+    Label {
+        // <-- Largest item, making the size of this enum 32 bytes :/
+        text: String,
+        text_settings: u64,
+    },
+    StaticTexture {
+        texture_index: usize,
+    },
+    Panel {
+        color: PreonColor,
+    },
+    HBox {
+        align: PreonAlignment,
+        cross_align: PreonAlignment,
+    },
+    VBox {
+        align: PreonAlignment,
+        cross_align: PreonAlignment,
+    },
+}
 
 /// A UI component
 #[derive(Debug, Clone)]
-pub struct PreonComponent<T: PreonCustomComponentStack> {
-    pub children: Option<Vec<Option<PreonComponent<T>>>>,
+pub struct PreonComponentStorage<T: PreonCustomComponentStack> {
+    pub children: Option<Vec<Option<PreonComponentStorage<T>>>>,
     pub model: PreonBox,
     pub data: PreonComponentStack<T>,
     pub inner_size: PreonVector<i32>,
@@ -23,9 +56,9 @@ pub struct PreonComponent<T: PreonCustomComponentStack> {
     pub index_updates: Vec<isize>,
 }
 
-impl<T: PreonCustomComponentStack> PreonComponent<T> {
-    pub fn new(component: PreonComponentStack<T>) -> PreonComponent<T> {
-        PreonComponent {
+impl<T: PreonCustomComponentStack> PreonComponentStorage<T> {
+    pub fn new(component: PreonComponentStack<T>) -> PreonComponentStorage<T> {
+        PreonComponentStorage {
             children: None,
             model: PreonBox::initial(),
             data: component,
@@ -86,7 +119,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         path.reverse();
     }
 
-    pub fn get_child_ref_recursive(&self, path: &[usize]) -> &PreonComponent<T> {
+    pub fn get_child_ref_recursive(&self, path: &[usize]) -> &PreonComponentStorage<T> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
@@ -97,7 +130,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn get_child_ref_mut_recursive(&mut self, path: &[usize]) -> &mut PreonComponent<T> {
+    pub fn get_child_ref_mut_recursive(&mut self, path: &[usize]) -> &mut PreonComponentStorage<T> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
@@ -109,7 +142,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn get_child(&mut self, id: usize) -> PreonComponent<T> {
+    pub fn get_child(&mut self, id: usize) -> PreonComponentStorage<T> {
         self.children
             .as_mut()
             .unwrap()
@@ -119,7 +152,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             .unwrap()
     }
 
-    pub fn get_child_ref(&self, id: usize) -> &PreonComponent<T> {
+    pub fn get_child_ref(&self, id: usize) -> &PreonComponentStorage<T> {
         self.children
             .as_ref()
             .unwrap()
@@ -129,7 +162,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             .unwrap()
     }
 
-    pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponent<T> {
+    pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponentStorage<T> {
         self.children
             .as_mut()
             .unwrap()
@@ -139,7 +172,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
             .unwrap()
     }
 
-    pub fn add_child(&mut self, child: PreonComponent<T>) {
+    pub fn add_child(&mut self, child: PreonComponentStorage<T>) {
         if let Some(children) = self.children.as_mut() {
             children.push(Some(child));
         } else {
@@ -147,7 +180,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         }
     }
 
-    pub fn insert_child(&mut self, id: usize, child: PreonComponent<T>) {
+    pub fn insert_child(&mut self, id: usize, child: PreonComponentStorage<T>) {
         if let Some(children) = self.children.as_mut() {
             children.insert(id, Some(child));
         } else {
@@ -159,7 +192,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
         if let Some(children) = self.children.as_mut() {
             children.remove(id);
         } else {
-            eprintln!("component.remove_child was called, but the component had no children!")
+            log::error!("component.remove_child was called, but the component had no children!");
         }
     }
 
@@ -288,7 +321,7 @@ impl<T: PreonCustomComponentStack> PreonComponent<T> {
     }
 }
 
-impl<T: PreonCustomComponentStack> Default for PreonComponent<T> {
+impl<T: PreonCustomComponentStack> Default for PreonComponentStorage<T> {
     fn default() -> Self {
         Self::new(PreonComponentStack::VBox {
             align: PreonAlignment::Start,
@@ -315,10 +348,10 @@ pub enum PreonComponentRenderStage {
 }
 
 pub trait PreonCustomComponentStack: Debug + Sized {
-    fn custom_layout(_comp: &mut PreonComponent<Self>) {}
+    fn custom_layout(_comp: &mut PreonComponentStorage<Self>) {}
     fn custom_render(
         _stage: PreonComponentRenderStage,
-        _component: &mut PreonComponent<Self>,
+        _component: &mut PreonComponentStorage<Self>,
         _pass: &mut PreonRenderPass,
     ) {
     }
@@ -351,206 +384,14 @@ pub trait PreonCustomComponentStack: Debug + Sized {
         (String::from_str(name).unwrap(), attributes)
     }
 
-    fn layout(component: &mut PreonComponent<Self>) {
+    fn layout(component: &mut PreonComponentStorage<Self>) {
         component.index_updates.clear();
 
         match component.data {
             PreonComponentStack::Custom(_) => Self::custom_layout(component),
-            PreonComponentStack::Panel { .. } => {
-                let position = component.get_content_position();
-                let size = component.get_content_size();
-                if let Some(children) = component.children.as_mut() {
-                    for child in children.iter_mut() {
-                        if let Some(child) = child.as_mut() {
-                            child.set_outer_position(position);
-                            child.set_outer_size(size);
-                        } else {
-                            eprintln!("A child was not returned before PreonEngine::update()!")
-                        }
-                    }
-                }
-            }
-            PreonComponentStack::VBox { align, cross_align } => {
-                if component.children.is_some() {
-                    let mut height = 0;
-                    let mut width = 0;
-                    let mut expanding_children = 0;
-                    let mut leftover_height = 0;
-
-                    // Gather some data on the children
-                    for child in component.children.as_ref().unwrap().iter() {
-                        let child = child.as_ref().unwrap();
-                        let s = child.get_outer_size();
-
-                        if child.model.has_flag(size::vertical::EXPAND) {
-                            height += child.model.min_size.y;
-                            expanding_children += 1;
-                        } else {
-                            height += s.y;
-                            leftover_height += s.y;
-                        }
-
-                        if !child.model.has_flag(size::horizontal::EXPAND) {
-                            width = width.max(s.x);
-                        } else {
-                            width = width.max(child.model.min_size.x);
-                        }
-                    }
-
-                    let position = component.get_content_position();
-                    let mut size = component.get_content_size();
-
-                    if component.model.has_flag(size::horizontal::FIT) && size.x < width {
-                        component.set_content_size_x(width);
-                    }
-                    if component.model.has_flag(size::vertical::FIT) && size.y < height {
-                        component.set_content_size_y(height);
-                    }
-
-                    size = component.get_content_size();
-
-                    // Correctly position everything
-                    let mut y = 0;
-
-                    for child in component.children.as_mut().unwrap().iter_mut() {
-                        let child = child.as_mut().unwrap();
-
-                        if child.model.has_flag(size::vertical::EXPAND) {
-                            child.set_outer_size_y((size.y - leftover_height) / expanding_children);
-                        }
-                        if child.model.has_flag(size::horizontal::EXPAND) {
-                            child.set_outer_size_x(size.x);
-                        }
-
-                        let child_size = child.get_outer_size();
-
-                        let x_position: i32 = if child.model.has_flag(size::horizontal::EXPAND) {
-                            0
-                        } else {
-                            match cross_align {
-                                PreonAlignment::Start => 0,
-                                PreonAlignment::Center => size.x / 2 - child_size.x / 2,
-                                PreonAlignment::End => size.x - child_size.x,
-                                PreonAlignment::Spread => {
-                                    eprintln!("VBox CrossAlignment doesn't support Spread (defaulting to Start)");
-                                    0
-                                }
-                            }
-                        };
-
-                        let y_position: i32 = if expanding_children > 0 {
-                            y
-                        } else {
-                            match align {
-                                PreonAlignment::Start => y,
-                                PreonAlignment::Center => size.y / 2 - height / 2 + y,
-                                PreonAlignment::End => (size.y - height) + y,
-                                PreonAlignment::Spread => {
-                                    let time = 1f32 / y as f32;
-                                    ((1f32 - time) * y as f32 + time * (size.y - y) as f32) as i32
-                                }
-                            }
-                        };
-
-                        child.set_outer_position(
-                            position + PreonVector::new(x_position, y_position),
-                        );
-
-                        y += child_size.y;
-                    }
-                }
-            }
-            PreonComponentStack::HBox { align, cross_align } => {
-                if component.children.is_some() {
-                    let mut height = 0;
-                    let mut width = 0;
-                    let mut expanding_children = 0;
-                    let mut leftover_width = 0;
-
-                    // Gather some data on the children
-                    for child in component.children.as_ref().unwrap().iter() {
-                        let child = child.as_ref().unwrap();
-
-                        let s = child.get_outer_size();
-
-                        if child.model.has_flag(size::horizontal::EXPAND) {
-                            width += child.model.min_size.x;
-                            expanding_children += 1;
-                        } else {
-                            width += s.x;
-                            leftover_width += s.x;
-                        }
-
-                        if !child.model.has_flag(size::vertical::EXPAND) {
-                            height = height.max(s.y);
-                        } else {
-                            height = height.max(child.model.min_size.y);
-                        }
-                    }
-
-                    let position = component.get_content_position();
-                    let mut size = component.get_content_size();
-
-                    if component.model.has_flag(size::horizontal::FIT) && size.x < width {
-                        component.set_content_size_x(width);
-                    }
-                    if component.model.has_flag(size::vertical::FIT) && size.y < height {
-                        component.set_content_size_y(height);
-                    }
-
-                    size = component.get_content_size();
-
-                    // Correctly position everything
-                    let mut x = 0;
-
-                    for child in component.children.as_mut().unwrap().iter_mut() {
-                        let child = child.as_mut().unwrap();
-
-                        if child.model.has_flag(size::horizontal::EXPAND) {
-                            child.set_outer_size_x((size.x - leftover_width) / expanding_children);
-                        }
-                        if child.model.has_flag(size::vertical::EXPAND) {
-                            child.set_outer_size_y(size.y);
-                        }
-
-                        let child_size = child.get_outer_size();
-
-                        let y_position: i32 = if child.model.has_flag(size::vertical::EXPAND) {
-                            0
-                        } else {
-                            match cross_align {
-                                PreonAlignment::Start => 0,
-                                PreonAlignment::Center => size.y / 2 - child_size.y / 2,
-                                PreonAlignment::End => size.y - child_size.y,
-                                PreonAlignment::Spread => {
-                                    eprintln!("HBox CrossAlignment doesn't support Spread (defaulting to Start)");
-                                    0
-                                }
-                            }
-                        };
-
-                        let x_position: i32 = if expanding_children > 0 {
-                            x
-                        } else {
-                            match align {
-                                PreonAlignment::Start => x,
-                                PreonAlignment::Center => size.x / 2 - width / 2 + x,
-                                PreonAlignment::End => (size.x - width) + x,
-                                PreonAlignment::Spread => {
-                                    let time = 1f32 / x as f32;
-                                    ((1f32 - time) * x as f32 + time * (size.x - x) as f32) as i32
-                                }
-                            }
-                        };
-
-                        child.set_outer_position(
-                            position + PreonVector::new(x_position, y_position),
-                        );
-
-                        x += child_size.x;
-                    }
-                }
-            }
+            PreonComponentStack::Panel { .. } => panel::layout(component),
+            PreonComponentStack::VBox { align, cross_align } => vbox::layout(component, align, cross_align),
+            PreonComponentStack::HBox { align, cross_align } => hbox::layout(component, align, cross_align),
             _ => {}
         }
 
@@ -561,7 +402,7 @@ pub trait PreonCustomComponentStack: Debug + Sized {
         }
     }
 
-    fn render(component: &mut PreonComponent<Self>, pass: &mut PreonRenderPass) {
+    fn render(component: &mut PreonComponentStorage<Self>, pass: &mut PreonRenderPass) {
         let stages = [
             PreonComponentRenderStage::Border {
                 position: component.get_border_position(),
@@ -650,40 +491,15 @@ pub trait PreonCustomComponentStack: Debug + Sized {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum PreonComponentStack<T: PreonCustomComponentStack> {
-    Custom(T),
-    Dummy,
-    Label {
-        // <-- Largest item, making the size of this enum 32 bytes :/
-        text: String,
-        text_settings: u64,
-    },
-    StaticTexture {
-        texture_index: usize,
-    },
-    Panel {
-        color: PreonColor,
-    },
-    HBox {
-        align: PreonAlignment,
-        cross_align: PreonAlignment,
-    },
-    VBox {
-        align: PreonAlignment,
-        cross_align: PreonAlignment,
-    },
-}
-
 pub struct PreonComponentBuilder<T: PreonCustomComponentStack> {
-    stack: Vec<PreonComponent<T>>,
+    stack: Vec<PreonComponentStorage<T>>,
 }
 
 #[allow(clippy::new_without_default)]
 impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     pub fn new() -> PreonComponentBuilder<T> {
         Self {
-            stack: vec![PreonComponent {
+            stack: vec![PreonComponentStorage {
                 data: PreonComponentStack::VBox {
                     align: PreonAlignment::Start,
                     cross_align: PreonAlignment::Center,
@@ -695,7 +511,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
 
     pub fn new_from(component: PreonComponentStack<T>) -> PreonComponentBuilder<T> {
         Self {
-            stack: vec![PreonComponent {
+            stack: vec![PreonComponentStorage {
                 data: component,
                 ..Default::default()
             }],
@@ -703,7 +519,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_margin(mut self, margin: PreonBorder) -> PreonComponentBuilder<T> {
-        info!("with margin: {}", margin);
+        log::info!("with margin: {}", margin);
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.margin = margin;
@@ -712,7 +528,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_padding(mut self, padding: PreonBorder) -> PreonComponentBuilder<T> {
-        info!("with padding: {}", padding);
+        log::info!("with padding: {}", padding);
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.padding = padding;
@@ -721,7 +537,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_min_size(mut self, x: i32, y: i32) -> PreonComponentBuilder<T> {
-        info!("with min_size: {}x{}", x, y);
+        log::info!("with min_size: {}x{}", x, y);
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.min_size = PreonVector::new(x, y);
@@ -730,7 +546,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn with_border(mut self, border: PreonBorder) -> PreonComponentBuilder<T> {
-        info!("with border: {}", border);
+        log::info!("with border: {}", border);
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.border = border;
@@ -739,7 +555,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children(mut self) -> PreonComponentBuilder<T> {
-        info!("fit children");
+        log::info!("fit children");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::FIT;
@@ -748,7 +564,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children_horizontally(mut self) -> PreonComponentBuilder<T> {
-        info!("fit children horizontally");
+        log::info!("fit children horizontally");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::horizontal::FIT;
@@ -757,7 +573,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn fit_children_vertically(mut self) -> PreonComponentBuilder<T> {
-        info!("fit children vertically");
+        log::info!("fit children vertically");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::vertical::FIT;
@@ -766,7 +582,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand(mut self) -> PreonComponentBuilder<T> {
-        info!("expand");
+        log::info!("expand");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::EXPAND;
@@ -775,7 +591,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand_horizontally(mut self) -> PreonComponentBuilder<T> {
-        info!("expand horizontally");
+        log::info!("expand horizontally");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::horizontal::EXPAND;
@@ -784,7 +600,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
-        info!("expand vertically");
+        log::info!("expand vertically");
 
         let mut component = self.stack.pop().take().unwrap();
         component.model.size_flags |= size::vertical::EXPAND;
@@ -792,7 +608,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         self
     }
 
-    pub fn with_child(mut self, child: PreonComponent<T>) -> PreonComponentBuilder<T> {
+    pub fn with_child(mut self, child: PreonComponentStorage<T>) -> PreonComponentBuilder<T> {
         let mut component = self.stack.pop().take().unwrap();
 
         if component.children.is_none() {
@@ -818,7 +634,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         reference.truncate(self.stack.len());
         reference.shrink_to_fit();
 
-        let mut _stack: Vec<PreonComponent<T>> = Vec::with_capacity(self.stack.capacity());
+        let mut _stack: Vec<PreonComponentStorage<T>> = Vec::with_capacity(self.stack.capacity());
 
         for _ in 0..self.stack.len() {
             if self.stack.len() >= 2 {
@@ -859,7 +675,7 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
 
     pub fn with_mut<F>(mut self, callback: F) -> PreonComponentBuilder<T>
     where
-        F: FnOnce(&mut PreonComponent<T>),
+        F: FnOnce(&mut PreonComponentStorage<T>),
     {
         let mut component = self.stack.pop().unwrap();
         callback(&mut component);
@@ -868,307 +684,16 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
     }
 
     pub fn end(mut self) -> PreonComponentBuilder<T> {
-        info!("end");
+        log::info!("end");
 
         let child = self.stack.pop().unwrap();
         self.with_child(child)
     }
 
-    pub fn build(mut self) -> PreonComponent<T> {
-        info!("build");
+    pub fn build(mut self) -> PreonComponentStorage<T> {
+        log::info!("build");
 
         self.stack.pop().unwrap()
-    }
-}
-
-pub trait AddVBox<T: PreonCustomComponentStack> {
-    fn start_vbox(self) -> PreonComponentBuilder<T>;
-    fn empty_vbox(self) -> PreonComponentBuilder<T>;
-}
-
-impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
-    fn start_vbox(mut self) -> PreonComponentBuilder<T> {
-        info!("start vbox");
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::VBox {
-                align: PreonAlignment::Start,
-                cross_align: PreonAlignment::Center,
-            },
-            ..Default::default()
-        });
-
-        self
-    }
-
-    fn empty_vbox(self) -> PreonComponentBuilder<T> {
-        self.start_vbox().end()
-    }
-}
-
-pub trait AddHBox<T: PreonCustomComponentStack> {
-    fn start_hbox(self) -> PreonComponentBuilder<T>;
-    fn empty_hbox(self) -> PreonComponentBuilder<T>;
-}
-
-impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
-    fn start_hbox(mut self) -> PreonComponentBuilder<T> {
-        info!("start hbox");
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::HBox {
-                align: PreonAlignment::Start,
-                cross_align: PreonAlignment::Center,
-            },
-            ..Default::default()
-        });
-
-        self
-    }
-
-    fn empty_hbox(self) -> PreonComponentBuilder<T> {
-        self.start_hbox().end()
-    }
-}
-
-pub trait AddPanel<T: PreonCustomComponentStack> {
-    fn start_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
-    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
-    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
-    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
-    fn panel_color(self, color: PreonColor) -> PreonComponentBuilder<T>;
-}
-
-impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
-    fn start_panel(mut self, color: PreonColor) -> PreonComponentBuilder<T> {
-        info!("start panel");
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::Panel { color },
-            ..Default::default()
-        });
-
-        self
-    }
-
-    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T> {
-        self.start_panel(color).end()
-    }
-
-    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
-        self.start_panel(PreonColor::from_hex(hex_color))
-    }
-
-    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
-        self.start_panel_hex(hex_color).expand().end()
-    }
-
-    fn panel_color(mut self, in_color: PreonColor) -> PreonComponentBuilder<T> {
-        info!("panel color: {}", in_color);
-
-        let mut component = self.stack.pop().unwrap();
-
-        if let PreonComponentStack::Panel { ref mut color } = component.data {
-            *color = in_color;
-        } else {
-            panic!("")
-        }
-
-        self.stack.push(component);
-        self
-    }
-}
-
-pub trait AddStaticTexture<T: PreonCustomComponentStack> {
-    fn start_static_texture(self, index: usize) -> PreonComponentBuilder<T>;
-}
-
-impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder<T> {
-    fn start_static_texture(mut self, index: usize) -> PreonComponentBuilder<T> {
-        info!("start static texture: {}", index);
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::StaticTexture {
-                texture_index: index,
-            },
-            ..Default::default()
-        });
-
-        self
-    }
-}
-
-/// Human-readable text configuration. After encoding it will look like this (u64):
-///
-/// ```txt
-/// 0000000000 0 0 00 00 00000000 00000000 00000000 00000000 0000000000000000
-/// ¯¯¯¯¯¯¯¯¯¯ ¯ ¯ ¯¯ ¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-/// |          | | |  |  |        |        |        |        |
-/// |          | | |  |  |        |        |        |        `> size: u16
-/// |          | | |  |  |        |        |        `> Alpha: u8
-/// |          | | |  |  |        |        `> Blue: u8
-/// |          | | |  |  |        `> Green: u8
-/// |          | | |  |  `> Red: u8
-/// |          | | |  `> vertical_align: PreonAlignment (2 bits, 4 options)
-/// |          | | `> horizontal_align: PreonAlignment (2 bits, 4 options)
-/// |          | `> italic: bool
-/// |          `> bold: bool
-/// `> font_index: u10 (rust type: u16, but can only hold 10 bits in practice)
-/// ```
-#[derive(Debug, Clone, Copy)]
-pub struct LabelConfig {
-    pub size: u16,
-    pub font_index: u16,
-    pub color: PreonColor,
-    pub bold: bool,
-    pub italic: bool,
-    pub vertical_align: PreonAlignment,
-    pub horizontal_align: PreonAlignment,
-}
-
-impl LabelConfig {
-    pub fn encode(&self) -> u64 {
-        let mut result: [u8; 8] = [0u8; 8];
-
-        let font_index: [u8; 2] = self.font_index.to_le_bytes();
-        result[0] = font_index[0];
-
-        let flags: u8 = 0u8
-            | ((font_index[1] & 0b00000011) << 7)
-            | ((self.bold as u8) << 5)
-            | ((self.italic as u8) << 4)
-            | ((self.vertical_align as u8) << 2)
-            | (self.horizontal_align as u8);
-        result[1] = flags;
-
-        let (r, g, b, a) = self.color.into_rgba8_tuple();
-        result[2] = r;
-        result[3] = g;
-        result[4] = b;
-        result[5] = a;
-
-        let size: [u8; 2] = self.size.to_le_bytes();
-        result[6] = size[0];
-        result[7] = size[1];
-
-        u64::from_le_bytes(result)
-    }
-
-    pub fn decode(input: u64) -> LabelConfig {
-        let buffer: [u8; 8] = input.to_le_bytes();
-        let font_index = u16::from_le_bytes([buffer[0], (buffer[1] & 0b11000000) >> 6]);
-        let bold = (buffer[1] & 0b00100000) == 0b00100000;
-        let italic = (buffer[1] & 0b00010000) == 0b00010000;
-        let vertical_align = PreonAlignment::from((buffer[1] & 0b00001100) >> 2);
-        let horizontal_align = PreonAlignment::from(buffer[1] & 0b00000011);
-        let color = PreonColor::from_rgba8(buffer[2], buffer[3], buffer[4], buffer[5]);
-        let size = u16::from_le_bytes([buffer[6], buffer[7]]);
-
-        LabelConfig {
-            size,
-            font_index,
-            color,
-            bold,
-            italic,
-            vertical_align,
-            horizontal_align,
-        }
-    }
-}
-
-impl Default for LabelConfig {
-    fn default() -> Self {
-        Self {
-            size: 16,
-            font_index: 0,
-            color: PreonColor::from_rgba8(255, 255, 255, 255),
-            bold: false,
-            italic: false,
-            vertical_align: PreonAlignment::Start,
-            horizontal_align: PreonAlignment::Start,
-        }
-    }
-}
-
-pub trait AddLabel<T: PreonCustomComponentStack> {
-    fn start_label(self, text: String) -> PreonComponentBuilder<T>;
-    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
-    fn empty_label(self, text: String) -> PreonComponentBuilder<T>;
-    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
-    fn start_label_cfg(self, text: String, config: LabelConfig) -> PreonComponentBuilder<T>;
-    fn bold(self) -> PreonComponentBuilder<T>;
-    fn italic(self) -> PreonComponentBuilder<T>;
-}
-
-impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
-    fn start_label(self, text: String) -> PreonComponentBuilder<T> {
-        self.start_label_cfg(text, LabelConfig::default())
-    }
-
-    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
-        self.start_label(String::from_str(text).unwrap())
-    }
-
-    fn empty_label(self, text: String) -> PreonComponentBuilder<T> {
-        self.start_label(text).end()
-    }
-
-    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
-        self.start_label_str(text).end()
-    }
-
-    fn start_label_cfg(mut self, text: String, config: LabelConfig) -> PreonComponentBuilder<T> {
-        info!("Start label with config {:?}", config);
-
-        self.stack.push(PreonComponent {
-            data: PreonComponentStack::Label {
-                text,
-                text_settings: config.encode(),
-            },
-            ..Default::default()
-        });
-
-        self
-    }
-
-    fn bold(mut self) -> PreonComponentBuilder<T> {
-        if let Some(mut comp) = self.stack.pop() {
-            if let PreonComponentStack::Label {
-                text,
-                text_settings,
-            } = comp.data
-            {
-                comp.data = PreonComponentStack::Label {
-                    text,
-                    text_settings: text_settings
-                        | 0b0000000000100000000000000000000000000000000000000000000000000000,
-                }
-            }
-
-            self.stack.push(comp);
-        }
-
-        self
-    }
-
-    fn italic(mut self) -> PreonComponentBuilder<T> {
-        if let Some(mut comp) = self.stack.pop() {
-            if let PreonComponentStack::Label {
-                text,
-                text_settings,
-            } = comp.data
-            {
-                comp.data = PreonComponentStack::Label {
-                    text,
-                    text_settings: text_settings
-                        | 0b0000000000010000000000000000000000000000000000000000000000000000,
-                }
-            }
-
-            self.stack.push(comp);
-        }
-
-        self
     }
 }
 

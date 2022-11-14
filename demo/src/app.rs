@@ -8,6 +8,7 @@ pub fn app() {
     let mut rng = rand::thread_rng();
     let mut first_panel: Vec<usize> = Vec::new();
     let mut panel_list: Vec<usize> = Vec::new();
+    let mut label: Vec<usize> = Vec::new();
 
     #[rustfmt::skip]
     let engine: PreonEngine<NoCustomComponents> = PreonEngine::new(
@@ -54,6 +55,7 @@ pub fn app() {
                         .start_label_cfg("Such art.".to_string(), LabelConfig { color: PreonColor::from_hex("#171717"), ..Default::default() })
                             .with_min_size(0, 200)
                             .expand_horizontally()
+                            .store_path(&mut label)
                         .end()
                         .store_path(&mut panel_list)
                     .end()
@@ -62,7 +64,7 @@ pub fn app() {
                     .expand()
                     .start_vbox()
                         .expand_horizontally()
-                        .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent<NoCustomComponents>>()))
+                        .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponentStorage<NoCustomComponents>>()))
                             .expand_horizontally()
                             .with_min_size(0, 200)
                             .bold()
@@ -77,6 +79,10 @@ pub fn app() {
         PreonEvent::WindowOpened => {
             println!("Over the hills far away, Ferris came to play!");
 
+            if let PreonComponentStack::Label { ref mut text, .. } = tree.get_child_ref_mut_recursive(&label).data {
+                *text = "Poggers".to_string();
+            }
+
             let list = tree.get_child_ref_mut_recursive(&panel_list);
             let new_component = PreonComponentBuilder::new_from(PreonComponentStack::Panel {
                 color: PreonColor::from_hex("#da0037"),
@@ -85,8 +91,12 @@ pub fn app() {
             .expand_horizontally()
             .build();
 
+
             list.insert_child(0, new_component);
-            tree.validate(&mut first_panel); // Update path after inserting new child
+
+            // Update path after inserting new child
+            tree.validate(&mut first_panel);
+            tree.validate(&mut label);
 
             tree.get_child_ref_mut_recursive(&first_panel).data = PreonComponentStack::Panel {
                 color: PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0),

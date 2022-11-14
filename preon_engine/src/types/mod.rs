@@ -1,9 +1,11 @@
-use std::{
+use alloc::{format, string::String};
+
+use core::{
     fmt::Display,
     ops::{Add, Div, Mul, Sub},
 };
 
-use crate::size;
+use crate::{size, abs};
 
 pub trait PreonVectorAble:
     Add<Output = Self>
@@ -17,18 +19,6 @@ pub trait PreonVectorAble:
     + From<u8>
 {
 }
-
-// impl PreonVectorAble for i16 {}
-// impl PreonVectorAble for i32 {}
-// impl PreonVectorAble for i64 {}
-// impl PreonVectorAble for i128 {}
-// impl PreonVectorAble for u8 {}
-// impl PreonVectorAble for u16 {}
-// impl PreonVectorAble for u32 {}
-// impl PreonVectorAble for u64 {}
-// impl PreonVectorAble for u128 {}
-// impl PreonVectorAble for f32 {}
-// impl PreonVectorAble for f64 {}
 
 impl<T> PreonVectorAble for T
 where
@@ -77,55 +67,67 @@ impl<T: PreonVectorAble> PreonVector<T> {
 
 impl PreonVector<f32> {
     /// Distance between (0, 0) and (self.x, self.y)
-    pub fn length(&self) -> f32 {
-        (self.x * self.x + self.y * self.y).sqrt().abs()
+    pub fn length32(&self) -> f32 {
+        abs!(libm::sqrtf(self.x * self.x + self.y * self.y))
     }
 
     /// `self` divided by it's length
-    pub fn normalized(&self) -> PreonVector<f32> {
-        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
-
-        let length = self.length();
-        PreonVector {
-            x: self.x / length,
-            y: self.y / length,
+    pub fn normalized32(&self) -> PreonVector<f32> {
+        if self.x == 0.0 && self.y == 0.0 {
+            PreonVector::one()
+        } else {
+            let length = self.length32();
+            PreonVector {
+                x: self.x / length,
+                y: self.y / length,
+            }
         }
+
     }
 
     /// `self` divided by it's length
-    pub fn normalize(&mut self) {
-        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
-
-        let length = self.length();
-        self.x /= length;
-        self.y /= length;
+    pub fn normalize32(&mut self) {
+        if self.x == 0.0 && self.y == 0.0 {
+            self.x = 1.0;
+            self.y = 1.0;
+        } else {
+            let length = self.length32();
+            self.x /= length;
+            self.y /= length;
+        }
     }
 }
 
 impl PreonVector<f64> {
     /// Distance between (0, 0) and (self.x, self.y)
     pub fn length(&self) -> f64 {
-        (self.x * self.x + self.y * self.y).sqrt().abs()
+        abs!(libm::sqrt(self.x * self.x + self.y * self.y))
     }
 
     /// `self` divided by it's length
     pub fn normalized(&self) -> PreonVector<f64> {
-        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
-
-        let length = self.length();
-        PreonVector {
-            x: self.x / length,
-            y: self.y / length,
+        if self.x == 0.0 && self.y == 0.0 {
+            PreonVector::one()
+        } else {
+            let length = self.length();
+            PreonVector {
+                x: self.x / length,
+                y: self.y / length,
+            }
         }
+
     }
 
     /// `self` divided by it's length
     pub fn normalize(&mut self) {
-        assert!(self.x == 0.0 && self.y == 0.0, "PreonVector(0, 0) can't be normalized! This would result in a division by 0 and the end of the universe.");
-
-        let length = self.length();
-        self.x /= length;
-        self.y /= length;
+        if self.x == 0.0 && self.y == 0.0 {
+            self.x = 1.0;
+            self.y = 1.0;
+        } else {
+            let length = self.length();
+            self.x /= length;
+            self.y /= length;
+        }
     }
 }
 
@@ -196,7 +198,7 @@ impl<T: PreonVectorAble> Div<T> for PreonVector<T> {
 }
 
 impl<T: PreonVectorAble> Display for PreonVector<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "(x: {}, y: {})", self.x, self.y)
     }
 }
@@ -219,9 +221,9 @@ impl PreonColor {
     /// Generate a PreonColor value from 4 float values going from 0 to 1, color space conversion is applied.
     pub fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> PreonColor {
         PreonColor {
-            r: r.powf(2.2f32),
-            g: g.powf(2.2f32),
-            b: b.powf(2.2f32),
+            r: libm::powf(r, 2.2),
+            g: libm::powf(g, 2.2),
+            b: libm::powf(b, 2.2),
             a,
         }
     }
@@ -365,9 +367,9 @@ impl PreonColor {
     /// This function reverts the conversion every time it is called, due to it being a pretty expensive operation, using this at runtime is discouraged
     pub fn into_linear(&self) -> PreonColor {
         PreonColor {
-            r: self.r.powf(1.0 / 2.2),
-            g: self.g.powf(1.0 / 2.2),
-            b: self.b.powf(1.0 / 2.2),
+            r: libm::powf(self.r, 1.0 / 2.2),
+            g: libm::powf(self.g, 1.0 / 2.2),
+            b: libm::powf(self.b, 1.0 / 2.2),
             a: self.a,
         }
     }
@@ -398,7 +400,7 @@ impl PreonColor {
 }
 
 impl Display for PreonColor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.into_hex())
     }
 }
@@ -468,7 +470,7 @@ impl PreonBorder {
 }
 
 impl Display for PreonBorder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "t: {}, r: {}, b: {}, l: {}",
@@ -533,7 +535,7 @@ impl PreonCorners {
 }
 
 impl Display for PreonCorners {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "tl: {}, tr: {}, bl: {}, br: {}",
@@ -574,7 +576,7 @@ impl Default for PreonBox {
 }
 
 impl Display for PreonBox {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let Self {
             margin,
             padding,
@@ -668,7 +670,7 @@ impl Default for PreonAlignment {
 }
 
 impl Display for PreonAlignment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}",

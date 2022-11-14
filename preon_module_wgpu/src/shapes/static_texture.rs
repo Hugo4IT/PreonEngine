@@ -64,10 +64,7 @@ impl StaticTextureShape {
         let instance_buffer = InstanceBuffer::new(device);
 
         info!("Compiling shaders...");
-        let vert_shader = wgpu::include_wgsl!("../shaders/texture_shader.vert.wgsl");
-        let vert_module = device.create_shader_module(&vert_shader);
-        let frag_shader = wgpu::include_wgsl!("../shaders/texture_shader.frag.wgsl");
-        let frag_module = device.create_shader_module(&frag_shader);
+        let shader_module = device.create_shader_module(wgpu::include_wgsl!("../shaders/texture_shader.wgsl"));
 
         info!("Creating render pipeline...");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -80,18 +77,18 @@ impl StaticTextureShape {
             label: Some("Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &vert_module,
-                entry_point: "main",
+                module: &shader_module,
+                entry_point: "vert_main",
                 buffers: &[Vertex::desc(), TextureInstance::desc()],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &frag_module,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                module: &shader_module,
+                entry_point: "frag_main",
+                targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -99,7 +96,7 @@ impl StaticTextureShape {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
-                clamp_depth: false,
+                unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
@@ -114,6 +111,7 @@ impl StaticTextureShape {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+            multiview: None,
         });
 
         Self {

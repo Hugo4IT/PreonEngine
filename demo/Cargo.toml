@@ -8,11 +8,11 @@ default = []
 android = ["ndk-glue", "preon_module_wgpu/android"]
 
 [dependencies]
-rand = "0.8.4"
-env_logger = "0.9.0"
+rand = "0.8.5"
+env_logger = "0.9.1"
 preon_engine = { path = "../preon_engine" }
 ndk-glue = { version = "0.5.0", optional = true }
-preon_module_wgpu = { path = "../preon_module_wgpu"  }
+preon_module_wgpu = { path = "../preon_module_wgpu" }
 
 [lib]
 crate-type = ["cdylib"]
