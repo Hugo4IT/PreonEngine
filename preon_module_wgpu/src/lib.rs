@@ -12,7 +12,7 @@ mod texture;
 
 pub mod preon {
     use preon_engine::{
-        components::{PreonComponentStorage, PreonCustomComponentStack},
+        components::PreonComponent,
         events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
         types::PreonVector,
         PreonEngine,
@@ -26,10 +26,9 @@ pub mod preon {
     use crate::PreonRendererWGPU;
 
     /// Initialize winit and run your app, this is sufficient for simple apps, if you plan on building something advanced you should consider starting it yourself so you can have a little more control over individual events.
-    pub fn run<T, F>(mut engine: PreonEngine<T>, mut callback: F)
+    pub fn run<F>(mut engine: PreonEngine, mut callback: F)
     where
-        T: PreonCustomComponentStack + 'static,
-        F: FnMut(&mut PreonComponentStorage<T>, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
+        F: FnMut(&mut PreonComponent, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
             + 'static,
     {
         let event_loop = EventLoop::new();
@@ -56,11 +55,10 @@ pub mod preon {
                 user_events.flip();
 
                 if engine.update(&user_events) {
-                    let tree = engine.tree.as_mut().unwrap();
-
-                    engine.events.pull(|event| {
-                        callback(tree, event, &mut user_events);
-                    });
+                    let events = engine.events.take();
+                    for event in events {
+                        callback(&mut engine.tree, event, &mut user_events);
+                    }
 
                     if renderer.render(&mut engine.render_pass) {
                         *control_flow = ControlFlow::Exit;
@@ -182,7 +180,7 @@ pub struct PreonRendererWGPU {
 }
 
 impl PreonRendererWGPU {
-    pub fn new<T: PreonCustomComponentStack>(window: &Window, engine: &PreonEngine<T>) -> Self {
+    pub fn new(window: &Window, engine: &PreonEngine) -> Self {
         #[cfg(feature = "android")]
         {
             info!("Detected android platform (--features android), waiting for NativeWindow...");

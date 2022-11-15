@@ -1,5 +1,4 @@
 use preon_engine::{
-    components::label::LabelConfig,
     rendering::{PreonFont, PreonShape},
     types::PreonVector,
 };
@@ -48,21 +47,21 @@ impl TextShape {
 
     pub fn build(&mut self, shape: PreonShape, z_index: f32) {
         if let PreonShape::Text {
-            text_settings,
+            text_style,
+            color,
             position,
             size,
             ref text,
         } = shape
         {
-            let settings = LabelConfig::decode(text_settings);
             let brush = self
                 .brushes
-                .get_mut(settings.font_index as usize)
+                .get_mut(text_style.font_index as usize)
                 .unwrap()
                 .as_mut()
                 .unwrap();
 
-            let (r, g, b, a) = settings.color.into_f32_tuple();
+            let (r, g, b, a) = color.into_f32_tuple();
 
             brush.queue(Section {
                 screen_position: (position.x as f32, position.y as f32),
@@ -70,7 +69,7 @@ impl TextShape {
                 layout: Layout::default_wrap(),
                 text: vec![Text::new(text)
                     .with_color([r, g, b, a])
-                    .with_scale(settings.size as f32)
+                    .with_scale(text_style.size as f32)
                     .with_z(z_index)],
             });
         }

@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use core::fmt::Display;
 
-use crate::types::PreonVector;
+use crate::{types::PreonVector, components::PreonComponent};
 
 #[derive(Debug, Clone)]
 pub enum PreonButtonState {
@@ -70,10 +70,8 @@ impl<T: Clone> PreonEventEmitter<T> {
         self.backbuffer_mut().push(event);
     }
 
-    pub fn pull<F: FnMut(T)>(&self, mut handler: F) {
-        for item in self.buffer().iter() {
-            handler(item.clone());
-        }
+    pub fn take(&self) -> Vec<T> {
+        self.buffer().clone()
     }
 
     pub fn flip(&mut self) {

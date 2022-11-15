@@ -5,7 +5,7 @@ use core::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use crate::{size, abs};
+use crate::abs;
 
 pub trait PreonVectorAble:
     Add<Output = Self>
@@ -213,6 +213,10 @@ pub struct PreonColor {
 }
 
 impl PreonColor {
+    pub const WHITE: PreonColor = PreonColor { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
+    pub const TRANSPARENT: PreonColor = PreonColor { r: 1.0, g: 1.0, b: 1.0, a: 0.0 };
+    pub const BLACK: PreonColor = PreonColor { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
+
     /// Same as `PreonColor::from_rgba(...)`
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> PreonColor {
         PreonColor::from_rgba(r, g, b, a)
@@ -541,105 +545,6 @@ impl Display for PreonCorners {
             "tl: {}, tr: {}, bl: {}, br: {}",
             self.top_left, self.top_right, self.bottom_left, self.bottom_right
         )
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub struct PreonBox {
-    pub margin: PreonBorder,
-    pub padding: PreonBorder,
-    pub border: PreonBorder,
-    pub size_flags: u8,
-    pub min_size: PreonVector<i32>,
-}
-
-impl PreonBox {
-    pub fn initial() -> PreonBox {
-        PreonBox {
-            margin: PreonBorder::zero(),
-            padding: PreonBorder::zero(),
-            border: PreonBorder::zero(),
-            size_flags: size::FIT,
-            min_size: PreonVector::zero(),
-        }
-    }
-
-    pub fn has_flag(&self, flag: u8) -> bool {
-        (self.size_flags & flag) == flag
-    }
-}
-
-impl Default for PreonBox {
-    fn default() -> Self {
-        Self::initial()
-    }
-}
-
-impl Display for PreonBox {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let Self {
-            margin,
-            padding,
-            border,
-            size_flags,
-            min_size,
-        } = Self::default();
-
-        let mut result = String::new();
-
-        fn push_result(dest: &mut String, res: &str) {
-            if dest.is_empty() {
-                dest.push_str(res)
-            } else {
-                dest.push_str(&format!(", {}", res))
-            }
-        }
-
-        if self.margin != margin {
-            push_result(&mut result, &format!("margin: {}", self.margin))
-        }
-        if self.padding != padding {
-            push_result(&mut result, &format!("padding: {}", self.padding))
-        }
-        if self.border != border {
-            push_result(&mut result, &format!("border: {}", self.border))
-        }
-
-        if self.size_flags != size_flags {
-            let mut flags = String::new();
-
-            fn push_flag(dest: &mut String, flg: &str) {
-                if dest.is_empty() {
-                    dest.push_str(flg);
-                } else {
-                    dest.push_str(&format!(" | {}", flg));
-                }
-            }
-
-            if self.has_flag(size::FIT) {
-                push_flag(&mut flags, "FIT");
-            } else if self.has_flag(size::horizontal::FIT) {
-                push_flag(&mut flags, "HORIZONTAL_FIT");
-            } else if self.has_flag(size::vertical::FIT) {
-                push_flag(&mut flags, "VERTICAL_FIT");
-            }
-
-            if self.has_flag(size::EXPAND) {
-                push_flag(&mut flags, "EXPAND");
-            } else if self.has_flag(size::horizontal::EXPAND) {
-                push_flag(&mut flags, "HORIZONTAL_EXPAND");
-            } else if self.has_flag(size::vertical::EXPAND) {
-                push_flag(&mut flags, "VERTICAL_EXPAND");
-            }
-
-            push_result(&mut result, &format!("size_flags: {}", flags));
-        }
-
-        if self.min_size != min_size {
-            push_result(&mut result, &format!("min_size: {}", self.min_size));
-        }
-
-        write!(f, "{}", result)
     }
 }
 

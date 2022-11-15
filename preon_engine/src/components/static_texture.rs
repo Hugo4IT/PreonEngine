@@ -1,18 +1,19 @@
-use crate::{components::{PreonComponentStorage, PreonComponentStack}, log};
+use crate::{components::PreonComponent, style::{PreonStyle, PreonBackground, image::PreonImage}};
 
-use super::{PreonCustomComponentStack, PreonComponentBuilder};
+use super::PreonComponentBuilder;
 
-pub trait AddStaticTexture<T: PreonCustomComponentStack> {
-    fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder<T>;
+pub trait AddStaticTexture {
+    fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder;
 }
 
-impl<T: PreonCustomComponentStack> AddStaticTexture<T> for PreonComponentBuilder<T> {
-    fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder<T> {
+impl AddStaticTexture for PreonComponentBuilder {
+    fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder {
         log::info!("start static texture: {}", index);
 
-        self.stack.push(PreonComponentStorage {
-            data: PreonComponentStack::StaticTexture {
-                texture_index: index,
+        self.stack.push(PreonComponent {
+            style: PreonStyle {
+                background: PreonBackground::Image(PreonImage::from_static(index)),
+                ..Default::default()
             },
             ..Default::default()
         });

@@ -2,7 +2,7 @@ use alloc::string::String;
 
 use crate::{
     events::PreonEventEmitter,
-    types::{PreonColor, PreonVector},
+    types::{PreonColor, PreonVector}, style::PreonTextStyle,
 };
 
 /// Describe how to render your UI component by pushing some PreonShapes to the PreonRenderPass
@@ -19,7 +19,8 @@ pub enum PreonShape {
         index: usize,
     },
     Text {
-        text_settings: u64,
+        text_style: PreonTextStyle,
+        color: PreonColor,
         position: PreonVector<i32>,
         size: PreonVector<i32>,
         text: String,

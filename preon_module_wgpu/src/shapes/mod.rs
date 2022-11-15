@@ -92,7 +92,7 @@ impl ShapeManager {
 
         let mut z_index: f32 = 1.0 - z_step;
 
-        pass.pull(|shape| {
+        for shape in pass.take() {
             match shape {
                 PreonShape::Rect { .. } => self.rect.build(shape, z_index),
                 PreonShape::StaticTexture { .. } => self.static_texture.build(shape, z_index),
@@ -100,7 +100,7 @@ impl ShapeManager {
             }
 
             z_index -= z_step;
-        });
+        };
 
         self.static_texture.instance_buffer.end(device, queue);
         self.rect.instance_buffer.end(device, queue);

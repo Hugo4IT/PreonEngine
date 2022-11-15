@@ -12,6 +12,7 @@ Things that need to be done:
     > - Renderer will only have to render a single type of object, no custom rendering :)
 - [x] Split component logic into sperate files per component
 - [ ] Put component references in specialised struct
+- [ ] Swap wgpu_glyph out with fontdue
 
 Improvements:
 

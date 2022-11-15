@@ -1,18 +1,20 @@
-use crate::{types::{PreonAlignment, PreonVector}, size, components::PreonComponentStack, log};
+use crate::{types::{PreonAlignment, PreonVector}, size, log, style::PreonStyle, layout::PreonLayout};
 
-use super::{PreonCustomComponentStack, PreonComponentStorage, PreonComponentBuilder};
+use super::{PreonComponent, PreonComponentBuilder};
 
-pub trait AddVBox<T: PreonCustomComponentStack> {
-    fn start_vbox(&mut self) -> &mut PreonComponentBuilder<T>;
-    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder<T>;
+pub trait AddVBox {
+    fn start_vbox(&mut self) -> &mut PreonComponentBuilder;
+    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder;
 }
 
-impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
-    fn start_vbox(&mut self) -> &mut PreonComponentBuilder<T> {
-        self.stack.push(PreonComponentStorage {
-            data: PreonComponentStack::VBox {
-                align: PreonAlignment::Start,
-                cross_align: PreonAlignment::Center,
+impl AddVBox for PreonComponentBuilder {
+    fn start_vbox(&mut self) -> &mut PreonComponentBuilder {
+        self.stack.push(PreonComponent {
+            style: PreonStyle {
+                layout: PreonLayout::Rows,
+                align_items: PreonAlignment::Start,
+                cross_align_items: PreonAlignment::Center,
+                ..Default::default()
             },
             ..Default::default()
         });
@@ -20,15 +22,13 @@ impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder<T> {
+    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder {
         self.start_vbox().end()
     }
 }
 
-pub(super) fn layout<T: PreonCustomComponentStack>(
-    component: &mut PreonComponentStorage<T>,
-    align: PreonAlignment,
-    cross_align: PreonAlignment,
+pub(super) fn layout(
+    component: &mut PreonComponent,
 ) {
     let mut height = 0;
     let mut width = 0;
@@ -39,28 +39,28 @@ pub(super) fn layout<T: PreonCustomComponentStack>(
     for child in component.children.iter() {
         let s = child.get_outer_size();
 
-        if child.model.has_flag(size::vertical::EXPAND) {
-            height += child.model.min_size.y;
+        if child.style.has_flag(size::vertical::EXPAND) {
+            height += child.style.min_size.y;
             expanding_children += 1;
         } else {
             height += s.y;
             leftover_height += s.y;
         }
 
-        if !child.model.has_flag(size::horizontal::EXPAND) {
+        if !child.style.has_flag(size::horizontal::EXPAND) {
             width = width.max(s.x);
         } else {
-            width = width.max(child.model.min_size.x);
+            width = width.max(child.style.min_size.x);
         }
     }
 
     let position = component.get_content_position();
     let mut size = component.get_content_size();
 
-    if component.model.has_flag(size::horizontal::FIT) && size.x < width {
+    if component.style.has_flag(size::horizontal::FIT) && size.x < width {
         component.set_content_size_x(width);
     }
-    if component.model.has_flag(size::vertical::FIT) && size.y < height {
+    if component.style.has_flag(size::vertical::FIT) && size.y < height {
         component.set_content_size_y(height);
     }
 
@@ -70,19 +70,19 @@ pub(super) fn layout<T: PreonCustomComponentStack>(
     let mut y = 0;
 
     for child in component.children.iter_mut() {
-        if child.model.has_flag(size::vertical::EXPAND) {
+        if child.style.has_flag(size::vertical::EXPAND) {
             child.set_outer_size_y((size.y - leftover_height) / expanding_children);
         }
-        if child.model.has_flag(size::horizontal::EXPAND) {
+        if child.style.has_flag(size::horizontal::EXPAND) {
             child.set_outer_size_x(size.x);
         }
 
         let child_size = child.get_outer_size();
 
-        let x_position: i32 = if child.model.has_flag(size::horizontal::EXPAND) {
+        let x_position: i32 = if child.style.has_flag(size::horizontal::EXPAND) {
             0
         } else {
-            match cross_align {
+            match component.style.cross_align_items {
                 PreonAlignment::Start => 0,
                 PreonAlignment::Center => size.x / 2 - child_size.x / 2,
                 PreonAlignment::End => size.x - child_size.x,
@@ -96,7 +96,7 @@ pub(super) fn layout<T: PreonCustomComponentStack>(
         let y_position: i32 = if expanding_children > 0 {
             y
         } else {
-            match align {
+            match component.style.align_items {
                 PreonAlignment::Start => y,
                 PreonAlignment::Center => size.y / 2 - height / 2 + y,
                 PreonAlignment::End => (size.y - height) + y,

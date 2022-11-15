@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 //! A modular, zero-dependency User Interface engine
 //!
@@ -70,7 +70,7 @@
 
 extern crate alloc;
 
-use components::{PreonComponentStorage, PreonCustomComponentStack};
+use components::PreonComponent;
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
 use rendering::{PreonRenderPass, PreonStaticRenderData};
 
@@ -90,6 +90,8 @@ pub mod types;
 
 /// no_std replacements for math operations
 pub mod math;
+pub mod style;
+pub mod layout;
 
 /// Size flags shortcuts.
 pub mod size {
@@ -189,9 +191,9 @@ pub mod size {
 /// epic_module.update(&mut user_events);
 /// # }
 /// ```
-pub struct PreonEngine<T: PreonCustomComponentStack> {
+pub struct PreonEngine {
     /// The component tree
-    pub tree: Option<PreonComponentStorage<T>>,
+    pub tree: PreonComponent,
     /// Will be filled with events after `engine.update()`. See [`PreonEventEmitter`] and [`PreonEvent`]
     pub events: PreonEventEmitter<PreonEvent>,
     /// The size of the viewport, title bar not included.
@@ -202,12 +204,12 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
     pub static_render_data: PreonStaticRenderData,
 }
 
-impl<T: PreonCustomComponentStack> PreonEngine<T> {
-    pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponentStorage<T>) -> Self {
+impl PreonEngine {
+    pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent) -> Self {
         log::info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1));
 
         Self {
-            tree: Some(tree),
+            tree: tree,
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
@@ -216,41 +218,41 @@ impl<T: PreonCustomComponentStack> PreonEngine<T> {
     }
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
-        let tree = self.tree.as_mut().unwrap();
-
         let rerender = if !user_events.is_empty() || !self.events.is_empty() {
             let mut update_layout = false;
 
-            user_events.pull(|f| match f {
-                PreonUserEvent::WindowResized(new_size) => {
-                    if new_size != self.window_inner_size {
-                        self.window_inner_size = new_size;
-                        self.events.push(PreonEvent::WindowResized(new_size));
+            for event in user_events.take() {
+                match event {
+                    PreonUserEvent::WindowResized(new_size) => {
+                        if new_size != self.window_inner_size {
+                            self.window_inner_size = new_size;
+                            self.events.push(PreonEvent::WindowResized(new_size));
+                        }
+                        update_layout = true
                     }
-                    update_layout = true
+                    PreonUserEvent::ForceUpdate => update_layout = true,
+                    PreonUserEvent::WindowOpened => {
+                        self.events.push(PreonEvent::WindowOpened);
+                        update_layout = true
+                    }
+                    PreonUserEvent::WindowClosed => {
+                        self.events.push(PreonEvent::WindowClosed);
+                    }
+                    _ => {}
                 }
-                PreonUserEvent::ForceUpdate => update_layout = true,
-                PreonUserEvent::WindowOpened => {
-                    self.events.push(PreonEvent::WindowOpened);
-                    update_layout = true
-                }
-                PreonUserEvent::WindowClosed => {
-                    self.events.push(PreonEvent::WindowClosed);
-                }
-                _ => {}
-            });
+            };
 
             if update_layout {
                 log::info!("Relayout!");
 
-                tree.set_outer_size(PreonVector::new(
+                self.tree.set_outer_size(PreonVector::new(
                     self.window_inner_size.x as i32,
                     self.window_inner_size.y as i32,
                 ));
-                tree.set_outer_position(PreonVector::zero());
+                self.tree.set_outer_position(PreonVector::zero());
 
-                T::layout(tree);
-                T::render(tree, &mut self.render_pass);
+                self.tree.layout();
+                self.tree.render(&mut self.render_pass);
 
                 self.events.push(PreonEvent::LayoutUpdate);
                 self.render_pass.flip();
