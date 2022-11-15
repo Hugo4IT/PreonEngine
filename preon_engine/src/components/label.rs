@@ -99,35 +99,33 @@ impl Default for LabelConfig {
 }
 
 pub trait AddLabel<T: PreonCustomComponentStack> {
-    fn start_label(self, text: String) -> PreonComponentBuilder<T>;
-    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
-    fn empty_label(self, text: String) -> PreonComponentBuilder<T>;
-    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T>;
-    fn start_label_cfg(self, text: String, config: LabelConfig) -> PreonComponentBuilder<T>;
-    fn bold(self) -> PreonComponentBuilder<T>;
-    fn italic(self) -> PreonComponentBuilder<T>;
+    fn start_label(&mut self, text: String) -> &mut PreonComponentBuilder<T>;
+    fn start_label_str(&mut self, text: &'static str) -> &mut PreonComponentBuilder<T>;
+    fn empty_label(&mut self, text: String) -> &mut PreonComponentBuilder<T>;
+    fn empty_label_str(&mut self, text: &'static str) -> &mut PreonComponentBuilder<T>;
+    fn start_label_cfg(&mut self, text: String, config: LabelConfig) -> &mut PreonComponentBuilder<T>;
+    fn bold(&mut self) -> &mut PreonComponentBuilder<T>;
+    fn italic(&mut self) -> &mut PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
-    fn start_label(self, text: String) -> PreonComponentBuilder<T> {
+    fn start_label(&mut self, text: String) -> &mut PreonComponentBuilder<T> {
         self.start_label_cfg(text, LabelConfig::default())
     }
 
-    fn start_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
+    fn start_label_str(&mut self, text: &'static str) -> &mut PreonComponentBuilder<T> {
         self.start_label(String::from_str(text).unwrap())
     }
 
-    fn empty_label(self, text: String) -> PreonComponentBuilder<T> {
+    fn empty_label(&mut self, text: String) -> &mut PreonComponentBuilder<T> {
         self.start_label(text).end()
     }
 
-    fn empty_label_str(self, text: &'static str) -> PreonComponentBuilder<T> {
+    fn empty_label_str(&mut self, text: &'static str) -> &mut PreonComponentBuilder<T> {
         self.start_label_str(text).end()
     }
 
-    fn start_label_cfg(mut self, text: String, config: LabelConfig) -> PreonComponentBuilder<T> {
-        log::info!("Start label with config {:?}", config);
-
+    fn start_label_cfg(&mut self, text: String, config: LabelConfig) -> &mut PreonComponentBuilder<T> {
         self.stack.push(PreonComponentStorage {
             data: PreonComponentStack::Label {
                 text,
@@ -139,41 +137,25 @@ impl<T: PreonCustomComponentStack> AddLabel<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn bold(mut self) -> PreonComponentBuilder<T> {
-        if let Some(mut comp) = self.stack.pop() {
-            if let PreonComponentStack::Label {
-                text,
-                text_settings,
-            } = comp.data
-            {
-                comp.data = PreonComponentStack::Label {
-                    text,
-                    text_settings: text_settings
-                        | 0b0000000000100000000000000000000000000000000000000000000000000000,
-                }
-            }
-
-            self.stack.push(comp);
+    fn bold(&mut self) -> &mut PreonComponentBuilder<T> {
+        if let PreonComponentStack::Label {
+            ref mut text_settings,
+            ..
+        } = self.current_mut().data
+        {
+            *text_settings |= 0b0000000000100000000000000000000000000000000000000000000000000000;
         }
 
         self
     }
 
-    fn italic(mut self) -> PreonComponentBuilder<T> {
-        if let Some(mut comp) = self.stack.pop() {
-            if let PreonComponentStack::Label {
-                text,
-                text_settings,
-            } = comp.data
-            {
-                comp.data = PreonComponentStack::Label {
-                    text,
-                    text_settings: text_settings
-                        | 0b0000000000010000000000000000000000000000000000000000000000000000,
-                }
-            }
-
-            self.stack.push(comp);
+    fn italic(&mut self) -> &mut PreonComponentBuilder<T> {
+        if let PreonComponentStack::Label {
+            ref mut text_settings,
+            ..
+        } = self.current_mut().data
+        {
+            *text_settings |= 0b0000000000010000000000000000000000000000000000000000000000000000;
         }
 
         self

@@ -3,14 +3,12 @@ use crate::{types::{PreonAlignment, PreonVector}, size, components::PreonCompone
 use super::{PreonCustomComponentStack, PreonComponentStorage, PreonComponentBuilder};
 
 pub trait AddHBox<T: PreonCustomComponentStack> {
-    fn start_hbox(self) -> PreonComponentBuilder<T>;
-    fn empty_hbox(self) -> PreonComponentBuilder<T>;
+    fn start_hbox(&mut self) -> &mut PreonComponentBuilder<T>;
+    fn empty_hbox(&mut self) -> &mut PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
-    fn start_hbox(mut self) -> PreonComponentBuilder<T> {
-        log::info!("start hbox");
-
+    fn start_hbox(&mut self) -> &mut PreonComponentBuilder<T> {
         self.stack.push(PreonComponentStorage {
             data: PreonComponentStack::HBox {
                 align: PreonAlignment::Start,
@@ -22,7 +20,7 @@ impl<T: PreonCustomComponentStack> AddHBox<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn empty_hbox(self) -> PreonComponentBuilder<T> {
+    fn empty_hbox(&mut self) -> &mut PreonComponentBuilder<T> {
         self.start_hbox().end()
     }
 }

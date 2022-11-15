@@ -3,14 +3,12 @@ use crate::{types::{PreonAlignment, PreonVector}, size, components::PreonCompone
 use super::{PreonCustomComponentStack, PreonComponentStorage, PreonComponentBuilder};
 
 pub trait AddVBox<T: PreonCustomComponentStack> {
-    fn start_vbox(self) -> PreonComponentBuilder<T>;
-    fn empty_vbox(self) -> PreonComponentBuilder<T>;
+    fn start_vbox(&mut self) -> &mut PreonComponentBuilder<T>;
+    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
-    fn start_vbox(mut self) -> PreonComponentBuilder<T> {
-        log::info!("start vbox");
-
+    fn start_vbox(&mut self) -> &mut PreonComponentBuilder<T> {
         self.stack.push(PreonComponentStorage {
             data: PreonComponentStack::VBox {
                 align: PreonAlignment::Start,
@@ -22,7 +20,7 @@ impl<T: PreonCustomComponentStack> AddVBox<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn empty_vbox(self) -> PreonComponentBuilder<T> {
+    fn empty_vbox(&mut self) -> &mut PreonComponentBuilder<T> {
         self.start_vbox().end()
     }
 }

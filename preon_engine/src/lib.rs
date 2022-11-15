@@ -129,17 +129,6 @@ pub mod size {
 
 /// A container for all variables & functions needed for managing your UI at runtime.
 ///
-/// # Ownership
-///
-/// PreonEngine tries to make managing ownership of important variables like UI components
-/// as easy as possible. This is why you see some variables wrapped in `Option<T>`, it makes
-/// it possible to swap the original variable with `None` temporarily, granting you full
-/// ownership of the variable until you decide to return it.
-///
-/// ![like this](https://c.tenor.com/eqLNYv0A9TQAAAAC/swap-indiana-jones.gif)
-///
-/// For an example of how this works, see [`PreonComponent::get_child()`].
-///
 /// # Writing modules
 ///
 /// As you may have noticed, there is no `PreonModule` trait or anything like it.
@@ -215,9 +204,7 @@ pub struct PreonEngine<T: PreonCustomComponentStack> {
 
 impl<T: PreonCustomComponentStack> PreonEngine<T> {
     pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponentStorage<T>) -> Self {
-        if log::log_enabled!(log::Level::Info) {
-            log::info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1));
-        }
+        log::info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1));
 
         Self {
             tree: Some(tree),

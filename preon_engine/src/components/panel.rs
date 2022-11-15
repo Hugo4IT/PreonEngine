@@ -3,17 +3,15 @@ use crate::{components::PreonComponentStack, types::PreonColor, log};
 use super::{PreonComponentStorage, PreonCustomComponentStack, PreonComponentBuilder};
 
 pub trait AddPanel<T: PreonCustomComponentStack> {
-    fn start_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
-    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T>;
-    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
-    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T>;
-    fn panel_color(self, color: PreonColor) -> PreonComponentBuilder<T>;
+    fn start_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder<T>;
+    fn empty_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder<T>;
+    fn start_panel_hex(&mut self, hex_color: &'static str) -> &mut PreonComponentBuilder<T>;
+    fn empty_panel_hex(&mut self, hex_color: &'static str) -> &mut PreonComponentBuilder<T>;
+    fn panel_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder<T>;
 }
 
 impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
-    fn start_panel(mut self, color: PreonColor) -> PreonComponentBuilder<T> {
-        log::info!("start panel");
-
+    fn start_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder<T> {
         self.stack.push(PreonComponentStorage {
             data: PreonComponentStack::Panel { color },
             ..Default::default()
@@ -22,30 +20,25 @@ impl<T: PreonCustomComponentStack> AddPanel<T> for PreonComponentBuilder<T> {
         self
     }
 
-    fn empty_panel(self, color: PreonColor) -> PreonComponentBuilder<T> {
+    fn empty_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder<T> {
         self.start_panel(color).end()
     }
 
-    fn start_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+    fn start_panel_hex(&mut self, hex_color: &'static str) -> &mut PreonComponentBuilder<T> {
         self.start_panel(PreonColor::from_hex(hex_color))
     }
 
-    fn empty_panel_hex(self, hex_color: &'static str) -> PreonComponentBuilder<T> {
+    fn empty_panel_hex(&mut self, hex_color: &'static str) -> &mut PreonComponentBuilder<T> {
         self.start_panel_hex(hex_color).expand().end()
     }
 
-    fn panel_color(mut self, in_color: PreonColor) -> PreonComponentBuilder<T> {
-        log::info!("panel color: {}", in_color);
-
-        let mut component = self.stack.pop().unwrap();
-
-        if let PreonComponentStack::Panel { ref mut color } = component.data {
+    fn panel_color(&mut self, in_color: PreonColor) -> &mut PreonComponentBuilder<T> {
+        if let PreonComponentStack::Panel { ref mut color } = self.current_mut().data {
             *color = in_color;
         } else {
             panic!("")
         }
 
-        self.stack.push(component);
         self
     }
 }

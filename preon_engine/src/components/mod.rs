@@ -140,16 +140,6 @@ impl<T: PreonCustomComponentStack> PreonComponentStorage<T> {
         }
     }
 
-    // pub fn get_child(&mut self, id: usize) -> PreonComponentStorage<T> {
-    //     self.children
-    //         .as_mut()
-    //         .unwrap()
-    //         .get_mut(id)
-    //         .unwrap()
-    //         .take()
-    //         .unwrap()
-    // }
-
     pub fn get_child_ref(&self, id: usize) -> &PreonComponentStorage<T> {
         self.children
             .get(id)
@@ -492,106 +482,68 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
         }
     }
 
-    pub fn with_margin(mut self, margin: PreonBorder) -> PreonComponentBuilder<T> {
-        log::info!("with margin: {}", margin);
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.margin = margin;
-        self.stack.push(component);
+    pub fn with_margin(&mut self, margin: PreonBorder) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.margin = margin;
         self
     }
 
-    pub fn with_padding(mut self, padding: PreonBorder) -> PreonComponentBuilder<T> {
-        log::info!("with padding: {}", padding);
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.padding = padding;
-        self.stack.push(component);
+    pub fn with_padding(&mut self, padding: PreonBorder) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.padding = padding;
         self
     }
 
-    pub fn with_min_size(mut self, x: i32, y: i32) -> PreonComponentBuilder<T> {
-        log::info!("with min_size: {}x{}", x, y);
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.min_size = PreonVector::new(x, y);
-        self.stack.push(component);
+    pub fn with_min_size(&mut self, x: i32, y: i32) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.min_size = PreonVector::new(x, y);
         self
     }
 
-    pub fn with_border(mut self, border: PreonBorder) -> PreonComponentBuilder<T> {
-        log::info!("with border: {}", border);
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.border = border;
-        self.stack.push(component);
+    pub fn with_border(&mut self, border: PreonBorder) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.border = border;
         self
     }
 
-    pub fn fit_children(mut self) -> PreonComponentBuilder<T> {
-        log::info!("fit children");
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::FIT;
-        self.stack.push(component);
+    pub fn fit_children(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::FIT;
         self
     }
 
-    pub fn fit_children_horizontally(mut self) -> PreonComponentBuilder<T> {
-        log::info!("fit children horizontally");
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::horizontal::FIT;
-        self.stack.push(component);
+    pub fn fit_children_horizontally(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::horizontal::FIT;
         self
     }
 
-    pub fn fit_children_vertically(mut self) -> PreonComponentBuilder<T> {
-        log::info!("fit children vertically");
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::vertical::FIT;
-        self.stack.push(component);
+    pub fn fit_children_vertically(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::vertical::FIT;
         self
     }
 
-    pub fn expand(mut self) -> PreonComponentBuilder<T> {
-        log::info!("expand");
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::EXPAND;
-        self.stack.push(component);
+    pub fn expand(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::EXPAND;
         self
     }
 
-    pub fn expand_horizontally(mut self) -> PreonComponentBuilder<T> {
-        log::info!("expand horizontally");
-
-        let mut component = self.stack.pop().take().unwrap();
-        component.model.size_flags |= size::horizontal::EXPAND;
-        self.stack.push(component);
+    pub fn expand_horizontally(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::horizontal::EXPAND;
         self
     }
 
-    pub fn expand_vertically(mut self) -> PreonComponentBuilder<T> {
-        log::info!("expand vertically");
-
-        self.stack.last_mut().unwrap().model.size_flags |= size::vertical::EXPAND;
+    pub fn expand_vertically(&mut self) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().model.size_flags |= size::vertical::EXPAND;
         self
     }
 
-    pub fn with_child(mut self, child: PreonComponentStorage<T>) -> PreonComponentBuilder<T> {
-        self.stack.last_mut().unwrap().children.push(child);        
+    pub fn with_child(&mut self, child: PreonComponentStorage<T>) -> &mut PreonComponentBuilder<T> {
+        self.current_mut().children.push(child);        
         self
     }
 
-    pub fn store_index(mut self, reference: &mut usize) -> PreonComponentBuilder<T> {
+    pub fn store_index(&mut self, reference: &mut usize) -> &mut PreonComponentBuilder<T> {
         *reference = self.get_index();
 
         self
     }
 
-    pub fn store_path(mut self, reference: &mut Vec<usize>) -> PreonComponentBuilder<T> {
+    pub fn store_path(&mut self, reference: &mut Vec<usize>) -> &mut PreonComponentBuilder<T> {
         reference.clear();
         reference.truncate(self.stack.len());
         reference.shrink_to_fit();
@@ -624,27 +576,30 @@ impl<T: PreonCustomComponentStack> PreonComponentBuilder<T> {
             .len()
     }
 
-    pub fn with_mut<F>(mut self, callback: F) -> PreonComponentBuilder<T>
+    pub fn with_mut<F>(&mut self, callback: F) -> &mut PreonComponentBuilder<T>
     where
         F: FnOnce(&mut PreonComponentStorage<T>),
     {
-        let mut component = self.stack.pop().unwrap();
-        callback(&mut component);
-        self.stack.push(component);
+        callback(self.stack.last_mut().unwrap());
         self
     }
 
-    pub fn end(mut self) -> PreonComponentBuilder<T> {
-        log::info!("end");
-
+    pub fn end(&mut self) -> &mut PreonComponentBuilder<T> {
         let child = self.stack.pop().unwrap();
-        self.with_child(child)
+        self.with_child(child);
+        self
     }
 
-    pub fn build(mut self) -> PreonComponentStorage<T> {
-        log::info!("build");
-
+    pub fn build(&mut self) -> PreonComponentStorage<T> {
         self.stack.pop().unwrap()
+    }
+
+    fn current(&self) -> &PreonComponentStorage<T> {
+        self.stack.last().unwrap()
+    }
+
+    fn current_mut(&mut self) -> &mut PreonComponentStorage<T> {
+        self.stack.last_mut().unwrap()
     }
 }
 
