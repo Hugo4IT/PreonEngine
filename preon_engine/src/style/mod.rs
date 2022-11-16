@@ -1,11 +1,7 @@
 use crate::{
-    types::{PreonColor, PreonAlignment, PreonBorder, PreonVector},
-    size, layout::PreonLayout, components::PreonComponentBuilder
+    types::{PreonColor, PreonAlignment, PreonBorder, PreonVector, PreonCorners},
+    size, layout::PreonLayout, components::PreonComponentBuilder, rendering::PreonImage
 };
-
-use self::image::PreonImage;
-
-pub mod image;
 
 #[derive(Debug, Clone, Copy)]
 pub enum PreonBackground {
@@ -33,7 +29,7 @@ impl Default for PreonTextStyle {
     fn default() -> Self {
         Self {
             size: 16,
-            font_index: 0,
+            font_index: 10,
             bold: false,
             italic: false,
             vertical_align: PreonAlignment::Start,
@@ -52,6 +48,7 @@ pub struct PreonStyle {
     pub margin: PreonBorder,
     pub padding: PreonBorder,
     pub border: PreonBorder,
+    pub corner_radius: PreonCorners,
     pub size_flags: u8,
     pub min_size: PreonVector<i32>,
     pub text_style: PreonTextStyle,
@@ -68,6 +65,7 @@ impl PreonStyle {
             margin: PreonBorder::zero(),
             padding: PreonBorder::zero(),
             border: PreonBorder::zero(),
+            corner_radius: PreonCorners::ZERO,
             size_flags: size::FIT,
             min_size: PreonVector::zero(),
             text_style: PreonTextStyle::default(),
@@ -95,6 +93,7 @@ pub trait PreonComponentBuilderStyleExtension {
     fn margin(&mut self, margin: PreonBorder) -> &mut PreonComponentBuilder;
     fn padding(&mut self, padding: PreonBorder) -> &mut PreonComponentBuilder;
     fn border(&mut self, border: PreonBorder) -> &mut PreonComponentBuilder;
+    fn corner_radius(&mut self, corners: PreonCorners) -> &mut PreonComponentBuilder;
     fn min_size(&mut self, min_size: PreonVector<i32>) -> &mut PreonComponentBuilder;
     fn fit_children(&mut self) -> &mut PreonComponentBuilder;
     fn fit_children_horizontally(&mut self) -> &mut PreonComponentBuilder;
@@ -148,6 +147,11 @@ impl PreonComponentBuilderStyleExtension for PreonComponentBuilder {
 
     fn border(&mut self, border: PreonBorder) -> &mut PreonComponentBuilder {
         self.current_mut().style.border = border;
+        self
+    }
+
+    fn corner_radius(&mut self, corners: PreonCorners) -> &mut PreonComponentBuilder {
+        self.current_mut().style.corner_radius = corners;
         self
     }
 

@@ -216,6 +216,7 @@ impl PreonColor {
     pub const WHITE: PreonColor = PreonColor { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
     pub const TRANSPARENT: PreonColor = PreonColor { r: 1.0, g: 1.0, b: 1.0, a: 0.0 };
     pub const BLACK: PreonColor = PreonColor { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
+    pub const TRANSPARENT_BLACK: PreonColor = PreonColor { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
 
     /// Same as `PreonColor::from_rgba(...)`
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> PreonColor {
@@ -499,16 +500,23 @@ impl Sub<PreonBorder> for PreonVector<i32> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct PreonCorners {
-    pub top_left: i32,
-    pub top_right: i32,
-    pub bottom_right: i32,
-    pub bottom_left: i32,
+    pub top_left: f32,
+    pub top_right: f32,
+    pub bottom_right: f32,
+    pub bottom_left: f32,
 }
 
 impl PreonCorners {
-    pub fn new(top_left: i32, top_right: i32, bottom_right: i32, bottom_left: i32) -> PreonCorners {
+    pub const ZERO: PreonCorners = PreonCorners {
+        top_left: 0.0,
+        top_right: 0.0,
+        bottom_right: 0.0,
+        bottom_left: 0.0,
+    };
+
+    pub fn new(top_left: f32, top_right: f32, bottom_right: f32, bottom_left: f32) -> PreonCorners {
         PreonCorners {
             top_left,
             top_right,
@@ -517,24 +525,20 @@ impl PreonCorners {
         }
     }
 
-    pub fn from_xy(x: i32, y: i32) -> PreonCorners {
+    pub fn from_xy(x: f32, y: f32) -> PreonCorners {
         PreonCorners::new(y, x, y, x)
     }
 
-    pub fn from_single(value: i32) -> PreonCorners {
+    pub fn from_single(value: f32) -> PreonCorners {
         PreonCorners::new(value, value, value, value)
     }
 
-    pub fn pill(rect: PreonVector<i32>) -> PreonCorners {
+    pub fn pill(rect: PreonVector<f32>) -> PreonCorners {
         if rect.x > rect.y {
-            PreonCorners::from_single(rect.y / 2)
+            PreonCorners::from_single(rect.y * 0.5)
         } else {
-            PreonCorners::from_single(rect.x / 2)
+            PreonCorners::from_single(rect.x * 0.5)
         }
-    }
-
-    pub fn zero() -> PreonCorners {
-        PreonCorners::from_single(0)
     }
 }
 

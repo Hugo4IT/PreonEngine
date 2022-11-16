@@ -6,16 +6,17 @@ use preon_engine::rendering::PreonShape;
 use crate::{
     instancing::{BufferLayout, InstanceBuffer},
     shapes::vertex::Vertex,
-    texture::Texture,
+    texture::{Texture, TextureSheet},
 };
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct RectInstance {
     z_index: f32,
+    rect: [f32; 4],
     radius: [f32; 4],
-    dimensions: [f32; 4],
     color: [f32; 4],
+    uv_cutout: [f32; 4],
 }
 
 impl BufferLayout for RectInstance {
@@ -44,6 +45,11 @@ impl BufferLayout for RectInstance {
                     shader_location: 5,
                     format: wgpu::VertexFormat::Float32x4,
                 },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 13]>() as wgpu::BufferAddress,
+                    shader_location: 6,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
             ],
         }
     }
@@ -52,24 +58,31 @@ impl BufferLayout for RectInstance {
 pub struct RectShape {
     pub pipeline: wgpu::RenderPipeline,
     pub instance_buffer: InstanceBuffer<RectInstance>,
+    pub sheet: TextureSheet,
 }
 
 impl RectShape {
     pub fn new(
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
+        queue: &wgpu::Queue,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
+        textures: &Vec<Vec<u8>>,
     ) -> Self {
+        info!("Init TextureSheet...");
+        let sheet =
+            TextureSheet::from_images(textures, device, queue, String::from("static_textures"));
+
         let instance_buffer = InstanceBuffer::new(device);
 
         info!("Compiling shaders...");
         let shader_module =
-            device.create_shader_module(wgpu::include_wgsl!("../shaders/rect_shader.wgsl"));
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/component_shader.wgsl"));
 
         info!("Creating render pipeline...");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[transform_bind_group_layout],
+            bind_group_layouts: &[transform_bind_group_layout, &sheet.bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -117,6 +130,7 @@ impl RectShape {
         Self {
             pipeline,
             instance_buffer,
+            sheet,
         }
     }
 
@@ -125,21 +139,32 @@ impl RectShape {
             position,
             size,
             color,
+            index,
+            radius,
         } = shape
         {
             self.instance_buffer.push(RectInstance {
                 z_index,
-                radius: [0.0, 0.0, 0.0, 0.0],
-                dimensions: [
+                rect: [
                     position.x as f32,
                     position.y as f32,
                     size.x as f32,
                     size.y as f32,
                 ],
+                radius: [
+                    radius.top_left,
+                    radius.top_right,
+                    radius.bottom_right,
+                    radius.bottom_left
+                ],
                 color: {
                     let (r, g, b, a) = color.into_f32_tuple();
                     [r, g, b, a]
                 },
+                uv_cutout: match index {
+                    Some(index) => self.sheet.indices[index],
+                    None => [-1.0, 0.0, 0.0, 0.0],
+                }
             });
         }
     }
@@ -147,6 +172,7 @@ impl RectShape {
     pub fn render<'a>(&'a self, mut render_pass: wgpu::RenderPass<'a>) -> wgpu::RenderPass<'a> {
         render_pass.set_vertex_buffer(1, self.instance_buffer.get());
         render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(1, &self.sheet.bind_group, &[]);
         render_pass.draw_indexed(0..7, 0, 0..self.instance_buffer.len() as u32);
 
         render_pass

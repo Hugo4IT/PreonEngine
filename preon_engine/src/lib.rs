@@ -70,9 +70,10 @@
 
 extern crate alloc;
 
+use alloc::vec::Vec;
 use components::PreonComponent;
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
-use rendering::{PreonRenderPass, PreonStaticRenderData};
+use rendering::{PreonRenderPass, PreonRenderData, PreonFont, PreonImage, IntoImage, IntoFont};
 
 use self::types::PreonVector;
 
@@ -201,18 +202,35 @@ pub struct PreonEngine {
     /// Pass this to your renderer module of choice after executing `engine.update()`. See [`PreonEventEmitter`] and [`PreonShape`](`rendering::PreonShape`)
     pub render_pass: PreonRenderPass,
     /// Data for StaticLabel and StaticTexture
-    pub static_render_data: PreonStaticRenderData,
+    pub render_data: PreonRenderData,
+    pub image_references: Vec<PreonImage>,
 }
 
 impl PreonEngine {
-    pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent) -> Self {
+    pub fn new() -> Self {
         Self {
-            tree: tree,
+            tree: PreonComponent::new(),
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
-            static_render_data,
+            render_data: PreonRenderData::new(),
+            image_references: Vec::new()
         }
+    }
+
+    pub fn set_tree(&mut self, tree: PreonComponent) {
+        self.tree = tree;
+    }
+
+    pub fn load_image(&mut self, image: impl IntoImage) -> &PreonImage {
+        self.render_data.textures.push(image.get_image());
+        self.image_references.push(PreonImage::new(self.render_data.textures.len() - 1));
+        self.image_references.last().unwrap()
+    }
+
+    pub fn load_font(&mut self, font: impl IntoFont) -> PreonFont {
+        self.render_data.fonts.push(font.get_font());
+        PreonFont::new(self.render_data.fonts.len() - 1)
     }
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
@@ -279,16 +297,14 @@ pub mod prelude {
     pub use crate::types::*;
     pub use crate::events::PreonEvent;
     pub use crate::events::PreonUserEvent;
-    pub use crate::rendering::PreonFontData;
-    pub use crate::rendering::PreonStaticRenderData;
-    pub use crate::preon_font;
     pub use crate::size;
     pub use crate::PreonEngine;
     pub use crate::style::PreonBackground;
     pub use crate::style::PreonForeground;
     pub use crate::style::PreonComponentBuilderStyleExtension;
     pub use crate::style::PreonComponentBuilderTextStyleExtension;
-    pub use crate::style::image::PreonImage;
+    pub use crate::rendering::PreonImage;
+    pub use crate::rendering::PreonFont;
 }
 
 /// Replaces the log crate 

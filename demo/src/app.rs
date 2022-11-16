@@ -12,21 +12,19 @@ pub fn app() {
     let mut label: Vec<usize> = Vec::new();
 
     #[rustfmt::skip]
-    let engine: PreonEngine = PreonEngine::new(
-        PreonStaticRenderData {
-            textures: &[
-                include_bytes!("../../res/mm2wood.png"),
-                include_bytes!("../../res/juan.png"),
-            ],
-            fonts: &[
-                preon_font!("../../res/Montserrat", "otf")
-            ]
-        },
+    let engine = PreonEngine::new();
+
+    let wood_man = engine.load_image(include_bytes!("../../res/mm2wood.png"));
+    let juan = engine.load_image(include_bytes!("../../res/juan.png"));
+    let font_normal = engine.load_font(include_bytes("../../res/Montserrat-Regular.otf"));
+    let font_bold = engine.load_font(include_bytes("../../res/Montserrat-Bold.otf"));
+
+    engine.set_tree(
         PreonComponentBuilder::new()
             .start_panel_hex("#da0037")
                 .min_size(PreonVector::new(0, 60))
                 .expand_horizontally()
-                .start_static_texture(0)
+                .start_static_texture(wood_man)
                     .margin(PreonBorder::new(0, 0, -50, 0))
                     .min_size(PreonVector::new(200, 200))
                 .end()
@@ -45,11 +43,11 @@ pub fn app() {
                             .expand_horizontally()
                             .store_path(&mut first_panel)
                         .end()
-                        .start_static_texture(0)
+                        .start_static_texture(wood_man)
                             .min_size(PreonVector::new(0, 200))
                             .expand_horizontally()
                         .end()
-                        .start_static_texture(1)
+                        .start_static_texture(juan)
                             .min_size(PreonVector::new(0, 200))
                             .expand_horizontally()
                         .end()
@@ -68,7 +66,7 @@ pub fn app() {
                         .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent>()))
                             .expand_horizontally()
                             .min_size(PreonVector::new(0, 20))
-                            .bold()
+                            .font(font_bold)
                         .end()
                         .start_vbox()
                             .background_color(PreonColor::from_hex("#da0037"))

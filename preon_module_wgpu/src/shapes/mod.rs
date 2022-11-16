@@ -1,6 +1,6 @@
 use log::info;
 use preon_engine::{
-    rendering::{PreonRenderPass, PreonShape, PreonStaticRenderData},
+    rendering::{PreonRenderPass, PreonShape, PreonRenderData},
     types::PreonVector,
 };
 use wgpu::util::DeviceExt;
@@ -10,13 +10,11 @@ use crate::{shapes::text::TextShape, texture::Texture};
 
 use self::{
     rect::RectShape,
-    static_texture::StaticTextureShape,
     transform::Transform,
     vertex::{RECT_INDICES, RECT_VERTICES},
 };
 
 mod rect;
-mod static_texture;
 mod text;
 mod transform;
 mod vertex;
@@ -28,7 +26,6 @@ pub struct ShapeManager {
 
     rect: RectShape,
     text: TextShape,
-    static_texture: StaticTextureShape,
 
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -39,7 +36,7 @@ impl ShapeManager {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         queue: &wgpu::Queue,
-        static_render_data: &PreonStaticRenderData,
+        render_data: &PreonRenderData,
     ) -> Self {
         info!("Creating depth buffer...");
         let depth_texture = Texture::new_depth(device, config);
@@ -58,26 +55,22 @@ impl ShapeManager {
         });
 
         info!("Init RectShape...");
-        let rect = RectShape::new(device, config, &transform.bind_group_layout);
-
-        info!("Init TextShape...");
-        let text = TextShape::new(device, static_render_data.fonts, config.format);
-
-        info!("Init StaticTextureShape...");
-        let static_texture = StaticTextureShape::new(
+        let rect = RectShape::new(
             device,
             config,
             queue,
             &transform.bind_group_layout,
-            static_render_data.textures,
+            &render_data.textures,
         );
+
+        info!("Init TextShape...");
+        let text = TextShape::new(device, render_data.fonts, config.format);
 
         Self {
             transform,
             depth_texture,
             rect,
             text,
-            static_texture,
             vertex_buffer,
             index_buffer,
         }
@@ -88,21 +81,20 @@ impl ShapeManager {
         let z_step = 1.0 / (pass.len() + 1) as f32;
 
         self.rect.instance_buffer.begin();
-        self.static_texture.instance_buffer.begin();
+        // self.static_texture.instance_buffer.begin();
 
         let mut z_index: f32 = 1.0 - z_step;
 
         for shape in pass.take() {
             match shape {
                 PreonShape::Rect { .. } => self.rect.build(shape, z_index),
-                PreonShape::StaticTexture { .. } => self.static_texture.build(shape, z_index),
                 PreonShape::Text { .. } => self.text.build(shape, z_index),
             }
 
             z_index -= z_step;
         };
 
-        self.static_texture.instance_buffer.end(device, queue);
+        // self.static_texture.instance_buffer.end(device, queue);
         self.rect.instance_buffer.end(device, queue);
     }
 
@@ -145,7 +137,7 @@ impl ShapeManager {
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
             render_pass = self.rect.render(render_pass);
-            self.static_texture.render(render_pass);
+            // self.static_texture.render(render_pass);
         }
 
         self.text.render(device, encoder, view, screen_size);

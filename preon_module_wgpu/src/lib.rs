@@ -230,7 +230,7 @@ impl PreonRendererWGPU {
         surface.configure(&device, &config);
 
         info!("Init ShapeManager...");
-        let shape_manager = ShapeManager::new(&device, &config, &queue, &engine.static_render_data);
+        let shape_manager = ShapeManager::new(&device, &config, &queue, &engine.render_data);
 
         info!("WGPU Initialized!");
 

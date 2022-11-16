@@ -1,5 +1,5 @@
 use preon_engine::{
-    rendering::{PreonFontData, PreonShape},
+    rendering::PreonShape,
     types::PreonVector,
 };
 use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Layout, Section, Text};
@@ -12,29 +12,16 @@ pub struct TextShape {
 impl TextShape {
     pub fn new(
         device: &wgpu::Device,
-        fonts: &'static [&'static PreonFontData],
+        fonts: Vec<Vec<u8>>,
         format: wgpu::TextureFormat,
     ) -> Self {
         let mut brushes = Vec::new();
 
-        for font in fonts.iter() {
-            macro_rules! add_font {
-                ($($target:ident),*) => {
-                    $(
-                    if let Some(data) = font.$target {
-                        brushes.push(Some(
-                            GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_slice(data).unwrap())
-                                .build(device, format),
-                        ));
-                    }
-                    )*
-                }
-            }
-
-            add_font!(
-                w100, w100i, w200, w200i, w300, w300i, w400, w400i, w500, w500i, w600, w600i, w700,
-                w700i, w800, w800i, w900, w900i
-            );
+        for font in fonts.into_iter() {
+            brushes.push(Some(
+                GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_vec(font).unwrap())
+                    .build(device, format),
+            ));
         }
 
         let staging_belt = wgpu::util::StagingBelt::new(1024);

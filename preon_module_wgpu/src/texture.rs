@@ -198,7 +198,7 @@ impl TextureSheet {
     }
 
     pub fn from_images(
-        buffers: &[&[u8]],
+        buffers: Vec<Vec<u8>>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         label: String,
@@ -215,7 +215,7 @@ impl TextureSheet {
 
             let mut textures: Vec<sheep::InputSprite> = Vec::new();
             for buffer in buffers.iter() {
-                let image = image::load_from_memory(*buffer).unwrap();
+                let image = image::load_from_memory(buffer).unwrap();
 
                 use image::GenericImageView;
                 let dimensions = image.dimensions();

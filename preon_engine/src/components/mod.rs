@@ -3,7 +3,7 @@ use alloc::{vec::Vec, string::String, vec, borrow::ToOwned};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
-    types::{PreonAlignment, PreonVector},
+    types::{PreonAlignment, PreonVector, PreonColor},
     style::{PreonStyle, PreonBackground, PreonForeground},
     layout::{
         PreonLayout,
@@ -271,15 +271,17 @@ impl PreonComponent {
                         position,
                         size,
                         color,
+                        index: None,
+                        radius: self.style.corner_radius,
                     }),
-                    PreonBackground::Image(image) => {
-                        pass.push(PreonShape::StaticTexture {
-                            position,
-                            size,
-                            index: image.index(),
-                        })
-                    }
-                    _ => {}
+                    PreonBackground::Image(image) => pass.push(PreonShape::Rect {
+                        position,
+                        size,
+                        color: PreonColor::TRANSPARENT_BLACK,
+                        index: Some(image.index()),
+                        radius: self.style.corner_radius,
+                    }),
+                    _ => (),
                 },
                 PreonComponentRenderStage::Foreground { position, size } => if !self.text.is_empty() {
                     pass.push(PreonShape::Text {
