@@ -81,7 +81,7 @@ pub enum PreonShape {
 #[macro_export]
 macro_rules! preon_font {
     ($path:expr, $ext:expr) => {
-        &preon_engine::rendering::PreonFont {
+        &preon_engine::rendering::PreonFontData {
             w100: Some(include_bytes!(concat!($path, "-Thin.", $ext))),
             w100i: Some(include_bytes!(concat!($path, "-ThinItalic.", $ext))),
             w200: Some(include_bytes!(concat!($path, "-ExtraLight.", $ext))),
@@ -116,7 +116,7 @@ macro_rules! preon_font {
 /// Check the [`preon_font`] macro to automatically fill in the slots.
 ///
 /// [1]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight
-pub struct PreonFont {
+pub struct PreonFontData {
     /// Weight 100 | Thin
     pub w100: Option<&'static [u8]>,
     /// Weight 100 italic | ThinItalic
@@ -155,7 +155,7 @@ pub struct PreonFont {
     pub w900i: Option<&'static [u8]>,
 }
 
-impl Default for PreonFont {
+impl Default for PreonFontData {
     fn default() -> Self {
         Self {
             w100: None,
@@ -199,7 +199,7 @@ impl Default for PreonFont {
 /// ```
 pub struct PreonStaticRenderData {
     pub textures: &'static [&'static [u8]],
-    pub fonts: &'static [&'static PreonFont],
+    pub fonts: &'static [&'static PreonFontData],
 }
 
 impl PreonStaticRenderData {

@@ -1,5 +1,5 @@
 use preon_engine::{
-    rendering::{PreonFont, PreonShape},
+    rendering::{PreonFontData, PreonShape},
     types::PreonVector,
 };
 use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Layout, Section, Text};
@@ -12,7 +12,7 @@ pub struct TextShape {
 impl TextShape {
     pub fn new(
         device: &wgpu::Device,
-        fonts: &'static [&'static PreonFont],
+        fonts: &'static [&'static PreonFontData],
         format: wgpu::TextureFormat,
     ) -> Self {
         let mut brushes = Vec::new();

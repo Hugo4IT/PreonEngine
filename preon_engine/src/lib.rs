@@ -275,7 +275,7 @@ pub mod prelude {
     pub use crate::components::*;
     pub use crate::types::*;
     pub use crate::events::*;
-    pub use crate::rendering::PreonFont;
+    pub use crate::rendering::PreonFontData;
     pub use crate::rendering::PreonStaticRenderData;
     pub use crate::preon_font;
     pub use crate::size;

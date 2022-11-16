@@ -66,8 +66,21 @@ pub fn app() {
                         .expand_horizontally()
                         .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent>()))
                             .expand_horizontally()
-                            .with_min_size(0, 200)
+                            .with_min_size(0, 20)
                             .bold()
+                        .end()
+                        .start_vbox()
+                            .style(PreonStyle {
+                                background: PreonBackground::Color(PreonColor::from_hex("#da0037")),
+                                margin: PreonBorder::from_single(10),
+                                padding: PreonBorder::from_single(10),
+                                ..Default::default()
+                            })
+                            .start_label_str("Label 1").with_min_size(200, 20).end()
+                            .start_label_str("Label 2").with_min_size(200, 20).end()
+                            .start_label_str("Label 3").with_min_size(200, 20).end()
+                            .start_label_str("Label 4").with_min_size(200, 20).end()
+                            .start_label_str("Label 5").with_min_size(200, 20).end()
                         .end()
                     .end()
                 .end()

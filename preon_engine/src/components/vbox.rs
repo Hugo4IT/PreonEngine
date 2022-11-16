@@ -13,7 +13,7 @@ impl AddVBox for PreonComponentBuilder {
             style: PreonStyle {
                 layout: PreonLayout::Rows,
                 align_items: PreonAlignment::Start,
-                cross_align_items: PreonAlignment::Center,
+                cross_align_items: PreonAlignment::Start,
                 ..Default::default()
             },
             ..Default::default()
