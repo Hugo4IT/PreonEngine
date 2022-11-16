@@ -1,8 +1,7 @@
-use alloc::{format, string::String};
-
-use crate::{types::{PreonColor, PreonAlignment, PreonBorder, PreonVector}, size, layout::PreonLayout};
-
-use core::fmt::Display;
+use crate::{
+    types::{PreonColor, PreonAlignment, PreonBorder, PreonVector},
+    size, layout::PreonLayout, components::PreonComponentBuilder
+};
 
 use self::image::PreonImage;
 
@@ -13,6 +12,11 @@ pub enum PreonBackground {
     Image(PreonImage),
     Color(PreonColor),
     None,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PreonForeground {
+    Color(PreonColor),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,7 +45,7 @@ impl Default for PreonTextStyle {
 #[derive(Debug, Clone, Copy)]
 pub struct PreonStyle {
     pub background: PreonBackground,
-    pub foreground_color: PreonColor,
+    pub foreground: PreonForeground,
     pub align_items: PreonAlignment,
     pub cross_align_items: PreonAlignment,
     pub layout: PreonLayout,
@@ -57,7 +61,7 @@ impl PreonStyle {
     pub fn initial() -> PreonStyle {
         PreonStyle {
             background: PreonBackground::None,
-            foreground_color: PreonColor::WHITE,
+            foreground: PreonForeground::Color(PreonColor::BLACK),
             align_items: PreonAlignment::Start,
             cross_align_items: PreonAlignment::Start,
             layout: PreonLayout::default(),
@@ -70,7 +74,7 @@ impl PreonStyle {
         }
     }
 
-    pub fn has_flag(&self, flag: u8) -> bool {
+    pub fn has_size_flag(&self, flag: u8) -> bool {
         (self.size_flags & flag) == flag
     }
 }
@@ -81,71 +85,138 @@ impl Default for PreonStyle {
     }
 }
 
-impl Display for PreonStyle {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let Self {
-            margin,
-            padding,
-            border,
-            size_flags,
-            min_size,
-            ..
-        } = Self::default();
+pub trait PreonComponentBuilderStyleExtension {
+    fn background_image(&mut self, image: PreonImage) -> &mut PreonComponentBuilder;
+    fn background_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
+    fn foreground_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
+    fn align_items(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
+    fn cross_align_items(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
+    fn layout(&mut self, layout: PreonLayout) -> &mut PreonComponentBuilder;
+    fn margin(&mut self, margin: PreonBorder) -> &mut PreonComponentBuilder;
+    fn padding(&mut self, padding: PreonBorder) -> &mut PreonComponentBuilder;
+    fn border(&mut self, border: PreonBorder) -> &mut PreonComponentBuilder;
+    fn min_size(&mut self, min_size: PreonVector<i32>) -> &mut PreonComponentBuilder;
+    fn fit_children(&mut self) -> &mut PreonComponentBuilder;
+    fn fit_children_horizontally(&mut self) -> &mut PreonComponentBuilder;
+    fn fit_children_vertically(&mut self) -> &mut PreonComponentBuilder;
+    fn expand(&mut self) -> &mut PreonComponentBuilder;
+    fn expand_horizontally(&mut self) -> &mut PreonComponentBuilder;
+    fn expand_vertically(&mut self) -> &mut PreonComponentBuilder;
+    fn style(&mut self, style: PreonStyle) -> &mut PreonComponentBuilder;
+}
 
-        let mut result = String::new();
+impl PreonComponentBuilderStyleExtension for PreonComponentBuilder {
+    fn background_image(&mut self, image: PreonImage) -> &mut PreonComponentBuilder {
+        self.current_mut().style.background = PreonBackground::Image(image);
+        self
+    }
 
-        fn push_result(dest: &mut String, res: &str) {
-            if dest.is_empty() {
-                dest.push_str(res)
-            } else {
-                dest.push_str(&format!(", {}", res))
-            }
-        }
+    fn background_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder {
+        self.current_mut().style.background = PreonBackground::Color(color);
+        self
+    }
 
-        if self.margin != margin {
-            push_result(&mut result, &format!("margin: {}", self.margin))
-        }
-        if self.padding != padding {
-            push_result(&mut result, &format!("padding: {}", self.padding))
-        }
-        if self.border != border {
-            push_result(&mut result, &format!("border: {}", self.border))
-        }
+    fn foreground_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder {
+        self.current_mut().style.foreground = PreonForeground::Color(color);
+        self
+    }
 
-        if self.size_flags != size_flags {
-            let mut flags = String::new();
+    fn align_items(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder {
+        self.current_mut().style.align_items = alignment;
+        self
+    }
 
-            fn push_flag(dest: &mut String, flg: &str) {
-                if dest.is_empty() {
-                    dest.push_str(flg);
-                } else {
-                    dest.push_str(&format!(" | {}", flg));
-                }
-            }
+    fn cross_align_items(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder {
+        self.current_mut().style.cross_align_items = alignment;
+        self
+    }
 
-            if self.has_flag(size::FIT) {
-                push_flag(&mut flags, "FIT");
-            } else if self.has_flag(size::horizontal::FIT) {
-                push_flag(&mut flags, "HORIZONTAL_FIT");
-            } else if self.has_flag(size::vertical::FIT) {
-                push_flag(&mut flags, "VERTICAL_FIT");
-            }
+    fn layout(&mut self, layout: PreonLayout) -> &mut PreonComponentBuilder {
+        self.current_mut().style.layout = layout;
+        self
+    }
 
-            if self.has_flag(size::EXPAND) {
-                push_flag(&mut flags, "EXPAND");
-            } else if self.has_flag(size::horizontal::EXPAND) {
-                push_flag(&mut flags, "HORIZONTAL_EXPAND");
-            } else if self.has_flag(size::vertical::EXPAND) {
-                push_flag(&mut flags, "VERTICAL_EXPAND");
-            }
+    fn margin(&mut self, margin: PreonBorder) -> &mut PreonComponentBuilder {
+        self.current_mut().style.margin = margin;
+        self
+    }
 
-            push_result(&mut result, &format!("size_flags: {}", flags));
-        }
+    fn padding(&mut self, padding: PreonBorder) -> &mut PreonComponentBuilder {
+        self.current_mut().style.padding = padding;
+        self
+    }
 
-        if self.min_size != min_size {
-            push_result(&mut result, &format!("min_size: {}", self.min_size));
-        }
+    fn border(&mut self, border: PreonBorder) -> &mut PreonComponentBuilder {
+        self.current_mut().style.border = border;
+        self
+    }
 
-        write!(f, "{}", result)
+    fn min_size(&mut self, min_size: PreonVector<i32>) -> &mut PreonComponentBuilder {
+        self.current_mut().style.min_size = min_size;
+        self
+    }
+
+    fn fit_children(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::FIT;
+        self
+    }
+
+    fn fit_children_horizontally(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::horizontal::FIT;
+        self
+    }
+
+    fn fit_children_vertically(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::vertical::FIT;
+        self
+    }
+
+    fn expand(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::EXPAND;
+        self
+    }
+
+    fn expand_horizontally(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::horizontal::EXPAND;
+        self
+    }
+
+    fn expand_vertically(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.size_flags |= size::vertical::EXPAND;
+        self
+    }
+
+    fn style(&mut self, style: PreonStyle) -> &mut PreonComponentBuilder {
+        self.current_mut().style = style;
+        self
+    }
+}
+
+pub trait PreonComponentBuilderTextStyleExtension {
+    fn text_vertical_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
+    fn text_horizontal_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
+    fn bold(&mut self) -> &mut PreonComponentBuilder;
+    fn italic(&mut self) -> &mut PreonComponentBuilder;
+}
+
+impl PreonComponentBuilderTextStyleExtension for PreonComponentBuilder {
+    fn text_vertical_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.vertical_align = alignment;
+        self
+    }
+
+    fn text_horizontal_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.horizontal_align = alignment;
+        self
+    }
+
+    fn bold(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.bold = true;
+        self
+    }
+
+    fn italic(&mut self) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.italic = true;
+        self
     }
 }

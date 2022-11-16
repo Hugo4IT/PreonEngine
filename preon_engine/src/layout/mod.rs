@@ -1,3 +1,13 @@
+use crate::components::PreonComponent;
+
+pub mod rows;
+pub mod columns;
+pub mod container;
+
+pub(crate) trait PreonLayoutProvider {
+    fn layout(component: &mut PreonComponent);
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum PreonLayout {
     Rows,

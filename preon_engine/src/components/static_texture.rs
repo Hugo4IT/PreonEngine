@@ -2,14 +2,12 @@ use crate::{components::PreonComponent, style::{PreonStyle, PreonBackground, ima
 
 use super::PreonComponentBuilder;
 
-pub trait AddStaticTexture {
+pub trait PreonComponentBuilderStaticTextureExtension {
     fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder;
 }
 
-impl AddStaticTexture for PreonComponentBuilder {
+impl PreonComponentBuilderStaticTextureExtension for PreonComponentBuilder {
     fn start_static_texture(&mut self, index: usize) -> &mut PreonComponentBuilder {
-        log::info!("start static texture: {}", index);
-
         self.stack.push(PreonComponent {
             style: PreonStyle {
                 background: PreonBackground::Image(PreonImage::from_static(index)),

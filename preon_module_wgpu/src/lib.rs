@@ -1,8 +1,5 @@
 use log::info;
-use preon_engine::{
-    components::PreonCustomComponentStack, rendering::PreonRenderPass, types::PreonVector,
-    PreonEngine,
-};
+use preon_engine::{rendering::PreonRenderPass, types::PreonVector, PreonEngine};
 use shapes::ShapeManager;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -28,8 +25,7 @@ pub mod preon {
     /// Initialize winit and run your app, this is sufficient for simple apps, if you plan on building something advanced you should consider starting it yourself so you can have a little more control over individual events.
     pub fn run<F>(mut engine: PreonEngine, mut callback: F)
     where
-        F: FnMut(&mut PreonComponent, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>)
-            + 'static,
+        F: FnMut(&mut PreonComponent, PreonEvent, &mut PreonEventEmitter<PreonUserEvent>) + 'static,
     {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
@@ -221,7 +217,11 @@ impl PreonRendererWGPU {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter).into_iter().next().unwrap(),
+            format: surface
+                .get_supported_formats(&adapter)
+                .into_iter()
+                .next()
+                .unwrap(),
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,

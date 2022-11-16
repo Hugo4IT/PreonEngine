@@ -2,7 +2,7 @@ use std::{borrow::Cow, str::FromStr};
 
 use log::{error, info};
 use preon_engine::{
-    components::{AddHBox, AddLabel, AddPanel, AddVBox, NoCustomComponents, PreonComponentBuilder},
+    components::{PreonComponentBuilderHBoxExtension, PreonComponentBuilderLabelExtension, PreonComponentBuilderPanelExtension, PreonComponentBuilderVBoxExtension, NoCustomComponents, PreonComponentBuilder},
     rendering::PreonStaticRenderData,
     types::{PreonBorder, PreonColor, PreonVector, PreonVectorAble},
     PreonEngine,

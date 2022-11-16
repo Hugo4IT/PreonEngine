@@ -1,8 +1,8 @@
-use crate::{types::PreonColor, style::{PreonBackground, PreonStyle}, layout::PreonLayout};
+use crate::{types::PreonColor, style::{PreonBackground, PreonStyle, PreonComponentBuilderStyleExtension}, layout::PreonLayout};
 
 use super::{PreonComponent, PreonComponentBuilder};
 
-pub trait AddPanel {
+pub trait PreonComponentBuilderPanelExtension {
     fn start_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
     fn empty_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
     fn start_panel_hex(&mut self, hex_color: &'static str) -> &mut PreonComponentBuilder;
@@ -10,7 +10,7 @@ pub trait AddPanel {
     fn panel_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
 }
 
-impl AddPanel for PreonComponentBuilder {
+impl PreonComponentBuilderPanelExtension for PreonComponentBuilder {
     fn start_panel(&mut self, color: PreonColor) -> &mut PreonComponentBuilder {
         self.stack.push(PreonComponent {
             style: PreonStyle {
@@ -39,16 +39,5 @@ impl AddPanel for PreonComponentBuilder {
     fn panel_color(&mut self, in_color: PreonColor) -> &mut PreonComponentBuilder {
         self.current_mut().style.background = PreonBackground::Color(in_color);
         self
-    }
-}
-
-pub(super) fn layout(
-    component: &mut PreonComponent,
-) {
-    let position = component.get_content_position();
-    let size = component.get_content_size();
-    for child in component.children.iter_mut() {
-        child.set_outer_position(position);
-        child.set_outer_size(size);
     }
 }

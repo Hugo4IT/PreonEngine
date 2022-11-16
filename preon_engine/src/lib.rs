@@ -206,8 +206,6 @@ pub struct PreonEngine {
 
 impl PreonEngine {
     pub fn new(static_render_data: PreonStaticRenderData, tree: PreonComponent) -> Self {
-        log::info!("\nStarting PreonEngine with tree:\n{}", tree.print_tree(1));
-
         Self {
             tree: tree,
             events: PreonEventEmitter::new(),
@@ -272,14 +270,25 @@ impl PreonEngine {
 
 /// Contains all the necessary imports to quickly build an app with PreonEngine
 pub mod prelude {
-    pub use crate::components::*;
+    pub use crate::components::hbox::PreonComponentBuilderHBoxExtension;
+    pub use crate::components::vbox::PreonComponentBuilderVBoxExtension;
+    pub use crate::components::label::PreonComponentBuilderLabelExtension;
+    pub use crate::components::panel::PreonComponentBuilderPanelExtension;
+    pub use crate::components::static_texture::PreonComponentBuilderStaticTextureExtension;
+    pub use crate::components::PreonComponentBuilder;
     pub use crate::types::*;
-    pub use crate::events::*;
+    pub use crate::events::PreonEvent;
+    pub use crate::events::PreonUserEvent;
     pub use crate::rendering::PreonFontData;
     pub use crate::rendering::PreonStaticRenderData;
     pub use crate::preon_font;
     pub use crate::size;
     pub use crate::PreonEngine;
+    pub use crate::style::PreonBackground;
+    pub use crate::style::PreonForeground;
+    pub use crate::style::PreonComponentBuilderStyleExtension;
+    pub use crate::style::PreonComponentBuilderTextStyleExtension;
+    pub use crate::style::image::PreonImage;
 }
 
 /// Replaces the log crate 
