@@ -1,26 +1,23 @@
 use crate::{
     types::{PreonColor, PreonAlignment, PreonBorder, PreonVector, PreonCorners},
-    size, layout::PreonLayout, components::PreonComponentBuilder, rendering::PreonImage
+    size, layout::PreonLayout, components::PreonComponentBuilder, rendering::PreonImage, prelude::PreonFont
 };
 
-#[derive(Debug, Clone, Copy)]
+pub trait PreonClass {
+    fn style(self, builder: &mut PreonComponentBuilder) -> &mut PreonComponentBuilder;
+}
+
+#[derive(Debug, Clone)]
 pub enum PreonBackground {
     Image(PreonImage),
     Color(PreonColor),
     None,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum PreonForeground {
-    Color(PreonColor),
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PreonTextStyle {
-    pub size: u16,
-    pub font_index: u16,
-    pub bold: bool,
-    pub italic: bool,
+    pub size: f32,
+    pub font: Option<PreonFont>,
     pub vertical_align: PreonAlignment,
     pub horizontal_align: PreonAlignment,
 }
@@ -28,20 +25,18 @@ pub struct PreonTextStyle {
 impl Default for PreonTextStyle {
     fn default() -> Self {
         Self {
-            size: 16,
-            font_index: 10,
-            bold: false,
-            italic: false,
+            size: 16.0,
+            font: None,
             vertical_align: PreonAlignment::Start,
             horizontal_align: PreonAlignment::Start,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PreonStyle {
     pub background: PreonBackground,
-    pub foreground: PreonForeground,
+    pub foreground_color: PreonColor,
     pub align_items: PreonAlignment,
     pub cross_align_items: PreonAlignment,
     pub layout: PreonLayout,
@@ -58,7 +53,7 @@ impl PreonStyle {
     pub fn initial() -> PreonStyle {
         PreonStyle {
             background: PreonBackground::None,
-            foreground: PreonForeground::Color(PreonColor::BLACK),
+            foreground_color: PreonColor::BLACK,
             align_items: PreonAlignment::Start,
             cross_align_items: PreonAlignment::Start,
             layout: PreonLayout::default(),
@@ -69,6 +64,14 @@ impl PreonStyle {
             size_flags: size::FIT,
             min_size: PreonVector::zero(),
             text_style: PreonTextStyle::default(),
+        }
+    }
+
+    pub fn inherit_from(style: &PreonStyle) -> PreonStyle {
+        PreonStyle {
+            foreground_color: style.foreground_color,
+            text_style: style.text_style.clone(),
+            ..Default::default()
         }
     }
 
@@ -84,7 +87,7 @@ impl Default for PreonStyle {
 }
 
 pub trait PreonComponentBuilderStyleExtension {
-    fn background_image(&mut self, image: PreonImage) -> &mut PreonComponentBuilder;
+    fn background_image(&mut self, image: &PreonImage) -> &mut PreonComponentBuilder;
     fn background_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
     fn foreground_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder;
     fn align_items(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
@@ -102,11 +105,12 @@ pub trait PreonComponentBuilderStyleExtension {
     fn expand_horizontally(&mut self) -> &mut PreonComponentBuilder;
     fn expand_vertically(&mut self) -> &mut PreonComponentBuilder;
     fn style(&mut self, style: PreonStyle) -> &mut PreonComponentBuilder;
+    fn apply(&mut self, class: impl PreonClass) -> &mut PreonComponentBuilder;
 }
 
 impl PreonComponentBuilderStyleExtension for PreonComponentBuilder {
-    fn background_image(&mut self, image: PreonImage) -> &mut PreonComponentBuilder {
-        self.current_mut().style.background = PreonBackground::Image(image);
+    fn background_image(&mut self, image: &PreonImage) -> &mut PreonComponentBuilder {
+        self.current_mut().style.background = PreonBackground::Image(image.clone());
         self
     }
 
@@ -116,7 +120,7 @@ impl PreonComponentBuilderStyleExtension for PreonComponentBuilder {
     }
 
     fn foreground_color(&mut self, color: PreonColor) -> &mut PreonComponentBuilder {
-        self.current_mut().style.foreground = PreonForeground::Color(color);
+        self.current_mut().style.foreground_color = color;
         self
     }
 
@@ -194,13 +198,19 @@ impl PreonComponentBuilderStyleExtension for PreonComponentBuilder {
         self.current_mut().style = style;
         self
     }
+
+    fn apply(&mut self, class: impl PreonClass) -> &mut PreonComponentBuilder {
+        let component = class.style(&mut PreonComponentBuilder::from_component(self.stack.pop().unwrap())).build();
+        self.stack.push(component);
+        self
+    }
 }
 
 pub trait PreonComponentBuilderTextStyleExtension {
     fn text_vertical_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
     fn text_horizontal_align(&mut self, alignment: PreonAlignment) -> &mut PreonComponentBuilder;
-    fn bold(&mut self) -> &mut PreonComponentBuilder;
-    fn italic(&mut self) -> &mut PreonComponentBuilder;
+    fn font<'a>(&mut self, font: &'a PreonFont) -> &mut PreonComponentBuilder;
+    fn font_size(&mut self, size: f32) -> &mut PreonComponentBuilder;
 }
 
 impl PreonComponentBuilderTextStyleExtension for PreonComponentBuilder {
@@ -214,13 +224,13 @@ impl PreonComponentBuilderTextStyleExtension for PreonComponentBuilder {
         self
     }
 
-    fn bold(&mut self) -> &mut PreonComponentBuilder {
-        self.current_mut().style.text_style.bold = true;
+    fn font(&mut self, font: &PreonFont) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.font = Some(font.clone());
         self
     }
 
-    fn italic(&mut self) -> &mut PreonComponentBuilder {
-        self.current_mut().style.text_style.italic = true;
+    fn font_size(&mut self, size: f32) -> &mut PreonComponentBuilder {
+        self.current_mut().style.text_style.size = size;
         self
     }
 }

@@ -10,8 +10,8 @@ impl PreonComponentBuilderStaticTextureExtension for PreonComponentBuilder {
     fn start_static_texture(&mut self, image: &PreonImage) -> &mut PreonComponentBuilder {
         self.stack.push(PreonComponent {
             style: PreonStyle {
-                background: PreonBackground::Image(image),
-                ..Default::default()
+                background: PreonBackground::Image(image.clone()),
+                ..self.inherited_style()
             },
             ..Default::default()
         });

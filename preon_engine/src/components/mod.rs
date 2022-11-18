@@ -4,7 +4,7 @@ use alloc::{vec::Vec, string::String, vec, borrow::ToOwned};
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
     types::{PreonAlignment, PreonVector, PreonColor},
-    style::{PreonStyle, PreonBackground, PreonForeground},
+    style::{PreonStyle, PreonBackground},
     layout::{
         PreonLayout,
         rows::PreonRowsLayoutProvider,
@@ -274,7 +274,7 @@ impl PreonComponent {
                         index: None,
                         radius: self.style.corner_radius,
                     }),
-                    PreonBackground::Image(image) => pass.push(PreonShape::Rect {
+                    PreonBackground::Image(ref image) => pass.push(PreonShape::Rect {
                         position,
                         size,
                         color: PreonColor::TRANSPARENT_BLACK,
@@ -285,10 +285,8 @@ impl PreonComponent {
                 },
                 PreonComponentRenderStage::Foreground { position, size } => if !self.text.is_empty() {
                     pass.push(PreonShape::Text {
-                        text_style: self.style.text_style,
-                        color: match self.style.foreground {
-                            PreonForeground::Color(color) => color,
-                        },
+                        text_style: self.style.text_style.clone(),
+                        color: self.style.foreground_color,
                         position,
                         size,
                         text: self.text.clone(),
@@ -360,7 +358,7 @@ pub enum PreonComponentRenderStage {
 }
 
 pub struct PreonComponentBuilder {
-    stack: Vec<PreonComponent>,
+    pub stack: Vec<PreonComponent>,
 }
 
 #[allow(clippy::new_without_default)]
@@ -375,6 +373,12 @@ impl PreonComponentBuilder {
                 },
                 ..Default::default()
             }],
+        }
+    }
+
+    pub fn from_component(component: PreonComponent) -> PreonComponentBuilder {
+        Self {
+            stack: vec![component],
         }
     }
 
@@ -422,12 +426,8 @@ impl PreonComponentBuilder {
             .len()
     }
 
-    pub fn with_mut<F>(&mut self, callback: F) -> &mut PreonComponentBuilder
-    where
-        F: FnOnce(&mut PreonComponent),
-    {
-        callback(self.stack.last_mut().unwrap());
-        self
+    pub fn inherited_style(&self) -> PreonStyle {
+        PreonStyle::inherit_from(&self.current().style)
     }
 
     pub fn end(&mut self) -> &mut PreonComponentBuilder {
@@ -438,6 +438,10 @@ impl PreonComponentBuilder {
 
     pub fn build(&mut self) -> PreonComponent {
         self.stack.pop().unwrap()
+    }
+
+    pub fn current(&self) -> &PreonComponent {
+        self.stack.last().unwrap()
     }
 
     pub fn current_mut(&mut self) -> &mut PreonComponent {

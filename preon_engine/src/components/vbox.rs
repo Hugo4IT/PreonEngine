@@ -14,7 +14,7 @@ impl PreonComponentBuilderVBoxExtension for PreonComponentBuilder {
                 layout: PreonLayout::Rows,
                 align_items: PreonAlignment::Start,
                 cross_align_items: PreonAlignment::Start,
-                ..Default::default()
+                ..self.inherited_style()
             },
             ..Default::default()
         });

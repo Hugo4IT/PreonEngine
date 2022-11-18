@@ -17,6 +17,7 @@ impl PreonComponentBuilderLabelExtension for PreonComponentBuilder {
     fn start_label(&mut self, text: String) -> &mut PreonComponentBuilder {
         self.stack.push(PreonComponent {
             text,
+            style: self.inherited_style(),
             ..Default::default()
         });
 

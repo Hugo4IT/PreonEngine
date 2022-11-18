@@ -3,6 +3,15 @@ use preon_engine::components::PreonComponent;
 use preon_module_wgpu::preon;
 use rand::Rng;
 
+struct Heading<'a>(&'a PreonFont);
+impl<'a> PreonClass for Heading<'a> {
+    fn style(self, builder: &mut PreonComponentBuilder) -> &mut PreonComponentBuilder {
+        builder
+            .font_size(48.0)
+            .font(&self.0)
+    }
+}
+
 pub fn app() {
     env_logger::init();
 
@@ -11,20 +20,24 @@ pub fn app() {
     let mut panel_list: Vec<usize> = Vec::new();
     let mut label: Vec<usize> = Vec::new();
 
+    let mut engine = PreonEngine::new();
+    
+    let wood_man = engine.load_image(&include_bytes!("../../res/mm2wood.png")[..]);
+    let juan2 = engine.load_image(&include_bytes!("../../res/juan.png")[..]);
+    let juan = engine.load_image(&include_bytes!("../../res/juan.png")[..]);
+    engine.unload_image(juan2);
+    let font_normal = engine.load_font(&include_bytes!("../../res/Montserrat-Regular.otf")[..]);
+    let font_italic = engine.load_font(&include_bytes!("../../res/Montserrat-Italic.otf")[..]);
+    let font_bold = engine.load_font(&include_bytes!("../../res/Montserrat-Bold.otf")[..]);
+    engine.unload_font(font_italic);
+    
     #[rustfmt::skip]
-    let engine = PreonEngine::new();
-
-    let wood_man = engine.load_image(include_bytes!("../../res/mm2wood.png"));
-    let juan = engine.load_image(include_bytes!("../../res/juan.png"));
-    let font_normal = engine.load_font(include_bytes("../../res/Montserrat-Regular.otf"));
-    let font_bold = engine.load_font(include_bytes("../../res/Montserrat-Bold.otf"));
-
     engine.set_tree(
         PreonComponentBuilder::new()
             .start_panel_hex("#da0037")
                 .min_size(PreonVector::new(0, 60))
                 .expand_horizontally()
-                .start_static_texture(wood_man)
+                .start_static_texture(&wood_man)
                     .margin(PreonBorder::new(0, 0, -50, 0))
                     .min_size(PreonVector::new(200, 200))
                 .end()
@@ -43,11 +56,11 @@ pub fn app() {
                             .expand_horizontally()
                             .store_path(&mut first_panel)
                         .end()
-                        .start_static_texture(wood_man)
+                        .start_static_texture(&wood_man)
                             .min_size(PreonVector::new(0, 200))
                             .expand_horizontally()
                         .end()
-                        .start_static_texture(juan)
+                        .start_static_texture(&juan)
                             .min_size(PreonVector::new(0, 200))
                             .expand_horizontally()
                         .end()
@@ -65,11 +78,12 @@ pub fn app() {
                         .expand_horizontally()
                         .start_label(format!("Size of PreonComponent: {}", std::mem::size_of::<PreonComponent>()))
                             .expand_horizontally()
-                            .min_size(PreonVector::new(0, 20))
-                            .font(font_bold)
+                            .min_size(PreonVector::new(0, 48))
+                            .apply(Heading(&font_bold))
                         .end()
                         .start_vbox()
                             .background_color(PreonColor::from_hex("#da0037"))
+                            .foreground_color(PreonColor::WHITE)
                             .margin(PreonBorder::from_single(10))
                             .padding(PreonBorder::from_single(10))
                             .start_label_str("Label 1").min_size(PreonVector::new(200, 20)).end()

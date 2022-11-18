@@ -1,3 +1,5 @@
+use std::vec::Drain;
+
 use preon_engine::{
     rendering::PreonShape,
     types::PreonVector,
@@ -7,12 +9,13 @@ use wgpu_glyph::{ab_glyph, GlyphBrush, GlyphBrushBuilder, Layout, Section, Text}
 pub struct TextShape {
     brushes: Vec<Option<GlyphBrush<()>>>,
     staging_belt: wgpu::util::StagingBelt,
+    format: wgpu::TextureFormat,
 }
 
 impl TextShape {
     pub fn new(
         device: &wgpu::Device,
-        fonts: Vec<Vec<u8>>,
+        fonts: Drain<Vec<u8>>,
         format: wgpu::TextureFormat,
     ) -> Self {
         let mut brushes = Vec::new();
@@ -29,6 +32,22 @@ impl TextShape {
         Self {
             brushes,
             staging_belt,
+            format,
+        }
+    }
+
+    pub fn load_fonts(&mut self, fonts: Drain<Vec<u8>>, device: &wgpu::Device) {
+        for font in fonts {
+            self.brushes.push(Some(
+                GlyphBrushBuilder::using_font(ab_glyph::FontArc::try_from_vec(font).unwrap())
+                    .build(device, self.format),
+            ));
+        }
+    }
+
+    pub fn unload_fonts(&mut self, fonts: Drain<usize>) {
+        for font in fonts {
+            self.brushes.remove(font);
         }
     }
 
@@ -43,7 +62,7 @@ impl TextShape {
         {
             let brush = self
                 .brushes
-                .get_mut(text_style.font_index as usize)
+                .get_mut(text_style.font.map(|f| f.index()).unwrap_or(0))
                 .unwrap()
                 .as_mut()
                 .unwrap();
@@ -56,7 +75,7 @@ impl TextShape {
                 layout: Layout::default_wrap(),
                 text: vec![Text::new(text)
                     .with_color([r, g, b, a])
-                    .with_scale(text_style.size as f32)
+                    .with_scale(text_style.size)
                     .with_z(z_index)],
             });
         }

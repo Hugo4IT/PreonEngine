@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, vec::Drain};
 
 use log::info;
 use preon_engine::rendering::PreonShape;
@@ -59,6 +59,7 @@ pub struct RectShape {
     pub pipeline: wgpu::RenderPipeline,
     pub instance_buffer: InstanceBuffer<RectInstance>,
     pub sheet: TextureSheet,
+    rebuild: bool,
 }
 
 impl RectShape {
@@ -67,11 +68,11 @@ impl RectShape {
         config: &wgpu::SurfaceConfiguration,
         queue: &wgpu::Queue,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        textures: &Vec<Vec<u8>>,
+        textures: Drain<Vec<u8>>,
     ) -> Self {
         info!("Init TextureSheet...");
         let sheet =
-            TextureSheet::from_images(textures, device, queue, String::from("static_textures"));
+            TextureSheet::from_images(textures, device, queue);
 
         let instance_buffer = InstanceBuffer::new(device);
 
@@ -131,6 +132,27 @@ impl RectShape {
             pipeline,
             instance_buffer,
             sheet,
+            rebuild: false,
+        }
+    }
+
+    pub fn queue_load_textures(&mut self, mut textures: Drain<Vec<u8>>) {
+        for texture in textures {
+            self.sheet.add(texture);
+            self.rebuild = true;
+        }
+    }
+
+    pub fn queue_unload_textures(&mut self, mut textures: Drain<usize>) {
+        for texture in textures {
+            self.sheet.remove(texture);
+            self.rebuild = true;
+        }
+    }
+
+    pub fn apply(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        if self.rebuild {
+            self.sheet.rebuild(device, queue)
         }
     }
 

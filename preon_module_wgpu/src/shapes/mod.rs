@@ -1,6 +1,6 @@
 use log::info;
 use preon_engine::{
-    rendering::{PreonRenderPass, PreonShape, PreonRenderData},
+    rendering::{PreonRenderPass, PreonShape, PreonRendererLoadOperations},
     types::PreonVector,
 };
 use wgpu::util::DeviceExt;
@@ -36,7 +36,7 @@ impl ShapeManager {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         queue: &wgpu::Queue,
-        render_data: &PreonRenderData,
+        load_ops: &mut PreonRendererLoadOperations,
     ) -> Self {
         info!("Creating depth buffer...");
         let depth_texture = Texture::new_depth(device, config);
@@ -60,11 +60,11 @@ impl ShapeManager {
             config,
             queue,
             &transform.bind_group_layout,
-            &render_data.textures,
+            load_ops.take_textures(),
         );
 
         info!("Init TextShape...");
-        let text = TextShape::new(device, render_data.fonts, config.format);
+        let text = TextShape::new(device, load_ops.take_fonts(), config.format);
 
         Self {
             transform,
@@ -74,6 +74,15 @@ impl ShapeManager {
             vertex_buffer,
             index_buffer,
         }
+    }
+
+    pub fn update(&mut self, load_ops: &mut PreonRendererLoadOperations, device: &wgpu::Device, queue: &wgpu::Queue) {
+        self.rect.queue_load_textures(load_ops.take_textures());
+        self.rect.queue_unload_textures(load_ops.take_unload_textures());
+        self.rect.apply(device, queue);
+
+        self.text.load_fonts(load_ops.take_fonts(), device);
+        self.text.unload_fonts(load_ops.take_unload_fonts());
     }
 
     /// Translate PreonRenderPass to instanced wgpu::RenderPass instructions, and apply z_index

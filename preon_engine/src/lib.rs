@@ -70,10 +70,12 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use core::cell::RefCell;
+
+use alloc::{vec::Vec, rc::Rc};
 use components::PreonComponent;
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
-use rendering::{PreonRenderPass, PreonRenderData, PreonFont, PreonImage, IntoImage, IntoFont};
+use rendering::{PreonRenderPass, PreonRendererLoadOperations, PreonFont, PreonImage, IntoImage, IntoFont};
 
 use self::types::PreonVector;
 
@@ -201,9 +203,9 @@ pub struct PreonEngine {
     pub window_inner_size: PreonVector<u32>,
     /// Pass this to your renderer module of choice after executing `engine.update()`. See [`PreonEventEmitter`] and [`PreonShape`](`rendering::PreonShape`)
     pub render_pass: PreonRenderPass,
-    /// Data for StaticLabel and StaticTexture
-    pub render_data: PreonRenderData,
-    pub image_references: Vec<PreonImage>,
+    pub renderer_load_ops: PreonRendererLoadOperations,
+    pub image_references: Vec<Rc<RefCell<usize>>>,
+    pub font_references: Vec<Rc<RefCell<usize>>>,
 }
 
 impl PreonEngine {
@@ -213,8 +215,9 @@ impl PreonEngine {
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
-            render_data: PreonRenderData::new(),
-            image_references: Vec::new()
+            renderer_load_ops: PreonRendererLoadOperations::new(),
+            image_references: Vec::new(),
+            font_references: Vec::new(),
         }
     }
 
@@ -222,15 +225,52 @@ impl PreonEngine {
         self.tree = tree;
     }
 
-    pub fn load_image(&mut self, image: impl IntoImage) -> &PreonImage {
-        self.render_data.textures.push(image.get_image());
-        self.image_references.push(PreonImage::new(self.render_data.textures.len() - 1));
-        self.image_references.last().unwrap()
+    pub fn load_image(&mut self, image: impl IntoImage) -> PreonImage {
+        self.renderer_load_ops.textures.push(image.get_image());
+        self.image_references.push(Rc::new(RefCell::new(self.image_references.len())));
+        PreonImage::new(self.image_references[self.image_references.len() - 1].clone())
+    }
+
+    pub fn unload_image(&mut self, image: PreonImage) {
+        let index = image.index();
+
+        self.renderer_load_ops.unload_textures.push(index);
+        self.image_references.remove(
+            self.image_references
+                .iter()
+                .position(|r| *r.borrow() == index)
+                .unwrap()
+        );
+        
+        for image_ref in self.image_references.iter_mut() {
+            if *image_ref.borrow() > index {
+                *image_ref.borrow_mut() -= 1;
+            }
+        }
     }
 
     pub fn load_font(&mut self, font: impl IntoFont) -> PreonFont {
-        self.render_data.fonts.push(font.get_font());
-        PreonFont::new(self.render_data.fonts.len() - 1)
+        self.renderer_load_ops.fonts.push(font.get_font());
+        self.font_references.push(Rc::new(RefCell::new(self.font_references.len())));
+        PreonFont::new(self.font_references[self.font_references.len() - 1].clone())
+    }
+
+    pub fn unload_font(&mut self, font: PreonFont) {
+        let index = font.index();
+
+        self.renderer_load_ops.unload_fonts.push(index);
+        self.font_references.remove(
+            self.font_references
+                .iter()
+                .position(|r| *r.borrow() == index)
+                .unwrap()
+        );
+        
+        for font_ref in self.font_references.iter_mut() {
+            if *font_ref.borrow() > index {
+                *font_ref.borrow_mut() -= 1;
+            }
+        }
     }
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
@@ -299,8 +339,8 @@ pub mod prelude {
     pub use crate::events::PreonUserEvent;
     pub use crate::size;
     pub use crate::PreonEngine;
+    pub use crate::style::PreonClass;
     pub use crate::style::PreonBackground;
-    pub use crate::style::PreonForeground;
     pub use crate::style::PreonComponentBuilderStyleExtension;
     pub use crate::style::PreonComponentBuilderTextStyleExtension;
     pub use crate::rendering::PreonImage;

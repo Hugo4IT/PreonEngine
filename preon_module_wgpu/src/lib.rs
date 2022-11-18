@@ -1,3 +1,5 @@
+use std::vec::Drain;
+
 use log::info;
 use preon_engine::{rendering::PreonRenderPass, types::PreonVector, PreonEngine};
 use shapes::ShapeManager;
@@ -33,7 +35,7 @@ pub mod preon {
             .build(&event_loop)
             .unwrap();
 
-        let mut renderer = PreonRendererWGPU::new(&window, &engine);
+        let mut renderer = PreonRendererWGPU::new(&window, &mut engine);
         window.set_visible(true);
 
         let (mut ctrl, mut shift, mut logo, mut alt) = (false, false, false, false);
@@ -56,7 +58,7 @@ pub mod preon {
                         callback(&mut engine.tree, event, &mut user_events);
                     }
 
-                    if renderer.render(&mut engine.render_pass) {
+                    if renderer.render( &mut engine) {
                         *control_flow = ControlFlow::Exit;
                     }
                 }
@@ -176,7 +178,7 @@ pub struct PreonRendererWGPU {
 }
 
 impl PreonRendererWGPU {
-    pub fn new(window: &Window, engine: &PreonEngine) -> Self {
+    pub fn new(window: &Window, engine: &mut PreonEngine) -> Self {
         #[cfg(feature = "android")]
         {
             info!("Detected android platform (--features android), waiting for NativeWindow...");
@@ -230,7 +232,7 @@ impl PreonRendererWGPU {
         surface.configure(&device, &config);
 
         info!("Init ShapeManager...");
-        let shape_manager = ShapeManager::new(&device, &config, &queue, &engine.render_data);
+        let shape_manager = ShapeManager::new(&device, &config, &queue, &mut engine.renderer_load_ops);
 
         info!("WGPU Initialized!");
 
@@ -264,8 +266,9 @@ impl PreonRendererWGPU {
         }
     }
 
-    fn render(&mut self, pass: &mut PreonRenderPass) -> bool {
-        self.shape_manager.build(pass, &self.device, &self.queue);
+    fn render(&mut self, engine: &mut PreonEngine) -> bool {
+        self.shape_manager.update(&mut engine.renderer_load_ops, &self.device, &self.queue);
+        self.shape_manager.build(&mut engine.render_pass, &self.device, &self.queue);
 
         let res: Result<(), wgpu::SurfaceError> = {
             let output = self.surface.get_current_texture().unwrap();

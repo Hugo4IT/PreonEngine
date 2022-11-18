@@ -14,7 +14,7 @@ impl PreonComponentBuilderHBoxExtension for PreonComponentBuilder {
                 layout: PreonLayout::Columns,
                 align_items: PreonAlignment::Start,
                 cross_align_items: PreonAlignment::Center,
-                ..Default::default()
+                ..self.inherited_style()
             },
             ..Default::default()
         });

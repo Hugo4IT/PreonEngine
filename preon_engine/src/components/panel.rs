@@ -16,7 +16,7 @@ impl PreonComponentBuilderPanelExtension for PreonComponentBuilder {
             style: PreonStyle {
                 background: PreonBackground::Color(color),
                 layout: PreonLayout::Container,
-                ..Default::default()
+                ..self.inherited_style()
             },
             ..Default::default()
         });
