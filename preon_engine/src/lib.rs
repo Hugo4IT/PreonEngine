@@ -359,6 +359,10 @@ pub mod log {
         (target: $target:expr, $($arg:tt)+) => {{};};
         ($($arg:tt)+) => {{};};
     }
+    #[macro_export] macro_rules! warn {
+        (target: $target:expr, $($arg:tt)+) => {{};};
+        ($($arg:tt)+) => {{};};
+    }
     #[macro_export] macro_rules! error {
         (target: $target:expr, $($arg:tt)+) => {{};};
         ($($arg:tt)+) => {{};};

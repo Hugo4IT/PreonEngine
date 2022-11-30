@@ -4,7 +4,7 @@ use core::fmt::Display;
 
 use crate::types::PreonVector;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PreonButtonState {
     MouseEnter,
     MouseExit,
@@ -29,7 +29,7 @@ impl Display for PreonButtonState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PreonEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
@@ -39,7 +39,7 @@ pub enum PreonEvent {
     Button(u32, PreonButtonState),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PreonUserEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
@@ -49,7 +49,7 @@ pub enum PreonUserEvent {
 }
 
 /// Contains a front- and backbuffer> Events get pushed onto
-/// the backbuffer and pulled from the frontbuffer. Use [`PreonEventEmitter::pull`]
+/// the backbuffer and pulled from the frontbuffer. Use [`PreonEventEmitter::flip`]
 /// to swap the front- and backbuffer.
 #[derive(Debug)]
 pub struct PreonEventEmitter<T: Clone> {

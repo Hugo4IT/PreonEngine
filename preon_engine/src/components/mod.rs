@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use alloc::{vec::Vec, string::String, vec, borrow::ToOwned};
+use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
@@ -28,6 +28,8 @@ pub struct PreonComponent {
     pub inner_size: PreonVector<i32>,
     pub inner_position: PreonVector<i32>,
     pub index_updates: Vec<isize>,
+    pub id: Option<String>,
+    pub id_lookup_cache: Vec<(String, Vec<u16>)>
 }
 
 impl PreonComponent {
@@ -39,44 +41,98 @@ impl PreonComponent {
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
             index_updates: Vec::new(),
+            id: None,
+            id_lookup_cache: Vec::new(),
         }
     }
 
-    pub fn validate(&mut self, path: &mut Vec<usize>) {
-        let mut current = self;
-        path.reverse();
-
-        'outer: for i in path.iter_mut() {
-            for change in current.index_updates.iter() {
-                if *i >= (*change).abs() as usize {
-                    if *change < 0 {
-                        *i -= 1;
-                    } else {
-                        *i += 1;
-                    }
-
-                    break 'outer;
-                }
+    fn find_child_by_id_recursive(&self, id: &String) -> Option<Vec<u16>> {
+        for (i, child) in self.children.iter().enumerate() {
+            if child.id.as_ref() == Some(id) {
+                return Some(vec![i as u16])
             }
+            
+            if let Some(path) = child.find_child_by_id_recursive(id) {
+                let mut full_path = vec![i as u16];
+                full_path.extend(path);
 
-            current = current.get_child_ref_mut(*i);
+                return Some(full_path)
+            }
         }
 
-        path.reverse();
+        None
     }
 
-    pub fn get_child_ref_recursive(&self, path: &[usize]) -> &PreonComponent {
+    fn find_child_by_id(&self, id: &String) -> Option<Vec<u16>> {
+        self
+            .find_child_by_id_recursive(id)
+            .map(|mut path| { path.reverse(); path })
+            .and_then(|path| self.get_child_ref_recursive(path.as_slice()).map(|_| path))
+    }
+
+    fn get_child_path_by_id_cached(&self, id: &String) -> Option<Vec<u16>> {
+        self
+            .id_lookup_cache
+            .iter()
+            .rev()
+            .find_map(|item| if &item.0 == id { Some(item.1.clone()) } else { None })
+    }
+
+    pub fn get_child_ref_by_id(&mut self, id: impl ToString) -> Option<&PreonComponent> {
+        let id = &id.to_string();
+        
+        let path = self
+            .get_child_path_by_id_cached(id)
+            .or_else(|| self.find_child_by_id(id));
+        
+        if let Some(path) = path {
+            self.get_child_ref_recursive(&path[..])
+        } else {
+            if let Some(path) = self.find_child_by_id(id) {
+                self.id_lookup_cache.push((id.clone(), path.clone()));
+                self.get_child_ref_recursive(&path[..])
+            } else {
+                log::warn!("No component found with id {}", id);
+                None
+            }
+        }
+    }
+
+    pub fn get_child_ref_mut_by_id(&mut self, id: impl ToString) -> Option<&mut PreonComponent> {
+        let id = &id.to_string();
+
+        let path = self
+            .get_child_path_by_id_cached(id)
+            .or_else(|| self.find_child_by_id(id));
+        
+        if let Some(path) = path {
+            let child = self.get_child_ref_mut_recursive(&path[..]);
+            log::warn!("{:?}", child);
+            child
+        } else {
+            if let Some(path) = self.find_child_by_id(id) {
+                self.id_lookup_cache.push((id.clone(), path.clone()));
+                self.get_child_ref_mut_recursive(&path[..])
+            } else {
+                log::warn!("No component found with id {}", id);
+                None
+            }
+        }
+    }
+
+    pub fn get_child_ref_recursive(&self, path: &[u16]) -> Option<&PreonComponent> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
         if path.len() == 1 {
             self.get_child_ref(index)
         } else {
-            self.get_child_ref(index).get_child_ref_recursive(&_path)
+            self.get_child_ref(index)
+                .and_then(|child| child.get_child_ref_recursive(&_path))
         }
     }
 
-    pub fn get_child_ref_mut_recursive(&mut self, path: &[usize]) -> &mut PreonComponent {
+    pub fn get_child_ref_mut_recursive(&mut self, path: &[u16]) -> Option<&mut PreonComponent> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
@@ -84,32 +140,70 @@ impl PreonComponent {
             self.get_child_ref_mut(index)
         } else {
             self.get_child_ref_mut(index)
-                .get_child_ref_mut_recursive(&_path)
+                .and_then(|child| child.get_child_ref_mut_recursive(&_path))
         }
     }
 
-    pub fn get_child_ref(&self, id: usize) -> &PreonComponent {
-        self.children
-            .get(id)
-            .unwrap()
+    pub unsafe fn get_child_raw_by_id(&mut self, id: impl ToString) -> Option<*mut PreonComponent> {
+        let id = &id.to_string();
+
+        let path = self
+            .get_child_path_by_id_cached(id)
+            .or_else(|| self.find_child_by_id(id));
+        
+        if let Some(path) = path {
+            let child = self.get_child_raw_recursive(&path[..]);
+            log::warn!("{:?}", child);
+            child
+        } else {
+            if let Some(path) = self.find_child_by_id(id) {
+                self.id_lookup_cache.push((id.clone(), path.clone()));
+                self.get_child_raw_recursive(&path[..])
+            } else {
+                log::warn!("No component found with id {}", id);
+                None
+            }
+        }
     }
 
-    pub fn get_child_ref_mut(&mut self, id: usize) -> &mut PreonComponent {
+    pub unsafe fn get_child_raw_recursive(&mut self, path: &[u16]) -> Option<*mut PreonComponent> {
+        let mut _path = path.to_owned();
+        let index = _path.pop().unwrap();
+
+        if path.len() == 1 {
+            self.get_child_raw(index)
+        } else {
+            self.get_child_ref_mut(index)
+                .and_then(|child| child.get_child_raw_recursive(&_path))
+        }
+    }
+
+    pub unsafe fn get_child_raw(&mut self, idx: u16) -> Option<*mut PreonComponent> {
         self.children
-            .get_mut(id)
-            .unwrap()
+            .get_mut(idx as usize)
+            .map(|child| child as *mut PreonComponent)
+    }
+
+    pub fn get_child_ref(&self, idx: u16) -> Option<&PreonComponent> {
+        self.children
+            .get(idx as usize)
+    }
+
+    pub fn get_child_ref_mut(&mut self, idx: u16) -> Option<&mut PreonComponent> {
+        self.children
+            .get_mut(idx as usize)
     }
 
     pub fn add_child(&mut self, child: PreonComponent) {
         self.children.push(child);
     }
 
-    pub fn insert_child(&mut self, id: usize, child: PreonComponent) {
-        self.children.insert(id, child);
+    pub fn insert_child(&mut self, idx: u16, child: PreonComponent) {
+        self.children.insert(idx as usize, child);
     }
 
-    pub fn remove_child(&mut self, id: usize) {
-        self.children.remove(id);
+    pub fn remove_child(&mut self, idx: u16) {
+        self.children.remove(idx as usize);
     }
 
     #[inline(always)]
@@ -341,6 +435,8 @@ impl Default for PreonComponent {
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
             index_updates: Vec::new(),
+            id: None,
+            id_lookup_cache: Vec::new(),
         }
     }
 }
@@ -428,6 +524,16 @@ impl PreonComponentBuilder {
 
     pub fn inherited_style(&self) -> PreonStyle {
         PreonStyle::inherit_from(&self.current().style)
+    }
+
+    pub fn id(&mut self, id: &str) -> &mut PreonComponentBuilder {
+        self.stack.last_mut().unwrap().id = Some(id.to_string());
+        self
+    }
+
+    pub fn id_string(&mut self, id: String) -> &mut PreonComponentBuilder {
+        self.stack.last_mut().unwrap().id = Some(id);
+        self
     }
 
     pub fn end(&mut self) -> &mut PreonComponentBuilder {

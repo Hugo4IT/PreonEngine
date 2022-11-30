@@ -9,6 +9,7 @@ pub(crate) trait PreonLayoutProvider {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub enum PreonLayout {
     Rows,
     Columns,

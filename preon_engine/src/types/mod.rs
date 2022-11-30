@@ -35,6 +35,7 @@ where
 
 // A vector (from math, not the array-one) with 2 axis. Useful for storing positions or sizes
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(C)]
 pub struct PreonVector<T: PreonVectorAble> {
     pub x: T,
     pub y: T,
@@ -205,6 +206,7 @@ impl<T: PreonVectorAble> Display for PreonVector<T> {
 
 /// Color values with advanced features. Automatically applies SRGB to linear color space conversion.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
 pub struct PreonColor {
     pub r: f32,
     pub g: f32,
@@ -411,6 +413,7 @@ impl Display for PreonColor {
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[repr(C)]
 pub struct PreonBorder {
     pub top: i32,
     pub right: i32,
@@ -501,6 +504,7 @@ impl Sub<PreonBorder> for PreonVector<i32> {
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
+#[repr(C)]
 pub struct PreonCorners {
     pub top_left: f32,
     pub top_right: f32,
@@ -553,6 +557,7 @@ impl Display for PreonCorners {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(C)]
 pub enum PreonAlignment {
     Start,
     Center,

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cargo build --release &&
+cp ../../target/release/libPreonEngine.dylib libPreonEngine.dll &&
+python3 ./generate.py

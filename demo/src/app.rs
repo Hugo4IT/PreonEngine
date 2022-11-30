@@ -16,20 +16,13 @@ pub fn app() {
     env_logger::init();
 
     let mut rng = rand::thread_rng();
-    let mut first_panel: Vec<usize> = Vec::new();
-    let mut panel_list: Vec<usize> = Vec::new();
-    let mut label: Vec<usize> = Vec::new();
 
     let mut engine = PreonEngine::new();
     
     let wood_man = engine.load_image(&include_bytes!("../../res/mm2wood.png")[..]);
-    let juan2 = engine.load_image(&include_bytes!("../../res/juan.png")[..]);
     let juan = engine.load_image(&include_bytes!("../../res/juan.png")[..]);
-    engine.unload_image(juan2);
     let font_normal = engine.load_font(&include_bytes!("../../res/Montserrat-Regular.otf")[..]);
-    let font_italic = engine.load_font(&include_bytes!("../../res/Montserrat-Italic.otf")[..]);
     let font_bold = engine.load_font(&include_bytes!("../../res/Montserrat-Bold.otf")[..]);
-    engine.unload_font(font_italic);
     
     #[rustfmt::skip]
     engine.set_tree(
@@ -54,7 +47,7 @@ pub fn app() {
                         .start_panel_hex("#c4c4c4")
                             .min_size(PreonVector::new(0, 48))
                             .expand_horizontally()
-                            .store_path(&mut first_panel)
+                            .id("first_panel")
                         .end()
                         .start_static_texture(&wood_man)
                             .min_size(PreonVector::new(0, 200))
@@ -67,9 +60,9 @@ pub fn app() {
                         .start_label("Such art.".to_string())
                             .min_size(PreonVector::new(0, 200))
                             .expand_horizontally()
-                            .store_path(&mut label)
+                            .id("label")
                         .end()
-                        .store_path(&mut panel_list)
+                        .id("panel_list")
                     .end()
                 .end()
                 .start_panel_hex("#d3d3d3")
@@ -102,29 +95,25 @@ pub fn app() {
         PreonEvent::WindowOpened => {
             println!("Over the hills far away, Ferris came to play!");
 
-            tree.get_child_ref_mut_recursive(&label).text = "Poggers".to_string();
+            tree.get_child_ref_mut_by_id("label").unwrap().text = "Poggers".to_string();
 
-            let list = tree.get_child_ref_mut_recursive(&panel_list);
-            let new_component = PreonComponentBuilder::new()
-            .foreground_color(PreonColor::from_hex("#da0037"))
-            .min_size(PreonVector::new(0, 48))
-            .expand_horizontally()
-            .build();
+            // let list = tree.get_child_ref_mut_recursive(&panel_list);
+            // let new_component = PreonComponentBuilder::new()
+            // .foreground_color(PreonColor::from_hex("#da0037"))
+            // .min_size(PreonVector::new(0, 48))
+            // .expand_horizontally()
+            // .build();
 
 
-            list.insert_child(0, new_component);
-
-            // Update path after inserting new child
-            tree.validate(&mut first_panel);
-            tree.validate(&mut label);
-
-            tree.get_child_ref_mut_recursive(&first_panel).style.background = PreonBackground::Color(
+            tree.get_child_ref_mut_by_id("first_panel").unwrap().style.background = PreonBackground::Color(
                     PreonColor::from_rgba(rng.gen(), rng.gen(), rng.gen(), 1.0));
-
 
             user_events.push(PreonUserEvent::ForceUpdate);
         }
-        PreonEvent::WindowResized(_) => println!("RESIZE"),
+        PreonEvent::WindowResized(size) => {
+            tree.get_child_ref_mut_by_id("label").unwrap().text = format!("Size: {}", size);
+            // user_events.push(PreonUserEvent::ForceUpdate);
+        }
         PreonEvent::WindowClosed => println!("Then he died..."),
         _ => {}
     });

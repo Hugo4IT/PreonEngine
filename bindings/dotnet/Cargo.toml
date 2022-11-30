@@ -1,0 +1,16 @@
+[package]
+name = "preon_dotnet"
+version = "0.1.0"
+
+
+[lib]
+name = "PreonEngine"
+crate-type = ["dylib"]
+
+
+[dependencies]
+env_logger = "0.10.0"
+preon_engine = { path = "../../preon_engine" }
+preon_module_wgpu = { path = "../../preon_module_wgpu" }
+paste = "1.0.9"
+bytemuck = "1.12.3"
