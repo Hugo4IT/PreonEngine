@@ -1,5 +1,6 @@
 #!/bin/bash
 
 cargo build &&
-cp ../../target/debug/libPreonEngine.dylib libPreonEngine.dll &&
+rm -f ./Demo/bin/Debug/net7.0/libPreonEngine.* &&
+(cp -n ../../target/debug/libPreonEngine.dylib ./Demo/bin/Debug/net7.0/libPreonEngine.dylib || cp -n ../../target/debug/libPreonEngine.so ./Demo/bin/Debug/net7.0/libPreonEngine.so || cp -n ../../target/debug/libPreonEngine.dll ./Demo/bin/Debug/net7.0/libPreonEngine.dll) &&
 python3 ./generate.py

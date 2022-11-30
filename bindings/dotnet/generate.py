@@ -7,7 +7,7 @@ BINDINGS = [
     ["void", "PreonEngine__set_tree", [PTR, PTR]],
 
     [PTR,    "PreonComponentBuilder__new",       []],
-    ["void", "PreonComponentBuilder__id_string", [PTR, "StringBinding"]],
+    ["void", "PreonComponentBuilder__id_string", [PTR, "string"]],
     ["void", "PreonComponentBuilder__end",       [PTR]],
     [PTR,    "PreonComponentBuilder__build",     [PTR]],
 
@@ -17,8 +17,8 @@ BINDINGS = [
     ["void",    "PreonComponentBuilder__start_vbox", [PTR]],
     ["void",    "PreonComponentBuilder__empty_vbox", [PTR]],
 
-    ["void",    "PreonComponentBuilder__start_label", [PTR, "StringBinding"]],
-    ["void",    "PreonComponentBuilder__empty_label", [PTR, "StringBinding"]],
+    ["void",    "PreonComponentBuilder__start_label", [PTR, "string"]],
+    ["void",    "PreonComponentBuilder__empty_label", [PTR, "string"]],
 
     ["void",    "PreonComponentBuilder__start_panel", [PTR, "PreonColor.Inner"]],
     ["void",    "PreonComponentBuilder__empty_panel", [PTR, "PreonColor.Inner"]],
@@ -51,12 +51,10 @@ BINDINGS = [
 
     ["void", "PreonEventEmitter__push", [PTR, "PreonEventBinding"]],
 
-    ["void",          "PreonComponent__set_text",     [PTR, "StringBinding"]],
-    ["StringBinding", "PreonComponent__get_text",     [PTR]],
+    ["void",   "PreonComponent__set_text",     [PTR, "string"]],
+    ["string", "PreonComponent__get_text",     [PTR]],
 
-    ["StringBinding", "PreonComponent__test", [PTR, "StringBinding"]],
-
-    [PTR, "PreonComponent__get_child_ref_mut_by_id", [PTR, "StringBinding"]],
+    [PTR, "PreonComponent__get_child_ref_mut_by_id", [PTR, "string"]],
 
     ["void", "preon__init",           []],
     ["void", "preon__run",            [PTR, "[MarshalAs(UnmanagedType.FunctionPtr)]RunCallback"]],
@@ -67,7 +65,7 @@ for binding in BINDINGS:
     returntype, funcname, parametertypes = binding
     methods += \
     f"""
-    [DllImport("PreonEngine.dll", EntryPoint = "{funcname}", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("PreonEngine", EntryPoint = "{funcname}", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern {returntype} {funcname}({', '.join([paramtype + " _" + str(i) for i, paramtype in enumerate(parametertypes)])});
     """
 
@@ -87,40 +85,34 @@ internal static class NativeMethods
 {{
     public unsafe delegate void RunCallback({PTR} tree, PreonEventBinding two, PreonUserEventEmitterBinding three);
 
-    [StructLayout(LayoutKind.Explicit)]
-    public unsafe struct PreonEventBinding
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PreonEventBinding
     {{
-        [FieldOffset(0)]
         internal byte kind;
 
-        [FieldOffset(1)]
         internal uint WindowResized_NewSize_X;
-        [FieldOffset(5)]
         internal uint WindowResized_NewSize_Y;
 
-        [FieldOffset(1)]
         internal uint Button_Id;
-        [FieldOffset(5)]
         internal PreonButtonState Button_State;
     }}
 
-    public static unsafe PreonEventBinding Bind(PreonEvent @event)
-    {{
-        return @event switch
-        {{
-            PreonEvent.WindowResized realEvent => new PreonEventBinding() {{ kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y }},
-            PreonEvent.WindowOpened realEvent => new PreonEventBinding() {{ kind = 1 }},
-            PreonEvent.WindowClosed realEvent => new PreonEventBinding() {{ kind = 2 }},
-            PreonEvent.Update realEvent => new PreonEventBinding() {{ kind = 3 }},
-            PreonEvent.LayoutUpdate realEvent => new PreonEventBinding() {{ kind = 4 }},
-            PreonEvent.Button realEvent => new PreonEventBinding() {{ kind = 5, Button_Id = realEvent.Id, Button_State = realEvent.State }},
-            _ => throw new Exception("Nonexistant event kind"),
-        }};
-    }}
+    // public static unsafe PreonEventBinding Bind(PreonEvent @event)
+    // {{
+    //     return @event switch
+    //     {{
+    //         PreonEvent.WindowResized realEvent => new PreonEventBinding() {{ kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y }},
+    //         PreonEvent.WindowOpened realEvent => new PreonEventBinding() {{ kind = 1 }},
+    //         PreonEvent.WindowClosed realEvent => new PreonEventBinding() {{ kind = 2 }},
+    //         PreonEvent.Update realEvent => new PreonEventBinding() {{ kind = 3 }},
+    //         PreonEvent.LayoutUpdate realEvent => new PreonEventBinding() {{ kind = 4 }},
+    //         PreonEvent.Button realEvent => new PreonEventBinding() {{ kind = 5, Button_Id = realEvent.Id, Button_State = realEvent.State }},
+    //         _ => throw new Exception("Nonexistant event kind"),
+    //     }};
+    // }}
 
     public static unsafe PreonEvent Unbind(PreonEventBinding binding)
     {{
-        Console.WriteLine($"{{binding.kind}} {{binding.WindowResized_NewSize_X}} {{binding.WindowResized_NewSize_Y}} {{binding.Button_State}} {{binding.Button_Id}}");
         return binding.kind switch
         {{
             0 => new PreonEvent.WindowResized() {{ NewSize = new(binding.WindowResized_NewSize_X, binding.WindowResized_NewSize_Y) }},
@@ -129,7 +121,7 @@ internal static class NativeMethods
             3 => new PreonEvent.Update(),
             4 => new PreonEvent.LayoutUpdate(),
             5 => new PreonEvent.Button() {{ Id = binding.Button_Id, State = binding.Button_State }},
-            _ => throw new Exception("Nonexistant event kind"),
+            byte other => throw new Exception($"Nonexistant event kind: {{other}}"),
         }};
     }}
     
@@ -137,36 +129,6 @@ internal static class NativeMethods
     public unsafe struct PreonUserEventEmitterBinding
     {{
         internal void* inner;
-    }}
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct StringBinding
-    {{
-        internal nuint length;
-        internal byte* ptr;
-    }}
-
-    public static StringBinding Bind(string str)
-    {{
-        unsafe
-        {{
-            fixed(byte* ptr = Encoding.UTF8.GetBytes(str))
-            {{
-                return new StringBinding()
-                {{
-                    length = (nuint)str.Length,
-                    ptr = ptr
-                }};
-            }}
-        }}
-    }}
-
-    public static string Unbind(StringBinding str)
-    {{
-        unsafe
-        {{
-            return Marshal.PtrToStringUTF8(new IntPtr(str.ptr), (int)str.length);
-        }}
     }}
 
     {methods}

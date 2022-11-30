@@ -8,101 +8,78 @@ use preon_engine::components::label::PreonComponentBuilderLabelExtension;
 use preon_engine::style::PreonComponentBuilderStyleExtension;
 use preon_engine::style::PreonComponentBuilderTextStyleExtension;
 
+const PREON_EVENT_SIZE: usize = core::mem::size_of::<preon_engine::events::PreonEvent>() - 4;
+
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct DataHolder<T: Copy>(T);
 unsafe impl<T: Copy> bytemuck::Zeroable for DataHolder<T> {}
 unsafe impl<T: Copy + 'static> bytemuck::Pod for DataHolder<T> {}
 
-const PREON_EVENT_SIZE: usize = core::mem::size_of::<preon_engine::events::PreonEvent>();
-
+#[derive(Debug)]
 #[repr(C)]
 pub struct PreonEventBinding {
-    kind: u8,
-    data: [u8; PREON_EVENT_SIZE],
+    pub kind: u8,
+    pub WindowResized_new_size_x: u32,
+    pub WindowResized_new_size_y: u32,
+    pub Button_state: preon_engine::events::PreonButtonState,
+    pub Button_id: u32,
 }
 
 impl PreonEventBinding {
-    pub fn from_data<T>(kind: u8, data: T) -> Self
-    where
-        T: bytemuck::Pod + bytemuck::Zeroable
-    {
-        let data_ref = &[data];
-
-        let mut data = bytemuck::cast_slice(data_ref).to_vec();
-        data.resize(PREON_EVENT_SIZE, 0);
-
-        let mut data_arr = [0u8; PREON_EVENT_SIZE];
-        data_arr.copy_from_slice(data.as_slice());
-
-        Self {
-            kind,
-            data: data_arr,
-        }
-    }
-
     pub fn from_kind(kind: u8) -> Self {
         Self {
             kind,
-            data: [0u8; PREON_EVENT_SIZE],
+            WindowResized_new_size_x: 0,
+            WindowResized_new_size_y: 0,
+            Button_state: preon_engine::events::PreonButtonState::MouseEnter,
+            Button_id: 0,
         }
     }
 }
 
 impl From<preon_engine::events::PreonEvent> for PreonEventBinding {
+    #[inline(always)]
     fn from(event: preon_engine::events::PreonEvent) -> Self {
         match event {
-            preon_engine::prelude::PreonEvent::WindowResized(new_size) => PreonEventBinding::from_data(0, DataHolder((new_size.x, new_size.y))),
+            preon_engine::prelude::PreonEvent::WindowResized(new_size) => PreonEventBinding {
+                WindowResized_new_size_x: new_size.x,
+                WindowResized_new_size_y: new_size.y,
+                ..PreonEventBinding::from_kind(0)
+            },
             preon_engine::prelude::PreonEvent::WindowOpened => PreonEventBinding::from_kind(1),
             preon_engine::prelude::PreonEvent::WindowClosed => PreonEventBinding::from_kind(2),
             preon_engine::prelude::PreonEvent::Update => PreonEventBinding::from_kind(3),
             preon_engine::prelude::PreonEvent::LayoutUpdate => PreonEventBinding::from_kind(4),
-            preon_engine::prelude::PreonEvent::Button(id, state) => PreonEventBinding::from_data(5, DataHolder((id, state))),
+            preon_engine::prelude::PreonEvent::Button(id, state) => PreonEventBinding {
+                Button_id: id,
+                Button_state: state,
+                ..PreonEventBinding::from_kind(5)
+            },
         }
     }
 }
 
-impl From<preon_engine::events::PreonUserEvent> for PreonEventBinding {
-    fn from(event: preon_engine::events::PreonUserEvent) -> Self {
-        match event {
-            preon_engine::prelude::PreonUserEvent::WindowResized(new_size) => PreonEventBinding::from_data(0, DataHolder(new_size)),
-            preon_engine::prelude::PreonUserEvent::WindowOpened => PreonEventBinding::from_kind(1),
-            preon_engine::prelude::PreonUserEvent::WindowClosed => PreonEventBinding::from_kind(2),
-            preon_engine::prelude::PreonUserEvent::MouseMove(position) => PreonEventBinding::from_data(3, DataHolder(position)),
-            preon_engine::prelude::PreonUserEvent::ForceUpdate => PreonEventBinding::from_kind(4),
-        }
-    }
-}
+// impl From<preon_engine::events::PreonUserEvent> for PreonEventBinding {
+//     fn from(event: preon_engine::events::PreonUserEvent) -> Self {
+//         match event {
+//             preon_engine::prelude::PreonUserEvent::WindowResized(new_size) => PreonEventBinding::from_data(0, DataHolder(new_size)),
+//             preon_engine::prelude::PreonUserEvent::WindowOpened => PreonEventBinding::from_kind(1),
+//             preon_engine::prelude::PreonUserEvent::WindowClosed => PreonEventBinding::from_kind(2),
+//             preon_engine::prelude::PreonUserEvent::MouseMove(position) => PreonEventBinding::from_data(3, DataHolder(position)),
+//             preon_engine::prelude::PreonUserEvent::ForceUpdate => PreonEventBinding::from_kind(4),
+//         }
+//     }
+// }
 
-#[repr(C)]
+use std::ffi;
+
+#[repr(transparent)]
 pub struct PreonUserEventEmitterBinding {
     inner: *mut preon_engine::events::PreonEventEmitter<preon_engine::events::PreonUserEvent>,
 }
 
-#[repr(C)]
-pub struct StringBinding {
-    length: usize,
-    string: *const u8,
-}
-
-impl From<StringBinding> for String {
-    fn from(string: StringBinding) -> Self {
-        unsafe {
-            String::from_raw_parts(string.string as *mut u8, string.length, string.length)
-        }
-    }
-}
-
-impl From<String> for StringBinding {
-    fn from(string: String) -> Self {
-        StringBinding {
-            length: string.len(),
-            string: string.as_ptr(),
-        }
-    }
-}
-
-#[repr(C)]
+#[repr(transparent)]
 pub struct PreonImageBinding {
     inner: *mut preon_engine::rendering::PreonImage,
 }
@@ -113,7 +90,7 @@ impl From<PreonImageBinding> for &preon_engine::rendering::PreonImage {
     }
 }
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct PreonFontBinding {
     inner: *mut preon_engine::rendering::PreonFont,
 }
@@ -125,51 +102,51 @@ impl From<PreonFontBinding> for &preon_engine::rendering::PreonFont {
 }
 
 #[no_mangle]
-pub unsafe extern fn preon__init() {
+pub unsafe extern "C" fn preon__init() {
     env_logger::init();
 }
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct PreonEngineBinding {
     pub inner: *mut preon_engine::PreonEngine,
 }
 
 #[no_mangle]
-pub unsafe extern fn PreonEngine__new() -> PreonEngineBinding {
+pub unsafe extern "C" fn PreonEngine__new() -> PreonEngineBinding {
     PreonEngineBinding { inner: Box::into_raw(Box::new(preon_engine::PreonEngine::new())) }
 }
 
 #[no_mangle]
-pub unsafe extern fn PreonEngine__set_tree(engine: PreonEngineBinding, tree: PreonComponentBinding) {
+pub unsafe extern "C" fn PreonEngine__set_tree(engine: PreonEngineBinding, tree: PreonComponentBinding) {
     engine.inner.as_mut().unwrap().set_tree(*Box::from_raw(tree.inner));
 }
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct PreonComponentBinding {
     pub inner: *mut preon_engine::components::PreonComponent,
 }
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct PreonComponentBuilderBinding {
     pub inner: *mut preon_engine::components::PreonComponentBuilder,
 }
 
 #[no_mangle]
-pub unsafe extern fn PreonComponentBuilder__new() -> PreonComponentBuilderBinding {
+pub unsafe extern "C" fn PreonComponentBuilder__new() -> PreonComponentBuilderBinding {
     PreonComponentBuilderBinding {
         inner: Box::into_raw(Box::new(preon_engine::components::PreonComponentBuilder::new())),
     }
 }
 
 #[no_mangle]
-pub unsafe extern fn PreonComponentBuilder__build(component_builder: PreonComponentBuilderBinding) -> PreonComponentBinding {
+pub unsafe extern "C" fn PreonComponentBuilder__build(component_builder: PreonComponentBuilderBinding) -> PreonComponentBinding {
     PreonComponentBinding {
         inner: Box::into_raw(Box::new(component_builder.inner.as_mut().unwrap().build())),
     }
 }
 
 #[no_mangle]
-pub unsafe extern fn PreonComponentBuilder__end(component_builder: PreonComponentBuilderBinding) {
+pub unsafe extern "C" fn PreonComponentBuilder__end(component_builder: PreonComponentBuilderBinding) {
     component_builder.inner.as_mut().unwrap().end();
 }
 
@@ -189,13 +166,10 @@ macro_rules! component_builder_funcs {
 }
 
 component_builder_funcs!(
-    id_string ( id: StringBinding )
     start_hbox ( )
     empty_hbox ( )
     start_vbox ( )
     empty_vbox ( )
-    start_label ( text: StringBinding )
-    empty_label ( text: StringBinding )
     start_panel ( color: preon_engine::types::PreonColor )
     empty_panel ( color: preon_engine::types::PreonColor )
     panel_color ( color: preon_engine::types::PreonColor )
@@ -226,7 +200,22 @@ component_builder_funcs!(
 );
 
 #[no_mangle]
-pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern fn(PreonComponentBinding, PreonEventBinding, PreonUserEventEmitterBinding)) {
+pub unsafe extern "C" fn PreonComponentBuilder__id_string(component_builder: PreonComponentBuilderBinding, id: *const ffi::c_char) {
+    component_builder.inner.as_mut().unwrap().id_string(ffi::CStr::from_ptr(id).to_str().unwrap().to_string());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponentBuilder__start_label(component_builder: PreonComponentBuilderBinding, text: *const ffi::c_char) {
+    component_builder.inner.as_mut().unwrap().start_label(ffi::CStr::from_ptr(text).to_str().unwrap().to_string());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponentBuilder__empty_label(component_builder: PreonComponentBuilderBinding, text: *const ffi::c_char) {
+    component_builder.inner.as_mut().unwrap().empty_label(ffi::CStr::from_ptr(text).to_str().unwrap().to_string());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern "C" fn(PreonComponentBinding, PreonEventBinding, PreonUserEventEmitterBinding)) {
     let mut engine = *Box::from_raw(engine.inner);
 
     let juan = engine.load_image(&include_bytes!("../../../res/juan.png")[..]);
@@ -246,47 +235,27 @@ pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponent__get_text(component: PreonComponentBinding) -> StringBinding {
-    let component = component.inner.as_ref().unwrap();
-    StringBinding {
-        length: component.text.len(),
-        string: component.text.as_ptr(),
-    }
+pub unsafe extern "C" fn PreonComponent__get_text(component: PreonComponentBinding) -> *mut i8 {
+    ffi::CString::new(component.inner.as_ref().unwrap().text.as_str()).unwrap().into_raw()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponent__set_text(component: PreonComponentBinding, text: StringBinding) {
-    component.inner.as_mut().unwrap().text = text.into();
+pub unsafe extern "C" fn PreonComponent__set_text(component: PreonComponentBinding, text: *const ffi::c_char) {
+    component.inner.as_mut().unwrap().text = ffi::CStr::from_ptr(text).to_str().unwrap().to_string();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponent__get_child_ref_mut_by_id(component: PreonComponentBinding, id: StringBinding) -> PreonComponentBinding {
-    let id = String::from(id);
-    println!("1");
+pub unsafe extern "C" fn PreonComponent__get_child_ref_mut_by_id(component: PreonComponentBinding, id: *const ffi::c_char) -> PreonComponentBinding {
+    let id = ffi::CStr::from_ptr(id).to_str().unwrap().to_string();
+
     let inner = component
         .inner
         .as_mut()
+        .unwrap()
+        .get_child_raw_by_id(id)
         .unwrap();
-    println!("2 {}", id);
-    let inner = inner
-        .get_child_raw_by_id(id);
-    println!("3");
-    let inner = inner
-        .unwrap();
-    println!("4");
 
     PreonComponentBinding {
-        inner: inner,
+        inner,
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn PreonComponent__test(component: PreonComponentBinding, text: StringBinding) -> StringBinding {
-    println!("Rust Received: {}", String::from(text));
-
-    println!("Before!");
-    println!("{:?}", component.inner.as_ref().unwrap());
-    println!("After!");
-
-    "This is a message from Rust".to_string().into()
 }

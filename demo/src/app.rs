@@ -47,6 +47,7 @@ pub fn app() {
                         .start_panel_hex("#c4c4c4")
                             .min_size(PreonVector::new(0, 48))
                             .expand_horizontally()
+                            .hoverable()
                             .id("first_panel")
                         .end()
                         .start_static_texture(&wood_man)

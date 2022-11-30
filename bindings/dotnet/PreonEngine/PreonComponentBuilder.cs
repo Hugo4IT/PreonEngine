@@ -59,7 +59,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__start_label(_inner, NativeMethods.Bind(text));
+            NativeMethods.PreonComponentBuilder__start_label(_inner, text);
         }
 
         return this;
@@ -69,7 +69,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__start_label(_inner, NativeMethods.Bind(text));
+            NativeMethods.PreonComponentBuilder__start_label(_inner, text);
         }
 
         return this;
@@ -332,7 +332,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__id_string(_inner, NativeMethods.Bind(id));
+            NativeMethods.PreonComponentBuilder__id_string(_inner, id);
         }
 
         return this;

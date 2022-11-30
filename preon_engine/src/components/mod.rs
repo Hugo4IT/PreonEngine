@@ -3,7 +3,7 @@ use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
-    types::{PreonAlignment, PreonVector, PreonColor},
+    types::{PreonAlignment, PreonVector, PreonColor, PreonRect},
     style::{PreonStyle, PreonBackground},
     layout::{
         PreonLayout,
@@ -29,7 +29,8 @@ pub struct PreonComponent {
     pub inner_position: PreonVector<i32>,
     pub index_updates: Vec<isize>,
     pub id: Option<String>,
-    pub id_lookup_cache: Vec<(String, Vec<u16>)>
+    pub id_lookup_cache: Vec<(String, Vec<u16>)>,
+    pub hoverable: bool,
 }
 
 impl PreonComponent {
@@ -43,6 +44,22 @@ impl PreonComponent {
             index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
+            hoverable: false,
+        }
+    }
+
+    pub fn get_hovered_child(&mut self, position: PreonVector<i32>) -> Option<&mut PreonComponent> {
+        if !self.get_border_rect().contains_point(position) {
+            None
+        } else {
+            if self.hoverable {
+                Some(self)
+            } else {
+                self.children
+                    .iter_mut()
+                    .filter_map(|child| child.get_hovered_child(position))
+                    .next()
+            }
         }
     }
 
@@ -106,9 +123,7 @@ impl PreonComponent {
             .or_else(|| self.find_child_by_id(id));
         
         if let Some(path) = path {
-            let child = self.get_child_ref_mut_recursive(&path[..]);
-            log::warn!("{:?}", child);
-            child
+            self.get_child_ref_mut_recursive(&path[..])
         } else {
             if let Some(path) = self.find_child_by_id(id) {
                 self.id_lookup_cache.push((id.clone(), path.clone()));
@@ -152,9 +167,7 @@ impl PreonComponent {
             .or_else(|| self.find_child_by_id(id));
         
         if let Some(path) = path {
-            let child = self.get_child_raw_recursive(&path[..]);
-            log::warn!("{:?}", child);
-            child
+            self.get_child_raw_recursive(&path[..])
         } else {
             if let Some(path) = self.find_child_by_id(id) {
                 self.id_lookup_cache.push((id.clone(), path.clone()));
@@ -217,6 +230,11 @@ impl PreonComponent {
     }
 
     #[inline(always)]
+    pub fn get_content_rect(&self) -> PreonRect<i32> {
+        PreonRect::new(self.get_content_position(), self.get_content_size())
+    }
+
+    #[inline(always)]
     pub fn set_inner_position(&mut self, new_position: PreonVector<i32>) {
         self.inner_position = new_position;
     }
@@ -224,6 +242,11 @@ impl PreonComponent {
     #[inline(always)]
     pub fn get_inner_position(&self) -> PreonVector<i32> {
         self.inner_position
+    }
+
+    #[inline(always)]
+    pub fn get_inner_rect(&self) -> PreonRect<i32> {
+        PreonRect::new(self.get_inner_position(), self.get_inner_size())
     }
 
     #[inline(always)]
@@ -237,6 +260,11 @@ impl PreonComponent {
     }
 
     #[inline(always)]
+    pub fn get_border_rect(&self) -> PreonRect<i32> {
+        PreonRect::new(self.get_border_position(), self.get_border_size())
+    }
+
+    #[inline(always)]
     pub fn set_outer_position(&mut self, new_position: PreonVector<i32>) {
         self.inner_position =
             new_position + self.style.border.top_left() + self.style.margin.top_left();
@@ -245,6 +273,11 @@ impl PreonComponent {
     #[inline(always)]
     pub fn get_outer_position(&self) -> PreonVector<i32> {
         self.inner_position - self.style.border.top_left() - self.style.margin.top_left()
+    }
+
+    #[inline(always)]
+    pub fn get_outer_rect(&self) -> PreonRect<i32> {
+        PreonRect::new(self.get_outer_position(), self.get_outer_size())
     }
 
     #[inline(always)]
@@ -437,6 +470,7 @@ impl Default for PreonComponent {
             index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
+            hoverable: false,
         }
     }
 }
@@ -524,6 +558,16 @@ impl PreonComponentBuilder {
 
     pub fn inherited_style(&self) -> PreonStyle {
         PreonStyle::inherit_from(&self.current().style)
+    }
+
+    pub fn hoverable(&mut self) -> &mut PreonComponentBuilder  {
+        self.stack.last_mut().unwrap().hoverable = true;
+        self
+    }
+
+    pub fn override_hoverable(&mut self, hoverable: bool) -> &mut PreonComponentBuilder  {
+        self.stack.last_mut().unwrap().hoverable = hoverable;
+        self
     }
 
     pub fn id(&mut self, id: &str) -> &mut PreonComponentBuilder {

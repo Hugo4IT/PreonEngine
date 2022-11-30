@@ -597,3 +597,26 @@ impl Display for PreonAlignment {
         )
     }
 }
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+#[repr(C)]
+pub struct PreonRect<T: PreonVectorAble> {
+    pub position: PreonVector<T>,
+    pub size: PreonVector<T>,
+}
+
+impl<T: PreonVectorAble> PreonRect<T> {
+    pub const fn new(position: PreonVector<T>, size: PreonVector<T>) -> Self {
+        Self {
+            position,
+            size,
+        }
+    }
+
+    pub fn contains_point(&self, point: PreonVector<T>) -> bool {
+        self.position.x <= point.x &&
+        self.position.y <= point.y &&
+        self.position.x + self.size.x >= point.x &&
+        self.position.y + self.size.y >= point.y
+    }
+}

@@ -294,12 +294,17 @@ impl PreonEngine {
                     PreonUserEvent::WindowClosed => {
                         self.events.push(PreonEvent::WindowClosed);
                     }
-                    _ => {}
+                    PreonUserEvent::MouseMove(mouse_position) => {
+                        if let Some(component) = self.tree.get_hovered_child(mouse_position) {
+                            
+                        }
+                    },
+                    _ => (),
                 }
             };
 
             if update_layout {
-                log::info!("Relayout!");
+                log::info!("Relayout");
 
                 self.tree.set_outer_size(PreonVector::new(
                     self.window_inner_size.x as i32,
