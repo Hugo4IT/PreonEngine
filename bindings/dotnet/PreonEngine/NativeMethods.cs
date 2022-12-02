@@ -15,39 +15,43 @@ internal static class NativeMethods
     [StructLayout(LayoutKind.Sequential)]
     public struct PreonEventBinding
     {
-        internal byte kind;
+        internal byte Kind;
 
         internal uint WindowResized_NewSize_X;
         internal uint WindowResized_NewSize_Y;
 
-        internal uint Button_Id;
-        internal PreonButtonState Button_State;
+        internal string ComponentPressed_Id;
+        internal PreonButtonState ComponentPressed_State;
+
+        internal ushort MouseInput_Button;
+        internal PreonMouseButtonState MouseInput_State;
     }
 
     // public static unsafe PreonEventBinding Bind(PreonEvent @event)
     // {
     //     return @event switch
     //     {
-    //         PreonEvent.WindowResized realEvent => new PreonEventBinding() { kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y },
-    //         PreonEvent.WindowOpened realEvent => new PreonEventBinding() { kind = 1 },
-    //         PreonEvent.WindowClosed realEvent => new PreonEventBinding() { kind = 2 },
-    //         PreonEvent.Update realEvent => new PreonEventBinding() { kind = 3 },
-    //         PreonEvent.LayoutUpdate realEvent => new PreonEventBinding() { kind = 4 },
-    //         PreonEvent.Button realEvent => new PreonEventBinding() { kind = 5, Button_Id = realEvent.Id, Button_State = realEvent.State },
+    //         PreonEvent.WindowResized realEvent => new PreonEventBinding() { Kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y },
+    //         PreonEvent.WindowOpened realEvent => new PreonEventBinding() { Kind = 1 },
+    //         PreonEvent.WindowClosed realEvent => new PreonEventBinding() { Kind = 2 },
+    //         PreonEvent.Update realEvent => new PreonEventBinding() { Kind = 3 },
+    //         PreonEvent.LayoutUpdate realEvent => new PreonEventBinding() { Kind = 4 },
+    //         PreonEvent.Button realEvent => new PreonEventBinding() { Kind = 5, Button_Id = realEvent.Id, Button_State = realEvent.State },
     //         _ => throw new Exception("Nonexistant event kind"),
     //     };
     // }
 
     public static unsafe PreonEvent Unbind(PreonEventBinding binding)
     {
-        return binding.kind switch
+        return binding.Kind switch
         {
             0 => new PreonEvent.WindowResized() { NewSize = new(binding.WindowResized_NewSize_X, binding.WindowResized_NewSize_Y) },
             1 => new PreonEvent.WindowOpened(),
             2 => new PreonEvent.WindowClosed(),
             3 => new PreonEvent.Update(),
             4 => new PreonEvent.LayoutUpdate(),
-            5 => new PreonEvent.Button() { Id = binding.Button_Id, State = binding.Button_State },
+            5 => new PreonEvent.ComponentPressed() { Id = binding.ComponentPressed_Id, State = binding.ComponentPressed_State },
+            6 => new PreonEvent.MouseInput() { Index = binding.MouseInput_Button, State = binding.MouseInput_State },
             byte other => throw new Exception($"Nonexistant event kind: {other}"),
         };
     }
@@ -94,6 +98,12 @@ internal static class NativeMethods
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__empty_label", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void PreonComponentBuilder__empty_label(void* _0, string _1);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__start_button", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponentBuilder__start_button(void* _0, string _1);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__empty_button", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponentBuilder__empty_button(void* _0, string _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__start_panel", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void PreonComponentBuilder__start_panel(void* _0, PreonColor.Inner _1);

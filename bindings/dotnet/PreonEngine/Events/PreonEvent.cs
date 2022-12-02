@@ -13,9 +13,14 @@ public class PreonEvent
     public class WindowClosed : PreonEvent {}
     public class Update : PreonEvent {}
     public class LayoutUpdate : PreonEvent {}
-    public class Button : PreonEvent
+    public class ComponentPressed : PreonEvent
     {
-        public uint Id { get; set; }
+        public string Id { get; set; }
         public PreonButtonState State { get; set; }
+    }
+    public class MouseInput : PreonEvent
+    {
+        public ushort Index { get; set; }
+        public PreonMouseButtonState State { get; set; }
     }
 }

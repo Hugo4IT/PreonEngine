@@ -1,9 +1,9 @@
-use std::vec::Drain;
-
 use log::info;
-use preon_engine::{rendering::PreonRenderPass, types::PreonVector, PreonEngine};
+use preon_engine::{types::PreonVector, PreonEngine};
 use shapes::ShapeManager;
 use winit::{dpi::PhysicalSize, window::Window};
+
+pub use winit::event::VirtualKeyCode as PreonKeyCode;
 
 mod instancing;
 mod shapes;
@@ -12,7 +12,7 @@ mod texture;
 pub mod preon {
     use preon_engine::{
         components::PreonComponent,
-        events::{PreonEvent, PreonEventEmitter, PreonUserEvent},
+        events::{PreonEvent, PreonEventEmitter, PreonUserEvent, PreonMouseButton, PreonMouseButtonState},
         types::PreonVector,
         PreonEngine,
     };
@@ -110,6 +110,25 @@ pub mod preon {
                         position.y as i32,
                     )));
                 }
+                WindowEvent::MouseInput {
+                    // device_id,
+                    state,
+                    button,
+                    ..
+                } => {
+                    user_events.push(PreonUserEvent::MouseInput(
+                        match button {
+                            winit::event::MouseButton::Left => PreonMouseButton::Left,
+                            winit::event::MouseButton::Right => PreonMouseButton::Right,
+                            winit::event::MouseButton::Middle => PreonMouseButton::Middle,
+                            winit::event::MouseButton::Other(id) => PreonMouseButton::Other(*id),
+                        },
+                        match state {
+                            ElementState::Pressed => PreonMouseButtonState::Pressed,
+                            ElementState::Released => PreonMouseButtonState::Released,
+                        }
+                    ))
+                }
                 WindowEvent::ModifiersChanged(modifier) => {
                     ctrl = modifier.ctrl();
                     shift = modifier.shift();
@@ -161,6 +180,14 @@ pub mod preon {
                         *control_flow = ControlFlow::Exit;
                     }
                 }
+                // WindowEvent::KeyboardInput { input, .. } => {
+                //     if let Some(keycode) = input.virtual_keycode {
+                //         user_events.push(PreonUserEvent::KeyboardInput(keycode, match input.state {
+                //             ElementState::Pressed => PreonMouseButtonState::Pressed,
+                //             ElementState::Released => PreonMouseButtonState::Released,
+                //         }))
+                //     }
+                // }
                 _ => (),
             },
             _ => (),

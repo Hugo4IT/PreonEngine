@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned};
+use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned, boxed::Box};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
@@ -10,7 +10,7 @@ use crate::{
         rows::PreonRowsLayoutProvider,
         columns::PreonColumnsLayoutProvider,
         container::PreonContainerLayoutProvider
-    },
+    }, events::{PreonEvent, PreonMouseButtonState, PreonButtonState},
 };
 
 pub mod hbox;
@@ -18,6 +18,17 @@ pub mod vbox;
 pub mod panel;
 pub mod label;
 pub mod static_texture;
+pub mod button;
+
+#[repr(transparent)]
+#[derive(Clone)]
+pub struct ExcludeFromDebug<T: Clone>(T);
+
+impl<T: Clone> core::fmt::Debug for ExcludeFromDebug<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "ExcludeFromDebug<T>()")
+    }
+}
 
 /// A UI component
 #[derive(Debug, Clone)]
@@ -30,7 +41,7 @@ pub struct PreonComponent {
     pub index_updates: Vec<isize>,
     pub id: Option<String>,
     pub id_lookup_cache: Vec<(String, Vec<u16>)>,
-    pub hoverable: bool,
+    pub mouse_events: bool,
 }
 
 impl PreonComponent {
@@ -44,7 +55,7 @@ impl PreonComponent {
             index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
-            hoverable: false,
+            mouse_events: false,
         }
     }
 
@@ -52,13 +63,12 @@ impl PreonComponent {
         if !self.get_border_rect().contains_point(position) {
             None
         } else {
-            if self.hoverable {
+            if self.mouse_events {
                 Some(self)
             } else {
                 self.children
                     .iter_mut()
-                    .filter_map(|child| child.get_hovered_child(position))
-                    .next()
+                    .find_map(|child| child.get_hovered_child(position))
             }
         }
     }
@@ -363,6 +373,14 @@ impl PreonComponent {
         self.set_inner_size_y(new_y - self.style.margin.y() - self.style.border.y());
     }
 
+    pub(crate) fn trigger_pressed(&mut self) -> Option<PreonEvent> {
+        if let Some(id) = self.id.as_ref() {
+            Some(PreonEvent::ComponentPressed(id.clone(), PreonButtonState::Pressed))
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn layout(&mut self) {
         use crate::layout::PreonLayoutProvider;
 
@@ -461,6 +479,8 @@ impl Default for PreonComponent {
             style: PreonStyle {
                 align_items: PreonAlignment::Start,
                 cross_align_items: PreonAlignment::Center,
+                background: PreonBackground::Color(PreonColor::WHITE),
+                foreground_color: PreonColor::BLACK,
                 ..Default::default()
             },
             children: Vec::new(),
@@ -470,7 +490,7 @@ impl Default for PreonComponent {
             index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
-            hoverable: false,
+            mouse_events: false,
         }
     }
 }
@@ -561,12 +581,12 @@ impl PreonComponentBuilder {
     }
 
     pub fn hoverable(&mut self) -> &mut PreonComponentBuilder  {
-        self.stack.last_mut().unwrap().hoverable = true;
+        self.stack.last_mut().unwrap().mouse_events = true;
         self
     }
 
     pub fn override_hoverable(&mut self, hoverable: bool) -> &mut PreonComponentBuilder  {
-        self.stack.last_mut().unwrap().hoverable = hoverable;
+        self.stack.last_mut().unwrap().mouse_events = hoverable;
         self
     }
 

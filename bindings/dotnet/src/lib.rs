@@ -1,3 +1,5 @@
+#![allow(unused_unsafe)]
+
 extern crate preon_engine;
 
 use preon_engine::components::hbox::PreonComponentBuilderHBoxExtension;
@@ -5,10 +7,22 @@ use preon_engine::components::vbox::PreonComponentBuilderVBoxExtension;
 use preon_engine::components::static_texture::PreonComponentBuilderStaticTextureExtension;
 use preon_engine::components::panel::PreonComponentBuilderPanelExtension;
 use preon_engine::components::label::PreonComponentBuilderLabelExtension;
+use preon_engine::components::button::PreonComponentBuilderButtonExtension;
 use preon_engine::style::PreonComponentBuilderStyleExtension;
 use preon_engine::style::PreonComponentBuilderTextStyleExtension;
 
+use std::os::raw::c_char;
+
 const PREON_EVENT_SIZE: usize = core::mem::size_of::<preon_engine::events::PreonEvent>() - 4;
+
+macro_rules! to_string {
+    ($cstring:ident) => (unsafe { ffi::CStr::from_ptr($cstring).to_str().unwrap().to_string() });
+    ($cstring:expr) => (unsafe { ffi::CStr::from_ptr($cstring).to_str().unwrap().to_string() });
+}
+
+macro_rules! to_cstring {
+    ($string:ident) => (ffi::CString::new($string).unwrap().into_raw());
+}
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
@@ -22,8 +36,10 @@ pub struct PreonEventBinding {
     pub kind: u8,
     pub WindowResized_new_size_x: u32,
     pub WindowResized_new_size_y: u32,
-    pub Button_state: preon_engine::events::PreonButtonState,
-    pub Button_id: u32,
+    pub ComponentPressed_id: *mut i8,
+    pub ComponentPressed_state: preon_engine::events::PreonButtonState,
+    pub MouseInput_button: preon_engine::events::PreonMouseButton,
+    pub MouseInput_state: preon_engine::events::PreonMouseButtonState,
 }
 
 impl PreonEventBinding {
@@ -32,8 +48,10 @@ impl PreonEventBinding {
             kind,
             WindowResized_new_size_x: 0,
             WindowResized_new_size_y: 0,
-            Button_state: preon_engine::events::PreonButtonState::MouseEnter,
-            Button_id: 0,
+            ComponentPressed_id: core::ptr::null_mut(),
+            ComponentPressed_state: preon_engine::events::PreonButtonState::MouseEnter,
+            MouseInput_button: preon_engine::events::PreonMouseButton::Left,
+            MouseInput_state: preon_engine::events::PreonMouseButtonState::Pressed,
         }
     }
 }
@@ -51,26 +69,34 @@ impl From<preon_engine::events::PreonEvent> for PreonEventBinding {
             preon_engine::prelude::PreonEvent::WindowClosed => PreonEventBinding::from_kind(2),
             preon_engine::prelude::PreonEvent::Update => PreonEventBinding::from_kind(3),
             preon_engine::prelude::PreonEvent::LayoutUpdate => PreonEventBinding::from_kind(4),
-            preon_engine::prelude::PreonEvent::Button(id, state) => PreonEventBinding {
-                Button_id: id,
-                Button_state: state,
+            preon_engine::prelude::PreonEvent::ComponentPressed(id, state) => PreonEventBinding {
+                ComponentPressed_id: to_cstring!(id),
+                ComponentPressed_state: state,
                 ..PreonEventBinding::from_kind(5)
             },
+            preon_engine::prelude::PreonEvent::MouseInput(button, state) => PreonEventBinding {
+                MouseInput_button: button,
+                MouseInput_state: state,
+                ..PreonEventBinding::from_kind(6)
+            }
         }
     }
 }
 
-// impl From<preon_engine::events::PreonUserEvent> for PreonEventBinding {
-//     fn from(event: preon_engine::events::PreonUserEvent) -> Self {
-//         match event {
-//             preon_engine::prelude::PreonUserEvent::WindowResized(new_size) => PreonEventBinding::from_data(0, DataHolder(new_size)),
-//             preon_engine::prelude::PreonUserEvent::WindowOpened => PreonEventBinding::from_kind(1),
-//             preon_engine::prelude::PreonUserEvent::WindowClosed => PreonEventBinding::from_kind(2),
-//             preon_engine::prelude::PreonUserEvent::MouseMove(position) => PreonEventBinding::from_data(3, DataHolder(position)),
-//             preon_engine::prelude::PreonUserEvent::ForceUpdate => PreonEventBinding::from_kind(4),
-//         }
-//     }
-// }
+impl From<PreonEventBinding> for preon_engine::events::PreonEvent {
+    fn from(binding: PreonEventBinding) -> Self {
+        match binding.kind {
+            0 => preon_engine::events::PreonEvent::WindowResized(preon_engine::types::PreonVector::new(binding.WindowResized_new_size_x, binding.WindowResized_new_size_y)),
+            1 => preon_engine::events::PreonEvent::WindowOpened,
+            2 => preon_engine::events::PreonEvent::WindowClosed,
+            3 => preon_engine::events::PreonEvent::Update,
+            4 => preon_engine::events::PreonEvent::LayoutUpdate,
+            5 => preon_engine::events::PreonEvent::ComponentPressed(to_string!(binding.ComponentPressed_id), binding.ComponentPressed_state),
+            6 => preon_engine::events::PreonEvent::MouseInput(binding.MouseInput_button, binding.MouseInput_state),
+            _ => panic!("Invalid event binding!"),
+        }
+    }
+}
 
 use std::ffi;
 
@@ -200,18 +226,28 @@ component_builder_funcs!(
 );
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponentBuilder__id_string(component_builder: PreonComponentBuilderBinding, id: *const ffi::c_char) {
-    component_builder.inner.as_mut().unwrap().id_string(ffi::CStr::from_ptr(id).to_str().unwrap().to_string());
+pub unsafe extern "C" fn PreonComponentBuilder__id_string(component_builder: PreonComponentBuilderBinding, id: *const c_char) {
+    component_builder.inner.as_mut().unwrap().id_string(to_string!(id));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponentBuilder__start_label(component_builder: PreonComponentBuilderBinding, text: *const ffi::c_char) {
-    component_builder.inner.as_mut().unwrap().start_label(ffi::CStr::from_ptr(text).to_str().unwrap().to_string());
+pub unsafe extern "C" fn PreonComponentBuilder__start_label(component_builder: PreonComponentBuilderBinding, text: *const c_char) {
+    component_builder.inner.as_mut().unwrap().start_label(to_string!(text));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponentBuilder__empty_label(component_builder: PreonComponentBuilderBinding, text: *const ffi::c_char) {
-    component_builder.inner.as_mut().unwrap().empty_label(ffi::CStr::from_ptr(text).to_str().unwrap().to_string());
+pub unsafe extern "C" fn PreonComponentBuilder__empty_label(component_builder: PreonComponentBuilderBinding, text: *const c_char) {
+    component_builder.inner.as_mut().unwrap().empty_label(to_string!(text));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponentBuilder__start_button(component_builder: PreonComponentBuilderBinding, text: *const c_char) {
+    component_builder.inner.as_mut().unwrap().start_button(to_string!(text));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponentBuilder__empty_button(component_builder: PreonComponentBuilderBinding, text: *const c_char) {
+    component_builder.inner.as_mut().unwrap().empty_button(to_string!(text));
 }
 
 #[no_mangle]
@@ -236,17 +272,18 @@ pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern
 
 #[no_mangle]
 pub unsafe extern "C" fn PreonComponent__get_text(component: PreonComponentBinding) -> *mut i8 {
-    ffi::CString::new(component.inner.as_ref().unwrap().text.as_str()).unwrap().into_raw()
+    let text = component.inner.as_ref().unwrap().text.as_str();
+    to_cstring!(text)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponent__set_text(component: PreonComponentBinding, text: *const ffi::c_char) {
-    component.inner.as_mut().unwrap().text = ffi::CStr::from_ptr(text).to_str().unwrap().to_string();
+pub unsafe extern "C" fn PreonComponent__set_text(component: PreonComponentBinding, text: *const c_char) {
+    component.inner.as_mut().unwrap().text = to_string!(text);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn PreonComponent__get_child_ref_mut_by_id(component: PreonComponentBinding, id: *const ffi::c_char) -> PreonComponentBinding {
-    let id = ffi::CStr::from_ptr(id).to_str().unwrap().to_string();
+pub unsafe extern "C" fn PreonComponent__get_child_ref_mut_by_id(component: PreonComponentBinding, id: *const c_char) -> PreonComponentBinding {
+    let id = to_string!(id);
 
     let inner = component
         .inner

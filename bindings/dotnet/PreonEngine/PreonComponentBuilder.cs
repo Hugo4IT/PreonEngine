@@ -75,6 +75,26 @@ public class PreonComponentBuilder
         return this;
     }
 
+    public PreonComponentBuilder StartButton(string text)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponentBuilder__start_button(_inner, text);
+        }
+
+        return this;
+    }
+
+    public PreonComponentBuilder EmptyButton(string text)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponentBuilder__empty_button(_inner, text);
+        }
+
+        return this;
+    }
+
     public PreonComponentBuilder StartPanel(PreonColor color)
     {
         unsafe

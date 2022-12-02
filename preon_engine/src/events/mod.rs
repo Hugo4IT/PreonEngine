@@ -1,10 +1,11 @@
-use alloc::vec::Vec;
+use alloc::{vec::Vec, string::String};
 
 use core::fmt::Display;
 
 use crate::types::PreonVector;
 
 #[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub enum PreonButtonState {
     MouseEnter,
     MouseExit,
@@ -30,13 +31,28 @@ impl Display for PreonButtonState {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum PreonMouseButtonState {
+    Pressed,
+    Released,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PreonMouseButton {
+    Left,
+    Middle,
+    Right,
+    Other(u16),
+}
+
+#[derive(Debug, Clone)]
 pub enum PreonEvent {
     WindowResized(PreonVector<u32>),
     WindowOpened,
     WindowClosed,
     Update,
     LayoutUpdate,
-    Button(u32, PreonButtonState),
+    ComponentPressed(String, PreonButtonState),
+    MouseInput(PreonMouseButton, PreonMouseButtonState),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +61,8 @@ pub enum PreonUserEvent {
     WindowOpened,
     WindowClosed,
     MouseMove(PreonVector<i32>),
+    MouseInput(PreonMouseButton, PreonMouseButtonState),
+    // KeyboardInput(PreonKeyCode, PreonMouseButtonState),
     ForceUpdate,
 }
 

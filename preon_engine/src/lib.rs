@@ -206,6 +206,8 @@ pub struct PreonEngine {
     pub renderer_load_ops: PreonRendererLoadOperations,
     pub image_references: Vec<Rc<RefCell<usize>>>,
     pub font_references: Vec<Rc<RefCell<usize>>>,
+
+    pub mouse_position: PreonVector<i32>,
 }
 
 impl PreonEngine {
@@ -218,6 +220,7 @@ impl PreonEngine {
             renderer_load_ops: PreonRendererLoadOperations::new(),
             image_references: Vec::new(),
             font_references: Vec::new(),
+            mouse_position: PreonVector::zero(),
         }
     }
 
@@ -295,11 +298,31 @@ impl PreonEngine {
                         self.events.push(PreonEvent::WindowClosed);
                     }
                     PreonUserEvent::MouseMove(mouse_position) => {
+                        self.mouse_position = mouse_position;
                         if let Some(component) = self.tree.get_hovered_child(mouse_position) {
                             
                         }
                     },
-                    _ => (),
+                    PreonUserEvent::MouseInput(button, state) => {
+                        self.events.push(PreonEvent::MouseInput(button, state));
+                        
+                        match button {
+                            events::PreonMouseButton::Left => match state {
+                                events::PreonMouseButtonState::Pressed => {
+                                    if let Some(component) = self.tree.get_hovered_child(self.mouse_position) {
+                                        if let Some(event) = component.trigger_pressed() {
+                                            self.events.push(event);
+                                        }
+                                    }
+                                },
+                                events::PreonMouseButtonState::Released => (),
+                            },
+                            // events::PreonMouseButton::Middle => todo!(),
+                            // events::PreonMouseButton::Right => todo!(),
+                            // events::PreonMouseButton::Other(_) => todo!(),
+                            _ => (),
+                        }
+                    }
                 }
             };
 
