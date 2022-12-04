@@ -6,10 +6,12 @@ BINDINGS = [
     [PTR,    "PreonEngine__new",      []],
     ["void", "PreonEngine__set_tree", [PTR, PTR]],
 
-    [PTR,    "PreonComponentBuilder__new",       []],
-    ["void", "PreonComponentBuilder__id_string", [PTR, "string"]],
-    ["void", "PreonComponentBuilder__end",       [PTR]],
-    [PTR,    "PreonComponentBuilder__build",     [PTR]],
+
+    [PTR,    "PreonComponentBuilder__new",            []],
+    ["void", "PreonComponentBuilder__id_string",      [PTR, "string"]],
+    ["void", "PreonComponentBuilder__receive_events", [PTR, "bool"]],
+    ["void", "PreonComponentBuilder__end",            [PTR]],
+    [PTR,    "PreonComponentBuilder__build",          [PTR]],
 
     ["void",    "PreonComponentBuilder__start_hbox", [PTR]],
     ["void",    "PreonComponentBuilder__empty_hbox", [PTR]],
@@ -86,29 +88,32 @@ namespace Preon;
 
 internal static class NativeMethods
 {{
-    public unsafe delegate void RunCallback({PTR} tree, PreonEventBinding two, PreonUserEventEmitterBinding three);
+    public unsafe delegate bool RunCallback({PTR} tree, PreonEventBinding two, PreonUserEventEmitterBinding three);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct PreonEventBinding
     {{
         internal byte Kind;
 
+        internal PreonButtonState ButtonState;
+
         internal uint WindowResized_NewSize_X;
         internal uint WindowResized_NewSize_Y;
 
         internal string ComponentPressed_Id;
-        internal PreonButtonState ComponentPressed_State;
 
         internal ushort MouseInput_Button;
-        internal PreonMouseButtonState MouseInput_State;
+        internal PreonKeyCode KeyboardInput_Key;
+
+        internal char ReceivedCharacter_Char;
     }}
 
     // public static unsafe PreonEventBinding Bind(PreonEvent @event)
     // {{
     //     return @event switch
     //     {{
-    //         PreonEvent.WindowResized realEvent => new PreonEventBinding() {{ Kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y }},
     //         PreonEvent.WindowOpened realEvent => new PreonEventBinding() {{ Kind = 1 }},
+    //         PreonEvent.WindowResized realEvent => new PreonEventBinding() {{ Kind = 0, WindowResized_NewSize_X = realEvent.NewSize.X, WindowResized_NewSize_Y = realEvent.NewSize.Y }},
     //         PreonEvent.WindowClosed realEvent => new PreonEventBinding() {{ Kind = 2 }},
     //         PreonEvent.Update realEvent => new PreonEventBinding() {{ Kind = 3 }},
     //         PreonEvent.LayoutUpdate realEvent => new PreonEventBinding() {{ Kind = 4 }},
@@ -121,13 +126,15 @@ internal static class NativeMethods
     {{
         return binding.Kind switch
         {{
-            0 => new PreonEvent.WindowResized() {{ NewSize = new(binding.WindowResized_NewSize_X, binding.WindowResized_NewSize_Y) }},
-            1 => new PreonEvent.WindowOpened(),
+            0 => new PreonEvent.WindowOpened(),
+            1 => new PreonEvent.WindowResized() {{ NewSize = new(binding.WindowResized_NewSize_X, binding.WindowResized_NewSize_Y) }},
             2 => new PreonEvent.WindowClosed(),
             3 => new PreonEvent.Update(),
             4 => new PreonEvent.LayoutUpdate(),
-            5 => new PreonEvent.ComponentPressed() {{ Id = binding.ComponentPressed_Id, State = binding.ComponentPressed_State }},
-            6 => new PreonEvent.MouseInput() {{ Index = binding.MouseInput_Button, State = binding.MouseInput_State }},
+            5 => new PreonEvent.ComponentPressed() {{ Id = binding.ComponentPressed_Id, State = binding.ButtonState }},
+            6 => new PreonEvent.MouseInput() {{ Index = binding.MouseInput_Button, State = binding.ButtonState }},
+            7 => new PreonEvent.KeyboardInput() {{ Key = binding.KeyboardInput_Key, State = binding.ButtonState }},
+            8 => new PreonEvent.ReceivedCharacter() {{ Char = binding.ReceivedCharacter_Char }},
             byte other => throw new Exception($"Nonexistant event kind: {{other}}"),
         }};
     }}

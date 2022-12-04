@@ -3,8 +3,6 @@ use preon_engine::{types::PreonVector, PreonEngine};
 use shapes::ShapeManager;
 use winit::{dpi::PhysicalSize, window::Window};
 
-pub use winit::event::VirtualKeyCode as PreonKeyCode;
-
 mod instancing;
 mod shapes;
 mod texture;
@@ -12,7 +10,7 @@ mod texture;
 pub mod preon {
     use preon_engine::{
         components::PreonComponent,
-        events::{PreonEvent, PreonEventEmitter, PreonUserEvent, PreonMouseButton, PreonMouseButtonState},
+        events::{PreonEvent, PreonEventEmitter, PreonUserEvent, PreonMouseButton, PreonButtonState, PreonKeyCode},
         types::PreonVector,
         PreonEngine,
     };
@@ -124,8 +122,8 @@ pub mod preon {
                             winit::event::MouseButton::Other(id) => PreonMouseButton::Other(*id),
                         },
                         match state {
-                            ElementState::Pressed => PreonMouseButtonState::Pressed,
-                            ElementState::Released => PreonMouseButtonState::Released,
+                            ElementState::Pressed => PreonButtonState::Pressed,
+                            ElementState::Released => PreonButtonState::Released,
                         }
                     ))
                 }
@@ -144,11 +142,9 @@ pub mod preon {
                             ..
                         },
                     ..
-                } => {
-                    if ctrl && !shift && !logo && !alt {
-                        user_events.push(PreonUserEvent::WindowClosed);
-                        *control_flow = ControlFlow::Exit;
-                    }
+                } if ctrl && !shift && !logo && !alt => {
+                    user_events.push(PreonUserEvent::WindowClosed);
+                    *control_flow = ControlFlow::Exit;
                 }
                 #[cfg(target_os = "macos")]
                 WindowEvent::KeyboardInput {
@@ -159,11 +155,9 @@ pub mod preon {
                             ..
                         },
                     ..
-                } => {
-                    if logo && !shift && !ctrl && !alt {
-                        user_events.push(PreonUserEvent::WindowClosed);
-                        *control_flow = ControlFlow::Exit;
-                    }
+                } if logo && !shift && !ctrl && !alt => {
+                    user_events.push(PreonUserEvent::WindowClosed);
+                    *control_flow = ControlFlow::Exit;
                 }
                 #[cfg(target_os = "windows")]
                 WindowEvent::KeyboardInput {
@@ -174,20 +168,31 @@ pub mod preon {
                             ..
                         },
                     ..
-                } => {
-                    if alt && !ctrl && !shift && !logo {
-                        user_events.push(PreonUserEvent::WindowClosed);
-                        *control_flow = ControlFlow::Exit;
+                } if alt && !ctrl && !shift && !logo => {
+                    user_events.push(PreonUserEvent::WindowClosed);
+                    *control_flow = ControlFlow::Exit;
+                }
+                WindowEvent::ReceivedCharacter(ch) => {
+                    user_events.push(PreonUserEvent::ReceivedCharacter(*ch));
+                }
+                WindowEvent::KeyboardInput { input, .. } => {
+                    if let Some(keycode) = input.virtual_keycode {
+                        #[repr(C)]
+                        union Conversion {
+                            kc: PreonKeyCode,
+                            input: u32,
+                        }
+
+                        let keycode = unsafe {
+                            Conversion { input: keycode as u32 }.kc
+                        };
+
+                        user_events.push(PreonUserEvent::KeyboardInput(keycode, match input.state {
+                            ElementState::Pressed => PreonButtonState::Pressed,
+                            ElementState::Released => PreonButtonState::Released,
+                        }))
                     }
                 }
-                // WindowEvent::KeyboardInput { input, .. } => {
-                //     if let Some(keycode) = input.virtual_keycode {
-                //         user_events.push(PreonUserEvent::KeyboardInput(keycode, match input.state {
-                //             ElementState::Pressed => PreonMouseButtonState::Pressed,
-                //             ElementState::Released => PreonMouseButtonState::Released,
-                //         }))
-                //     }
-                // }
                 _ => (),
             },
             _ => (),

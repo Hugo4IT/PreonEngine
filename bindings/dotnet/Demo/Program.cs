@@ -2,6 +2,8 @@
 using Preon.Events;
 using Preon.Types;
 
+namespace Demo;
+
 internal class Program
 {
     [STAThread]
@@ -12,17 +14,21 @@ internal class Program
         PreonColor primaryColor = new PreonColor(0x37, 0x63, 0xF2);
         PreonEngine engine = new();
 
-        engine.Tree = PreonComponent.StartBuilder()
+        engine.Tree = PreonComponent.StartBuilder(engine)
             .FontSize(32.0f)
             .BackgroundColor(PreonColor.White)
-            // .BackgroundColor(new PreonColor(0.0f, 0.0f, 0.0f))
-            // .ForegroundColor(new PreonColor(0.8f, 0.8f, 0.8f))
             .StartHBox()
                 .Expand()
                 .StartPanel(primaryColor)
                     .ExpandVertically()
                     .MinSize(new PreonVector<int>(400, 0))
                     .StartVBox()
+                        .Padding(new PreonBorder(16, 16, 16, 16))
+                        .StartInputField(placeholder: "Placeholder", onChanged: (field, text) =>
+                        {
+                            Console.WriteLine(text);
+                        })
+                        .End()
                     .End()
                 .End()
                 .StartVBox()
@@ -44,7 +50,7 @@ internal class Program
         };
 
         engine.OnPressed("myButton", (button, state) => {
-            if (state == PreonButtonState.Pressed)
+            if (state == Preon.Events.PreonButtonState.Pressed)
                 Console.WriteLine("Button Pressed");
         });
 

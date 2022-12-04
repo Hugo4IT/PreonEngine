@@ -21,6 +21,15 @@ public class PreonEvent
     public class MouseInput : PreonEvent
     {
         public ushort Index { get; set; }
-        public PreonMouseButtonState State { get; set; }
+        public PreonButtonState State { get; set; }
+    }
+    public class KeyboardInput : PreonEvent
+    {
+        public PreonKeyCode Key { get; set; }
+        public PreonButtonState State { get; set; }
+    }
+    public class ReceivedCharacter : PreonEvent
+    {
+        public char Char;
     }
 }

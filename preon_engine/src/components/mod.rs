@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned, boxed::Box};
+use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned};
 
 use crate::{
     rendering::{PreonRenderPass, PreonShape},
@@ -10,7 +10,8 @@ use crate::{
         rows::PreonRowsLayoutProvider,
         columns::PreonColumnsLayoutProvider,
         container::PreonContainerLayoutProvider
-    }, events::{PreonEvent, PreonMouseButtonState, PreonButtonState},
+    },
+    events::{PreonEvent, PreonButtonState},
 };
 
 pub mod hbox;
@@ -38,7 +39,6 @@ pub struct PreonComponent {
     pub text: String,
     pub inner_size: PreonVector<i32>,
     pub inner_position: PreonVector<i32>,
-    pub index_updates: Vec<isize>,
     pub id: Option<String>,
     pub id_lookup_cache: Vec<(String, Vec<u16>)>,
     pub mouse_events: bool,
@@ -52,7 +52,6 @@ impl PreonComponent {
             text: String::new(),
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
-            index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
             mouse_events: false,
@@ -145,7 +144,7 @@ impl PreonComponent {
         }
     }
 
-    pub fn get_child_ref_recursive(&self, path: &[u16]) -> Option<&PreonComponent> {
+    fn get_child_ref_recursive(&self, path: &[u16]) -> Option<&PreonComponent> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
@@ -157,7 +156,7 @@ impl PreonComponent {
         }
     }
 
-    pub fn get_child_ref_mut_recursive(&mut self, path: &[u16]) -> Option<&mut PreonComponent> {
+    fn get_child_ref_mut_recursive(&mut self, path: &[u16]) -> Option<&mut PreonComponent> {
         let mut _path = path.to_owned();
         let index = _path.pop().unwrap();
 
@@ -384,8 +383,6 @@ impl PreonComponent {
     pub(crate) fn layout(&mut self) {
         use crate::layout::PreonLayoutProvider;
 
-        self.index_updates.clear();
-
         match self.style.layout {
             PreonLayout::Rows => PreonRowsLayoutProvider::layout(self),
             PreonLayout::Columns => PreonColumnsLayoutProvider::layout(self),
@@ -487,7 +484,6 @@ impl Default for PreonComponent {
             text: String::new(),
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
-            index_updates: Vec::new(),
             id: None,
             id_lookup_cache: Vec::new(),
             mouse_events: false,
@@ -537,56 +533,12 @@ impl PreonComponentBuilder {
         self
     }
 
-    pub fn store_index(&mut self, reference: &mut usize) -> &mut PreonComponentBuilder {
-        *reference = self.get_index();
-
-        self
-    }
-
-    pub fn store_path(&mut self, reference: &mut Vec<usize>) -> &mut PreonComponentBuilder {
-        reference.clear();
-        reference.truncate(self.stack.len());
-        reference.shrink_to_fit();
-
-        let mut _stack: Vec<PreonComponent> = Vec::with_capacity(self.stack.capacity());
-
-        for _ in 0..self.stack.len() {
-            if self.stack.len() >= 2 {
-                reference.push(self.get_index());
-            }
-            _stack.push(self.stack.pop().take().unwrap());
-        }
-
-        for _ in 0.._stack.len() {
-            self.stack.push(_stack.pop().take().unwrap());
-        }
-
-        self
-    }
-
-    fn get_index(&mut self) -> usize {
-        if self.stack.len() == 1 {
-            return 0;
-        }
-
-        self.stack
-            .get(self.stack.len() - 2)
-            .unwrap()
-            .children
-            .len()
-    }
-
     pub fn inherited_style(&self) -> PreonStyle {
         PreonStyle::inherit_from(&self.current().style)
     }
 
-    pub fn hoverable(&mut self) -> &mut PreonComponentBuilder  {
-        self.stack.last_mut().unwrap().mouse_events = true;
-        self
-    }
-
-    pub fn override_hoverable(&mut self, hoverable: bool) -> &mut PreonComponentBuilder  {
-        self.stack.last_mut().unwrap().mouse_events = hoverable;
+    pub fn receive_events(&mut self, receive_events: bool) -> &mut PreonComponentBuilder  {
+        self.stack.last_mut().unwrap().mouse_events = receive_events;
         self
     }
 

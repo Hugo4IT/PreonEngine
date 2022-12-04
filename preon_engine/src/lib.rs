@@ -277,80 +277,81 @@ impl PreonEngine {
     }
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
-        let rerender = if !user_events.is_empty() || !self.events.is_empty() {
-            let mut update_layout = false;
+        if user_events.is_empty() && self.events.is_empty() {
+            return false
+        }
 
-            for event in user_events.take() {
-                match event {
-                    PreonUserEvent::WindowResized(new_size) => {
-                        if new_size != self.window_inner_size {
-                            self.window_inner_size = new_size;
-                            self.events.push(PreonEvent::WindowResized(new_size));
-                        }
-                        update_layout = true
+        let mut update_layout = false;
+
+        for event in user_events.take() {
+            match event {
+                PreonUserEvent::WindowResized(new_size) => {
+                    if new_size != self.window_inner_size {
+                        self.window_inner_size = new_size;
+                        self.events.push(PreonEvent::WindowResized(new_size));
                     }
-                    PreonUserEvent::ForceUpdate => update_layout = true,
-                    PreonUserEvent::WindowOpened => {
-                        self.events.push(PreonEvent::WindowOpened);
-                        update_layout = true
-                    }
-                    PreonUserEvent::WindowClosed => {
-                        self.events.push(PreonEvent::WindowClosed);
-                    }
-                    PreonUserEvent::MouseMove(mouse_position) => {
-                        self.mouse_position = mouse_position;
-                        if let Some(component) = self.tree.get_hovered_child(mouse_position) {
-                            
-                        }
-                    },
-                    PreonUserEvent::MouseInput(button, state) => {
-                        self.events.push(PreonEvent::MouseInput(button, state));
-                        
-                        match button {
-                            events::PreonMouseButton::Left => match state {
-                                events::PreonMouseButtonState::Pressed => {
-                                    if let Some(component) = self.tree.get_hovered_child(self.mouse_position) {
-                                        if let Some(event) = component.trigger_pressed() {
-                                            self.events.push(event);
-                                        }
-                                    }
-                                },
-                                events::PreonMouseButtonState::Released => (),
-                            },
-                            // events::PreonMouseButton::Middle => todo!(),
-                            // events::PreonMouseButton::Right => todo!(),
-                            // events::PreonMouseButton::Other(_) => todo!(),
-                            _ => (),
-                        }
-                    }
+                    update_layout = true
                 }
-            };
-
-            if update_layout {
-                log::info!("Relayout");
-
-                self.tree.set_outer_size(PreonVector::new(
-                    self.window_inner_size.x as i32,
-                    self.window_inner_size.y as i32,
-                ));
-                self.tree.set_outer_position(PreonVector::zero());
-
-                self.tree.layout();
-                self.tree.render(&mut self.render_pass);
-
-                self.events.push(PreonEvent::LayoutUpdate);
-                self.render_pass.flip();
+                PreonUserEvent::ForceUpdate => update_layout = true,
+                PreonUserEvent::WindowOpened => {
+                    self.events.push(PreonEvent::WindowOpened);
+                    update_layout = true
+                }
+                PreonUserEvent::WindowClosed => {
+                    self.events.push(PreonEvent::WindowClosed);
+                }
+                PreonUserEvent::MouseMove(mouse_position) => {
+                    if let Some(component) = self.tree.get_hovered_child(mouse_position) {
+                    }
+                    self.mouse_position = mouse_position;
+                },
+                PreonUserEvent::MouseInput(button, state) => {
+                    self.events.push(PreonEvent::MouseInput(button, state));
+                    
+                    match button {
+                        events::PreonMouseButton::Left => match state {
+                            events::PreonButtonState::Pressed => {
+                                if let Some(component) = self.tree.get_hovered_child(self.mouse_position) {
+                                    if let Some(event) = component.trigger_pressed() {
+                                        self.events.push(event);
+                                    }
+                                }
+                            },
+                            events::PreonButtonState::Released => (),
+                        },
+                        // events::PreonMouseButton::Middle => todo!(),
+                        // events::PreonMouseButton::Right => todo!(),
+                        // events::PreonMouseButton::Other(_) => todo!(),
+                        _ => (),
+                    }
+                },
+                PreonUserEvent::KeyboardInput(key, state) => {
+                    self.events.push(PreonEvent::KeyboardInput(key, state));
+                },
+                PreonUserEvent::ReceivedCharacter(ch) => self.events.push(PreonEvent::ReceivedCharacter(ch)),
             }
-
-            self.events.push(PreonEvent::Update);
-            self.events.flip();
-
-            true
-        } else {
-            false
         };
 
-        rerender
+        if update_layout {
+            log::info!("Relayout");
+
+            self.tree.set_outer_size(PreonVector::new(
+                self.window_inner_size.x as i32,
+                self.window_inner_size.y as i32,
+            ));
+            self.tree.set_outer_position(PreonVector::zero());
+
+            self.tree.layout();
+            self.tree.render(&mut self.render_pass);
+
+            self.events.push(PreonEvent::LayoutUpdate);
+            self.render_pass.flip();
+        }
+
+        self.events.push(PreonEvent::Update);
+        self.events.flip();
+
+        true
     }
 }
 
@@ -360,6 +361,7 @@ pub mod prelude {
     pub use crate::components::vbox::PreonComponentBuilderVBoxExtension;
     pub use crate::components::label::PreonComponentBuilderLabelExtension;
     pub use crate::components::panel::PreonComponentBuilderPanelExtension;
+    pub use crate::components::button::PreonComponentBuilderButtonExtension;
     pub use crate::components::static_texture::PreonComponentBuilderStaticTextureExtension;
     pub use crate::components::PreonComponentBuilder;
     pub use crate::types::*;

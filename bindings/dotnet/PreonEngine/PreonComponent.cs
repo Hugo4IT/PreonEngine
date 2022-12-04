@@ -23,9 +23,9 @@ public class PreonComponent
         }
     }
 
-    public static PreonComponentBuilder StartBuilder()
+    public static PreonComponentBuilder StartBuilder(PreonEngine engine)
     {
-        return new PreonComponentBuilder();
+        return new PreonComponentBuilder(engine);
     }
 
     ~PreonComponent()

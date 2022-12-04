@@ -34,12 +34,13 @@ unsafe impl<T: Copy + 'static> bytemuck::Pod for DataHolder<T> {}
 #[repr(C)]
 pub struct PreonEventBinding {
     pub kind: u8,
+    pub button_state: preon_engine::events::PreonButtonState,
     pub WindowResized_new_size_x: u32,
     pub WindowResized_new_size_y: u32,
     pub ComponentPressed_id: *mut i8,
-    pub ComponentPressed_state: preon_engine::events::PreonButtonState,
     pub MouseInput_button: preon_engine::events::PreonMouseButton,
-    pub MouseInput_state: preon_engine::events::PreonMouseButtonState,
+    pub KeyboardInput_key: preon_engine::events::PreonKeyCode,
+    pub ReceivedCharacter_ch: char,
 }
 
 impl PreonEventBinding {
@@ -49,9 +50,10 @@ impl PreonEventBinding {
             WindowResized_new_size_x: 0,
             WindowResized_new_size_y: 0,
             ComponentPressed_id: core::ptr::null_mut(),
-            ComponentPressed_state: preon_engine::events::PreonButtonState::MouseEnter,
+            button_state: preon_engine::events::PreonButtonState::Released,
             MouseInput_button: preon_engine::events::PreonMouseButton::Left,
-            MouseInput_state: preon_engine::events::PreonMouseButtonState::Pressed,
+            KeyboardInput_key: preon_engine::events::PreonKeyCode::A,
+            ReceivedCharacter_ch: '\0',
         }
     }
 }
@@ -60,43 +62,53 @@ impl From<preon_engine::events::PreonEvent> for PreonEventBinding {
     #[inline(always)]
     fn from(event: preon_engine::events::PreonEvent) -> Self {
         match event {
+            preon_engine::prelude::PreonEvent::WindowOpened => PreonEventBinding::from_kind(0),
             preon_engine::prelude::PreonEvent::WindowResized(new_size) => PreonEventBinding {
                 WindowResized_new_size_x: new_size.x,
                 WindowResized_new_size_y: new_size.y,
-                ..PreonEventBinding::from_kind(0)
+                ..PreonEventBinding::from_kind(1)
             },
-            preon_engine::prelude::PreonEvent::WindowOpened => PreonEventBinding::from_kind(1),
             preon_engine::prelude::PreonEvent::WindowClosed => PreonEventBinding::from_kind(2),
             preon_engine::prelude::PreonEvent::Update => PreonEventBinding::from_kind(3),
             preon_engine::prelude::PreonEvent::LayoutUpdate => PreonEventBinding::from_kind(4),
             preon_engine::prelude::PreonEvent::ComponentPressed(id, state) => PreonEventBinding {
                 ComponentPressed_id: to_cstring!(id),
-                ComponentPressed_state: state,
+                button_state: state,
                 ..PreonEventBinding::from_kind(5)
             },
             preon_engine::prelude::PreonEvent::MouseInput(button, state) => PreonEventBinding {
                 MouseInput_button: button,
-                MouseInput_state: state,
+                button_state: state,
                 ..PreonEventBinding::from_kind(6)
+            },
+            preon_engine::prelude::PreonEvent::KeyboardInput(key, state) => PreonEventBinding {
+                KeyboardInput_key: key,
+                button_state: state,
+                ..PreonEventBinding::from_kind(7)
+            },
+            preon_engine::prelude::PreonEvent::ReceivedCharacter(ch) => PreonEventBinding {
+                ReceivedCharacter_ch: ch,
+                ..PreonEventBinding::from_kind(8)
             }
         }
     }
 }
 
-impl From<PreonEventBinding> for preon_engine::events::PreonEvent {
-    fn from(binding: PreonEventBinding) -> Self {
-        match binding.kind {
-            0 => preon_engine::events::PreonEvent::WindowResized(preon_engine::types::PreonVector::new(binding.WindowResized_new_size_x, binding.WindowResized_new_size_y)),
-            1 => preon_engine::events::PreonEvent::WindowOpened,
-            2 => preon_engine::events::PreonEvent::WindowClosed,
-            3 => preon_engine::events::PreonEvent::Update,
-            4 => preon_engine::events::PreonEvent::LayoutUpdate,
-            5 => preon_engine::events::PreonEvent::ComponentPressed(to_string!(binding.ComponentPressed_id), binding.ComponentPressed_state),
-            6 => preon_engine::events::PreonEvent::MouseInput(binding.MouseInput_button, binding.MouseInput_state),
-            _ => panic!("Invalid event binding!"),
-        }
-    }
-}
+// impl From<PreonEventBinding> for preon_engine::events::PreonEvent {
+//     fn from(binding: PreonEventBinding) -> Self {
+//         match binding.kind {
+//             0 => preon_engine::events::PreonEvent::WindowOpened,
+//             1 => preon_engine::events::PreonEvent::WindowResized(preon_engine::types::PreonVector::new(binding.WindowResized_new_size_x, binding.WindowResized_new_size_y)),
+//             2 => preon_engine::events::PreonEvent::WindowClosed,
+//             3 => preon_engine::events::PreonEvent::Update,
+//             4 => preon_engine::events::PreonEvent::LayoutUpdate,
+//             5 => preon_engine::events::PreonEvent::ComponentPressed(to_string!(binding.ComponentPressed_id), binding.ComponentPressed_state),
+//             6 => preon_engine::events::PreonEvent::MouseInput(binding.MouseInput_button, binding.MouseInput_state),
+//             7 => preon_engine::events::PreonEvent::MouseInput(binding.MouseInput_button, binding.MouseInput_state),
+//             _ => panic!("Invalid event binding!"),
+//         }
+//     }
+// }
 
 use std::ffi;
 
@@ -223,6 +235,8 @@ component_builder_funcs!(
     text_horizontal_align ( align: preon_engine::types::PreonAlignment )
     font ( font: PreonFontBinding )
     font_size ( size: f32 )
+
+    receive_events ( receive_events: bool )
 );
 
 #[no_mangle]
@@ -251,14 +265,14 @@ pub unsafe extern "C" fn PreonComponentBuilder__empty_button(component_builder: 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern "C" fn(PreonComponentBinding, PreonEventBinding, PreonUserEventEmitterBinding)) {
+pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern "C" fn(PreonComponentBinding, PreonEventBinding, PreonUserEventEmitterBinding) -> bool) {
     let mut engine = *Box::from_raw(engine.inner);
 
     let juan = engine.load_image(&include_bytes!("../../../res/juan.png")[..]);
     let font_normal = engine.load_font(&include_bytes!("../../../res/Montserrat-Regular.otf")[..]);
 
     preon_module_wgpu::preon::run(engine, move |tree, event, user_events| {
-        callback(
+        if callback(
             PreonComponentBinding {
                 inner: tree as *mut preon_engine::components::PreonComponent,
             },
@@ -266,7 +280,9 @@ pub unsafe extern "C" fn preon__run(engine: PreonEngineBinding, callback: extern
             PreonUserEventEmitterBinding {
                 inner: user_events as *mut preon_engine::events::PreonEventEmitter<preon_engine::events::PreonUserEvent>,
             },
-        )
+        ) {
+            user_events.push(preon_engine::events::PreonUserEvent::ForceUpdate);
+        }
     });
 }
 

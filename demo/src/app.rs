@@ -1,4 +1,3 @@
-use preon_engine::components::button::PreonComponentBuilderButtonExtension;
 use preon_engine::prelude::*;
 use preon_engine::components::PreonComponent;
 use preon_module_wgpu::preon;
@@ -48,7 +47,7 @@ pub fn app() {
                         .start_panel_hex("#c4c4c4")
                             .min_size(PreonVector::new(0, 48))
                             .expand_horizontally()
-                            .hoverable()
+                            .receive_events(true)
                             .id("first_panel")
                         .end()
                         .start_static_texture(&wood_man)
@@ -116,7 +115,7 @@ pub fn app() {
             tree.get_child_ref_mut_by_id("label").unwrap().text = format!("Size: {}", size);
             // user_events.push(PreonUserEvent::ForceUpdate);
         }
-        PreonEvent::WindowClosed => println!("Then he died..."),
+        PreonEvent::WindowClosed => println!("And they lived happily ever after..."),
         _ => {}
     });
 }

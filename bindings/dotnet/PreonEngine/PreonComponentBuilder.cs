@@ -6,9 +6,12 @@ namespace Preon;
 public class PreonComponentBuilder
 {
     private unsafe void* _inner;
+    public PreonEngine EngineRef;
 
-    public PreonComponentBuilder()
+    public PreonComponentBuilder(PreonEngine engineRef)
     {
+        EngineRef = engineRef;
+
         unsafe
         {
             _inner = NativeMethods.PreonComponentBuilder__new();
@@ -343,6 +346,16 @@ public class PreonComponentBuilder
         unsafe
         {
             NativeMethods.PreonComponentBuilder__font_size(_inner, size);
+        }
+
+        return this;
+    }
+
+    public PreonComponentBuilder ReceiveEvents(bool receiveEvents)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponentBuilder__receive_events(_inner, receiveEvents);
         }
 
         return this;
