@@ -82,11 +82,14 @@ public static class PreonComponentBuilderInputFieldExtension
         return builder
             .StartPanel(PreonColor.White)
                 .Id(componentId)
+
                 .MinSize(new PreonVector<int>(0, 48))
                 .Padding(new PreonBorder(8, 16, 8, 16))
+                .ExpandHorizontally()
+
                 .BackgroundColor(PreonColor.White)
                 .ForegroundColor(componentPlaceholderColor)
-                .ExpandHorizontally()
+                
                 .ReceiveEvents(true);
     }
 }
