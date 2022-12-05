@@ -114,25 +114,25 @@ internal static class NativeMethods
     public static unsafe extern void PreonComponentBuilder__empty_button(void* _0, string _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__start_panel", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__start_panel(void* _0, PreonColor.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__start_panel(void* _0, PreonColor _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__empty_panel", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__empty_panel(void* _0, PreonColor.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__empty_panel(void* _0, PreonColor _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__panel_color", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__panel_color(void* _0, PreonColor.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__panel_color(void* _0, PreonColor _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__start_static_texture", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__start_static_texture(void* _0, PreonImage.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__start_static_texture(void* _0, PreonImage _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__background_image", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__background_image(void* _0, PreonImage.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__background_image(void* _0, PreonImage _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__background_color", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__background_color(void* _0, PreonColor.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__background_color(void* _0, PreonColor _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__foreground_color", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__foreground_color(void* _0, PreonColor.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__foreground_color(void* _0, PreonColor _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__align_items", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void PreonComponentBuilder__align_items(void* _0, PreonAlignment _1);
@@ -144,19 +144,19 @@ internal static class NativeMethods
     public static unsafe extern void PreonComponentBuilder__layout(void* _0, PreonLayout _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__margin", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__margin(void* _0, PreonBorder.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__margin(void* _0, PreonBorder _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__padding", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__padding(void* _0, PreonBorder.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__padding(void* _0, PreonBorder _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__border", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__border(void* _0, PreonBorder.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__border(void* _0, PreonBorder _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__corner_radius", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__corner_radius(void* _0, PreonCorners.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__corner_radius(void* _0, PreonCorners _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__min_size", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__min_size(void* _0, PreonVector<int>.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__min_size(void* _0, PreonVector<int> _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__fit_children", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void PreonComponentBuilder__fit_children(void* _0);
@@ -183,7 +183,7 @@ internal static class NativeMethods
     public static unsafe extern void PreonComponentBuilder__text_horizontal_align(void* _0, PreonAlignment _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__font", CallingConvention = CallingConvention.Cdecl)]
-    public static unsafe extern void PreonComponentBuilder__font(void* _0, PreonFont.Inner _1);
+    public static unsafe extern void PreonComponentBuilder__font(void* _0, PreonFont _1);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponentBuilder__font_size", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void PreonComponentBuilder__font_size(void* _0, float _1);
@@ -196,6 +196,21 @@ internal static class NativeMethods
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponent__get_text", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern string PreonComponent__get_text(void* _0);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponent__new", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void* PreonComponent__new();
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponent__add_child", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponent__add_child(void* _0, void* _1);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponent__insert_child", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponent__insert_child(void* _0, ushort _1, void* _2);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponent__remove_child", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponent__remove_child(void* _0, ushort _1);
+    
+    [DllImport("PreonEngine", EntryPoint = "PreonComponent__clear_children", CallingConvention = CallingConvention.Cdecl)]
+    public static unsafe extern void PreonComponent__clear_children(void* _0);
     
     [DllImport("PreonEngine", EntryPoint = "PreonComponent__get_child_ref_mut_by_id", CallingConvention = CallingConvention.Cdecl)]
     public static unsafe extern void* PreonComponent__get_child_ref_mut_by_id(void* _0, string _1);

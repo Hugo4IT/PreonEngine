@@ -2,13 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace Preon.Rendering;
 
-public class PreonFont
+[StructLayout(LayoutKind.Sequential)]
+public struct PreonFont
 {
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe struct Inner
-    {
-        void* fontRef;
-    }
-
-    internal Inner _inner;
+    public unsafe void* fontRef;
+    public uint padding; // 4 Bytes padding
 }

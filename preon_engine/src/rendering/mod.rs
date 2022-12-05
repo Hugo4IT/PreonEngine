@@ -53,6 +53,7 @@ impl IntoFont for &[u8] {
 }
 
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub struct PreonImage {
     index: Rc<RefCell<usize>>,
 }

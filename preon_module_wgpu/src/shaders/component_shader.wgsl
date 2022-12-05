@@ -21,6 +21,7 @@ struct VertexOutput {
     @location(2) radius: vec4<f32>,
     @location(3) color: vec4<f32>,
     @location(4) use_texture: f32,
+    @location(5) local_uv: vec2<f32>,
     @builtin(position) position: vec4<f32>,
 };
 
@@ -37,6 +38,7 @@ fn vert_main(
         inst.uv_cutout.x + inst.uv_cutout.z * vert.tex_coords.x,
         inst.uv_cutout.y + inst.uv_cutout.w * vert.tex_coords.y,
     );
+    out.local_uv = vert.tex_coords;
 
     let rect_position = inst.rect.xy;
     let rect_size = inst.rect.zw;
@@ -69,8 +71,14 @@ fn frag_main(
     let color = vec4<f32>(in.color);
 
     let mix = color + texture * in.use_texture;
+
+    let corner_mask_top_left =     (max(sign(0.5-in.local_uv.x), 0.0))       * (max(sign(0.5-in.local_uv.y), 0.0));
+    let corner_mask_top_right =    (1.0 - max(sign(0.5-in.local_uv.x), 0.0)) * (max(sign(0.5-in.local_uv.y), 0.0));
+    let corner_mask_bottom_left =  (max(sign(0.5-in.local_uv.x), 0.0))       * (1.0 - max(sign(0.5-in.local_uv.y), 0.0));
+    let corner_mask_bottom_right = (1.0 - max(sign(0.5-in.local_uv.x), 0.0)) * (1.0 - max(sign(0.5-in.local_uv.y), 0.0));
     let mask = 1.0;
-    let out = mask * mix;
+    
+    let out = mix * mask;
 
     return out;
 }

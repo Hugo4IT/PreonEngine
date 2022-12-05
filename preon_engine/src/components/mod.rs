@@ -228,6 +228,10 @@ impl PreonComponent {
         self.children.remove(idx as usize);
     }
 
+    pub fn clear_children(&mut self) {
+        self.children.clear();
+    }
+
     #[inline(always)]
     pub fn set_content_position(&mut self, new_position: PreonVector<i32>) {
         self.inner_position = new_position - self.style.padding.top_left();
@@ -382,6 +386,10 @@ impl PreonComponent {
 
     pub(crate) fn layout(&mut self) {
         use crate::layout::PreonLayoutProvider;
+
+        for child in self.children.iter_mut() {
+            child.layout();
+        }
 
         match self.style.layout {
             PreonLayout::Rows => PreonRowsLayoutProvider::layout(self),

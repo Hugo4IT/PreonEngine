@@ -19,7 +19,7 @@ public static class PreonComponentBuilderInputFieldExtension
     {
         // Apply defaults
         string componentId = id ?? $"__inputField{InputFieldID++}";
-        PreonColor componentPlaceholderColor = placeholderColor ?? new PreonColor(0.0f, 0.0f, 0.0f, 0.5f);
+        PreonColor componentPlaceholderColor = placeholderColor ?? PreonColor.Dark(0.5f);
 
         // State
         bool isFocused = false;

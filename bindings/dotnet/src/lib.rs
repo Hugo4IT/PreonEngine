@@ -38,7 +38,7 @@ pub struct PreonEventBinding {
     pub WindowResized_new_size_x: u32,
     pub WindowResized_new_size_y: u32,
     pub ComponentPressed_id: *mut i8,
-    pub MouseInput_button: preon_engine::events::PreonMouseButton,
+    pub MouseInput_button: u16,
     pub KeyboardInput_key: preon_engine::events::PreonKeyCode,
     pub ReceivedCharacter_ch: char,
 }
@@ -51,7 +51,7 @@ impl PreonEventBinding {
             WindowResized_new_size_y: 0,
             ComponentPressed_id: core::ptr::null_mut(),
             button_state: preon_engine::events::PreonButtonState::Released,
-            MouseInput_button: preon_engine::events::PreonMouseButton::Left,
+            MouseInput_button: 0,
             KeyboardInput_key: preon_engine::events::PreonKeyCode::A,
             ReceivedCharacter_ch: '\0',
         }
@@ -77,7 +77,12 @@ impl From<preon_engine::events::PreonEvent> for PreonEventBinding {
                 ..PreonEventBinding::from_kind(5)
             },
             preon_engine::prelude::PreonEvent::MouseInput(button, state) => PreonEventBinding {
-                MouseInput_button: button,
+                MouseInput_button: match button {
+                    preon_engine::events::PreonMouseButton::Left => 0,
+                    preon_engine::events::PreonMouseButton::Middle => 1,
+                    preon_engine::events::PreonMouseButton::Right => 2,
+                    preon_engine::events::PreonMouseButton::Other(other) => other,
+                },
                 button_state: state,
                 ..PreonEventBinding::from_kind(6)
             },
@@ -305,10 +310,39 @@ pub unsafe extern "C" fn PreonComponent__get_child_ref_mut_by_id(component: Preo
         .inner
         .as_mut()
         .unwrap()
-        .get_child_raw_by_id(id)
-        .unwrap();
+        .get_child_raw_by_id(id.clone())
+        .expect(&format!("PreonComponent.get_child_ref_mut_by_id failed, could not find child with id {}", id));
 
     PreonComponentBinding {
         inner,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__new() -> PreonComponentBinding {
+    let component = preon_engine::components::PreonComponent::new();
+
+    PreonComponentBinding {
+        inner: Box::into_raw(Box::new(component)),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__add_child(component: PreonComponentBinding, child: PreonComponentBinding) {
+    component.inner.as_mut().unwrap().add_child(*Box::from_raw(child.inner));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__insert_child(component: PreonComponentBinding, idx: u16, child: PreonComponentBinding) {
+    component.inner.as_mut().unwrap().insert_child(idx, *Box::from_raw(child.inner));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__remove_child(component: PreonComponentBinding, idx: u16) {
+    component.inner.as_mut().unwrap().remove_child(idx);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__clear_children(component: PreonComponentBinding) {
+    component.inner.as_mut().unwrap().clear_children();
 }

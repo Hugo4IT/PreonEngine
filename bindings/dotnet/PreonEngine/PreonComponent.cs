@@ -15,6 +15,39 @@ public class PreonComponent
         _inner = ptr;
     }
 
+    public void AddChild(PreonComponent child)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponent__add_child(_inner, child._inner);
+        }
+    }
+
+
+    public void InsertChild(ushort index, PreonComponent child)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponent__insert_child(_inner, index, child._inner);
+        }
+    }
+
+    public void RemoveChild(ushort index)
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponent__remove_child(_inner, index);
+        }
+    }
+
+    public void ClearChildren()
+    {
+        unsafe
+        {
+            NativeMethods.PreonComponent__clear_children(_inner);
+        }
+    }
+
     public PreonComponent GetChildById(string id)
     {
         unsafe

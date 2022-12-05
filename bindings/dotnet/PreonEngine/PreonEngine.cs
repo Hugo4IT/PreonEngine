@@ -41,6 +41,8 @@ public class PreonEngine
         {
             _inner = NativeMethods.PreonEngine__new();
         }
+
+        OnWindowOpened += () => ForceUpdate();
     }
 
     public void SetTree(PreonComponent tree)
@@ -53,7 +55,8 @@ public class PreonEngine
 
     public void OnPressed(string id, ButtonCallback callback)
     {
-        _buttonCallbacks.Add(id, callback);
+        if (!_buttonCallbacks.TryAdd(id, callback))
+            _buttonCallbacks[id] = callback;
     }
 
     public void OnPressedRemove(string id)

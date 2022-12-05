@@ -102,7 +102,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__start_panel(_inner, color._inner);
+            NativeMethods.PreonComponentBuilder__start_panel(_inner, color);
         }
 
         return this;
@@ -112,7 +112,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__empty_panel(_inner, color._inner);
+            NativeMethods.PreonComponentBuilder__empty_panel(_inner, color);
         }
 
         return this;
@@ -122,7 +122,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__panel_color(_inner, color._inner);
+            NativeMethods.PreonComponentBuilder__panel_color(_inner, color);
         }
 
         return this;
@@ -132,7 +132,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__start_static_texture(_inner, image._inner);
+            NativeMethods.PreonComponentBuilder__start_static_texture(_inner, image);
         }
 
         return this;
@@ -142,7 +142,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__background_image(_inner, image._inner);
+            NativeMethods.PreonComponentBuilder__background_image(_inner, image);
         }
 
         return this;
@@ -152,7 +152,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__background_color(_inner, color._inner);
+            NativeMethods.PreonComponentBuilder__background_color(_inner, color);
         }
 
         return this;
@@ -165,7 +165,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__foreground_color(_inner, color._inner);
+            NativeMethods.PreonComponentBuilder__foreground_color(_inner, color);
         }
 
         return this;
@@ -205,7 +205,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__margin(_inner, margin._inner);
+            NativeMethods.PreonComponentBuilder__margin(_inner, margin);
         }
 
         return this;
@@ -215,7 +215,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__padding(_inner, padding._inner);
+            NativeMethods.PreonComponentBuilder__padding(_inner, padding);
         }
 
         return this;
@@ -225,7 +225,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__border(_inner, border._inner);
+            NativeMethods.PreonComponentBuilder__border(_inner, border);
         }
 
         return this;
@@ -235,7 +235,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__corner_radius(_inner, corners._inner);
+            NativeMethods.PreonComponentBuilder__corner_radius(_inner, corners);
         }
 
         return this;
@@ -245,7 +245,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__min_size(_inner, minSize._inner);
+            NativeMethods.PreonComponentBuilder__min_size(_inner, minSize);
         }
 
         return this;
@@ -335,7 +335,7 @@ public class PreonComponentBuilder
     {
         unsafe
         {
-            NativeMethods.PreonComponentBuilder__font(_inner, font._inner);
+            NativeMethods.PreonComponentBuilder__font(_inner, font);
         }
 
         return this;

@@ -557,7 +557,7 @@ impl Display for PreonCorners {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
+#[repr(u8)]
 pub enum PreonAlignment {
     Start,
     Center,
