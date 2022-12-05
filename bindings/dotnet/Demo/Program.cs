@@ -59,12 +59,14 @@ internal class Program
             .End()
         .Build();
 
-        engine.OnResized += newSize => {
+        engine.OnResized += newSize =>
+        {
             engine.Tree.GetChildById("windowWidth").Text = $"Width: {newSize.x}";
             engine.Tree.GetChildById("windowHeight").Text = $"Height: {newSize.y}";
         };
 
-        engine.OnPressed("myButton", (button, state) => {
+        engine.OnPressed("myButton", (button, state) =>
+        {
             if (state == Preon.Events.PreonButtonState.Pressed)
                 Console.WriteLine("Button Pressed");
         });
