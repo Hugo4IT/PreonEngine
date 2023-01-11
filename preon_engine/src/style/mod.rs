@@ -8,6 +8,7 @@ pub trait PreonClass {
 }
 
 #[derive(Debug, Clone)]
+#[repr(u8)]
 pub enum PreonBackground {
     Image(PreonImage),
     Color(PreonColor),

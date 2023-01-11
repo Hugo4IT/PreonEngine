@@ -107,7 +107,7 @@ pub mod size {
         pub const EXPAND: u8 = 0b00000010;
 
         /// Resize to fit children, but expand to available space.
-        pub const FIT_EXPAND: u8 = FIT + EXPAND;
+        pub const FIT_EXPAND: u8 = FIT | EXPAND;
     }
 
     /// Only apply a specific size flag to the Y axis.
@@ -119,7 +119,7 @@ pub mod size {
         pub const EXPAND: u8 = 0b00001000;
 
         /// Resize to fit children, but expand to available space.
-        pub const FIT_EXPAND: u8 = FIT + EXPAND;
+        pub const FIT_EXPAND: u8 = FIT | EXPAND;
     }
 
     /// Automatically resize to fit children.

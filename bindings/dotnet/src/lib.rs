@@ -13,8 +13,6 @@ use preon_engine::style::PreonComponentBuilderTextStyleExtension;
 
 use std::os::raw::c_char;
 
-const PREON_EVENT_SIZE: usize = core::mem::size_of::<preon_engine::events::PreonEvent>() - 4;
-
 macro_rules! to_string {
     ($cstring:ident) => (unsafe { ffi::CStr::from_ptr($cstring).to_str().unwrap().to_string() });
     ($cstring:expr) => (unsafe { ffi::CStr::from_ptr($cstring).to_str().unwrap().to_string() });
@@ -300,6 +298,76 @@ pub unsafe extern "C" fn PreonComponent__get_text(component: PreonComponentBindi
 #[no_mangle]
 pub unsafe extern "C" fn PreonComponent__set_text(component: PreonComponentBinding, text: *const c_char) {
     component.inner.as_mut().unwrap().text = to_string!(text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_background_color(component: PreonComponentBinding, color: preon_engine::types::PreonColor) {
+    component.inner.as_mut().unwrap().style.background = preon_engine::style::PreonBackground::Color(color);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_clear_background_color(component: PreonComponentBinding) {
+    component.inner.as_mut().unwrap().style.background = preon_engine::style::PreonBackground::None;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_foreground_color(component: PreonComponentBinding, color: preon_engine::types::PreonColor) {
+    component.inner.as_mut().unwrap().style.foreground_color = color;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_align_items(component: PreonComponentBinding, alignment: preon_engine::types::PreonAlignment) {
+    component.inner.as_mut().unwrap().style.align_items = alignment;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_cross_align_items(component: PreonComponentBinding, alignment: preon_engine::types::PreonAlignment) {
+    component.inner.as_mut().unwrap().style.cross_align_items = alignment;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_layout(component: PreonComponentBinding, layout: preon_engine::layout::PreonLayout) {
+    component.inner.as_mut().unwrap().style.layout = layout;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_margin(component: PreonComponentBinding, margin: preon_engine::types::PreonBorder) {
+    component.inner.as_mut().unwrap().style.margin = margin;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_padding(component: PreonComponentBinding, padding: preon_engine::types::PreonBorder) {
+    component.inner.as_mut().unwrap().style.padding = padding;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_border(component: PreonComponentBinding, border: preon_engine::types::PreonBorder) {
+    component.inner.as_mut().unwrap().style.border = border;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_corner_radius(component: PreonComponentBinding, corners: preon_engine::types::PreonCorners) {
+    component.inner.as_mut().unwrap().style.corner_radius = corners;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_size_flags(component: PreonComponentBinding, size_flags: u8) {
+    component.inner.as_mut().unwrap().style.size_flags = size_flags;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__style_set_min_size(component: PreonComponentBinding, min_size: preon_engine::types::PreonVector<i32>) {
+    component.inner.as_mut().unwrap().style.min_size = min_size;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__text_style_set_font(component: PreonComponentBinding, font: PreonFontBinding) {
+    component.inner.as_mut().unwrap().style.text_style.font = Some(*Box::from_raw(font.inner));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PreonComponent__text_style_set_font_size(component: PreonComponentBinding, font_size: f32) {
+    component.inner.as_mut().unwrap().style.text_style.size = font_size;
 }
 
 #[no_mangle]
