@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+
 // #![warn(missing_docs)]
 
 //! A modular, zero-dependency User Interface engine
@@ -75,6 +76,7 @@ use core::cell::RefCell;
 use alloc::{vec::Vec, rc::Rc};
 use components::PreonComponent;
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
+use hashbrown::HashMap;
 use rendering::{PreonRenderPass, PreonRendererLoadOperations, PreonFont, PreonImage, IntoImage, IntoFont};
 
 use self::types::PreonVector;
@@ -195,8 +197,11 @@ pub mod size {
 /// # }
 /// ```
 pub struct PreonEngine {
+    pub components: HashMap<u64, PreonComponent, nohash_hasher::NoHashHasher<u32>>,
+    pub root: PreonComponentHandle,
+    pub next_id: u64,
     /// The component tree
-    pub tree: PreonComponent,
+    // pub tree: PreonComponent,
     /// Will be filled with events after `engine.update()`. See [`PreonEventEmitter`] and [`PreonEvent`]
     pub events: PreonEventEmitter<PreonEvent>,
     /// The size of the viewport, title bar not included.
@@ -213,7 +218,10 @@ pub struct PreonEngine {
 impl PreonEngine {
     pub fn new() -> Self {
         Self {
-            tree: PreonComponent::new(),
+            components: HashMap::default(),
+            root: PreonComponentHandle::new(0, Vec::new()),
+            next_id: 0,
+            // tree: PreonComponent::new(),
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
@@ -224,9 +232,18 @@ impl PreonEngine {
         }
     }
 
-    pub fn set_tree(&mut self, tree: PreonComponent) {
-        self.tree = tree;
+    fn push_component(&mut self, component: PreonComponent) -> PreonComponentHandle {
+        let id = self.next_id;
+        self.next_id += 1;
+
+        self.components.push(component);
+
+        
     }
+
+    // pub fn set_tree(&mut self, tree: PreonComponent) {
+    //     self.tree = tree;
+    // }
 
     pub fn load_image(&mut self, image: impl IntoImage) -> PreonImage {
         self.renderer_load_ops.textures.push(image.get_image());
@@ -352,6 +369,24 @@ impl PreonEngine {
         self.events.flip();
 
         true
+    }
+}
+
+pub struct PreonComponentHandle {
+    id: u64,
+    children: Vec<PreonComponentHandle>,
+}
+
+impl PreonComponentHandle {
+    pub fn new(id: u64, children: Vec<PreonComponentHandle>) -> Self {
+        Self {
+            id,
+            children,
+        }
+    }
+
+    pub fn children(&self) -> &Vec<PreonComponentHandle> {
+        &self.children
     }
 }
 

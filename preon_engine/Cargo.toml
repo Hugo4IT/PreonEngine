@@ -10,5 +10,7 @@ logging = ["log"]
 std = []
 
 [dependencies]
+hashbrown = "0.13.2"
+nohash-hasher = "0.2.0"
 log = { version = "0.4.17", optional = true }
 libm = "0.2.5"
