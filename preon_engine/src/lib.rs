@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 // #![warn(missing_docs)]
 
 //! A modular, zero-dependency User Interface engine
@@ -66,18 +65,20 @@
 //! Yes       | 33% ([gh]) | preon_module_xml       | Create apps from an .xml file, familiar to html developers
 //! Yes       | 0%         | preon_module_locale    | A fast language system, has PreonDesigner integration
 //! Yes       | 0%         | preon_module_designer  | Loads .preon files, created in PreonDesigner
-//! 
+//!
 //! [gh]: https://github.com/Hugo4IT/PreonEngine/milestone/1
 
 extern crate alloc;
 
 use core::cell::RefCell;
 
-use alloc::{vec::Vec, rc::Rc};
+use alloc::{rc::Rc, vec::Vec};
 use components::PreonComponent;
 use events::{PreonEvent, PreonEventEmitter, PreonUserEvent};
 use hashbrown::HashMap;
-use rendering::{PreonRenderPass, PreonRendererLoadOperations, PreonFont, PreonImage, IntoImage, IntoFont};
+use rendering::{
+    IntoFont, IntoImage, PreonFont, PreonImage, PreonRenderPass, PreonRendererLoadOperations,
+};
 
 use self::types::PreonVector;
 
@@ -93,10 +94,10 @@ pub mod events;
 /// All Preon* utility structs like PreonVector<T>, PreonColor and PreonBox.
 pub mod types;
 
+pub mod layout;
 /// no_std replacements for math operations
 pub mod math;
 pub mod style;
-pub mod layout;
 
 /// Size flags shortcuts.
 pub mod size {
@@ -197,7 +198,8 @@ pub mod size {
 /// # }
 /// ```
 pub struct PreonEngine {
-    pub components: HashMap<u64, PreonComponent, nohash_hasher::NoHashHasher<u32>>,
+    pub components: HashMap<u64, PreonComponent>,
+    pub children_collections: HashMap<u64, Vec<PreonComponentHandle>>,
     pub root: PreonComponentHandle,
     pub next_id: u64,
     /// The component tree
@@ -217,11 +219,14 @@ pub struct PreonEngine {
 
 impl PreonEngine {
     pub fn new() -> Self {
+        let mut components = HashMap::new();
+        components.insert(0, PreonComponent::default());
+
         Self {
-            components: HashMap::default(),
-            root: PreonComponentHandle::new(0, Vec::new()),
-            next_id: 0,
-            // tree: PreonComponent::new(),
+            components,
+            children_collections: HashMap::new(),
+            root: PreonComponentHandle::new(0),
+            next_id: 1,
             events: PreonEventEmitter::new(),
             window_inner_size: PreonVector::zero(),
             render_pass: PreonRenderPass::new(),
@@ -232,13 +237,37 @@ impl PreonEngine {
         }
     }
 
-    fn push_component(&mut self, component: PreonComponent) -> PreonComponentHandle {
+    pub fn push_component(
+        &mut self,
+        parent: PreonComponentHandle,
+        component: PreonComponent,
+    ) -> PreonComponentHandle {
+        component.parent = Some(parent);
+
         let id = self.next_id;
         self.next_id += 1;
 
-        self.components.push(component);
+        let handle = PreonComponentHandle::new(id);
+        self.components.insert(handle.id, component);
 
-        
+        self.components
+            .get(&parent.id)
+            .expect("Invalid PreonComponentHandle")
+            .children
+            .push(handle);
+
+        handle
+    }
+
+    pub fn get_component(&self, handle: PreonComponentHandle) -> Option<&PreonComponent> {
+        self.components.get(&handle.id)
+    }
+
+    pub fn get_component_mut(
+        &mut self,
+        handle: PreonComponentHandle,
+    ) -> Option<&mut PreonComponent> {
+        self.components.get_mut(&handle.id)
     }
 
     // pub fn set_tree(&mut self, tree: PreonComponent) {
@@ -247,7 +276,8 @@ impl PreonEngine {
 
     pub fn load_image(&mut self, image: impl IntoImage) -> PreonImage {
         self.renderer_load_ops.textures.push(image.get_image());
-        self.image_references.push(Rc::new(RefCell::new(self.image_references.len())));
+        self.image_references
+            .push(Rc::new(RefCell::new(self.image_references.len())));
         PreonImage::new(self.image_references[self.image_references.len() - 1].clone())
     }
 
@@ -259,9 +289,9 @@ impl PreonEngine {
             self.image_references
                 .iter()
                 .position(|r| *r.borrow() == index)
-                .unwrap()
+                .unwrap(),
         );
-        
+
         for image_ref in self.image_references.iter_mut() {
             if *image_ref.borrow() > index {
                 *image_ref.borrow_mut() -= 1;
@@ -271,7 +301,8 @@ impl PreonEngine {
 
     pub fn load_font(&mut self, font: impl IntoFont) -> PreonFont {
         self.renderer_load_ops.fonts.push(font.get_font());
-        self.font_references.push(Rc::new(RefCell::new(self.font_references.len())));
+        self.font_references
+            .push(Rc::new(RefCell::new(self.font_references.len())));
         PreonFont::new(self.font_references[self.font_references.len() - 1].clone())
     }
 
@@ -283,9 +314,9 @@ impl PreonEngine {
             self.font_references
                 .iter()
                 .position(|r| *r.borrow() == index)
-                .unwrap()
+                .unwrap(),
         );
-        
+
         for font_ref in self.font_references.iter_mut() {
             if *font_ref.borrow() > index {
                 *font_ref.borrow_mut() -= 1;
@@ -295,7 +326,7 @@ impl PreonEngine {
 
     pub fn update(&mut self, user_events: &PreonEventEmitter<PreonUserEvent>) -> bool {
         if user_events.is_empty() && self.events.is_empty() {
-            return false
+            return false;
         }
 
         let mut update_layout = false;
@@ -318,22 +349,25 @@ impl PreonEngine {
                     self.events.push(PreonEvent::WindowClosed);
                 }
                 PreonUserEvent::MouseMove(mouse_position) => {
-                    if let Some(component) = self.tree.get_hovered_child(mouse_position) {
-                    }
+                    let tree = self.get_component_mut(self.root).unwrap();
+                    // if let Some(component) = tree.get_hovered_child(mouse_position) {}
                     self.mouse_position = mouse_position;
-                },
+                }
                 PreonUserEvent::MouseInput(button, state) => {
                     self.events.push(PreonEvent::MouseInput(button, state));
-                    
+
                     match button {
                         events::PreonMouseButton::Left => match state {
                             events::PreonButtonState::Pressed => {
-                                if let Some(component) = self.tree.get_hovered_child(self.mouse_position) {
-                                    if let Some(event) = component.trigger_pressed() {
-                                        self.events.push(event);
-                                    }
-                                }
-                            },
+                                let tree = self.get_component_mut(self.root).unwrap();
+
+                                // if let Some(component) = tree.get_hovered_child(self.mouse_position)
+                                // {
+                                //     if let Some(event) = component.trigger_pressed() {
+                                //         self.events.push(event);
+                                //     }
+                                // }
+                            }
                             events::PreonButtonState::Released => (),
                         },
                         // events::PreonMouseButton::Middle => todo!(),
@@ -341,25 +375,29 @@ impl PreonEngine {
                         // events::PreonMouseButton::Other(_) => todo!(),
                         _ => (),
                     }
-                },
+                }
                 PreonUserEvent::KeyboardInput(key, state) => {
                     self.events.push(PreonEvent::KeyboardInput(key, state));
-                },
-                PreonUserEvent::ReceivedCharacter(ch) => self.events.push(PreonEvent::ReceivedCharacter(ch)),
+                }
+                PreonUserEvent::ReceivedCharacter(ch) => {
+                    self.events.push(PreonEvent::ReceivedCharacter(ch))
+                }
             }
-        };
+        }
 
         if update_layout {
             log::info!("Relayout");
 
-            self.tree.set_outer_size(PreonVector::new(
+            let mut tree = self.get_component_mut(self.root).unwrap();
+
+            tree.set_outer_size(PreonVector::new(
                 self.window_inner_size.x as i32,
                 self.window_inner_size.y as i32,
             ));
-            self.tree.set_outer_position(PreonVector::zero());
+            tree.set_outer_position(PreonVector::zero());
 
-            self.tree.layout();
-            self.tree.render(&mut self.render_pass);
+            tree.layout();
+            tree.render(&mut self.render_pass);
 
             self.events.push(PreonEvent::LayoutUpdate);
             self.render_pass.flip();
@@ -372,63 +410,64 @@ impl PreonEngine {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PreonComponentHandle {
-    id: u64,
-    children: Vec<PreonComponentHandle>,
+    pub(crate) id: u64,
 }
 
 impl PreonComponentHandle {
-    pub fn new(id: u64, children: Vec<PreonComponentHandle>) -> Self {
-        Self {
-            id,
-            children,
-        }
-    }
-
-    pub fn children(&self) -> &Vec<PreonComponentHandle> {
-        &self.children
+    pub fn new(id: u64) -> Self {
+        Self { id }
     }
 }
 
 /// Contains all the necessary imports to quickly build an app with PreonEngine
 pub mod prelude {
+    pub use crate::components::button::PreonComponentBuilderButtonExtension;
     pub use crate::components::hbox::PreonComponentBuilderHBoxExtension;
-    pub use crate::components::vbox::PreonComponentBuilderVBoxExtension;
     pub use crate::components::label::PreonComponentBuilderLabelExtension;
     pub use crate::components::panel::PreonComponentBuilderPanelExtension;
-    pub use crate::components::button::PreonComponentBuilderButtonExtension;
     pub use crate::components::static_texture::PreonComponentBuilderStaticTextureExtension;
+    pub use crate::components::vbox::PreonComponentBuilderVBoxExtension;
     pub use crate::components::PreonComponentBuilder;
-    pub use crate::types::*;
     pub use crate::events::PreonEvent;
     pub use crate::events::PreonUserEvent;
+    pub use crate::rendering::PreonFont;
+    pub use crate::rendering::PreonImage;
     pub use crate::size;
-    pub use crate::PreonEngine;
-    pub use crate::style::PreonClass;
     pub use crate::style::PreonBackground;
+    pub use crate::style::PreonClass;
     pub use crate::style::PreonComponentBuilderStyleExtension;
     pub use crate::style::PreonComponentBuilderTextStyleExtension;
-    pub use crate::rendering::PreonImage;
-    pub use crate::rendering::PreonFont;
+    pub use crate::types::*;
+    pub use crate::PreonEngine;
 }
 
-/// Replaces the log crate 
+/// Replaces the log crate
 #[cfg(not(feature = "logging"))]
 pub mod log {
-    pub use crate::{info, log_enabled, error};
-    #[macro_export] macro_rules! log_enabled {
-        (target: $target:expr, $lvl:expr) => { false };
-        ($lvl:expr) => { false };
+    pub use crate::{error, info, log_enabled};
+    #[macro_export]
+    macro_rules! log_enabled {
+        (target: $target:expr, $lvl:expr) => {
+            false
+        };
+        ($lvl:expr) => {
+            false
+        };
     }
-    #[macro_export] macro_rules! info {
+    #[macro_export]
+    macro_rules! info {
         (target: $target:expr, $($arg:tt)+) => {{};};
         ($($arg:tt)+) => {{};};
     }
-    #[macro_export] macro_rules! warn {
+    #[macro_export]
+    macro_rules! warn {
         (target: $target:expr, $($arg:tt)+) => {{};};
         ($($arg:tt)+) => {{};};
     }
-    #[macro_export] macro_rules! error {
+    #[macro_export]
+    macro_rules! error {
         (target: $target:expr, $($arg:tt)+) => {{};};
         ($($arg:tt)+) => {{};};
     }

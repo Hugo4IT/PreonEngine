@@ -1,25 +1,29 @@
+use alloc::{
+    borrow::ToOwned,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use core::fmt::Debug;
-use alloc::{vec::Vec, string::{String, ToString}, vec, borrow::ToOwned};
 
 use crate::{
-    rendering::{PreonRenderPass, PreonShape},
-    types::{PreonAlignment, PreonVector, PreonColor, PreonRect},
-    style::{PreonStyle, PreonBackground},
+    events::{PreonButtonState, PreonEvent},
     layout::{
-        PreonLayout,
-        rows::PreonRowsLayoutProvider,
-        columns::PreonColumnsLayoutProvider,
-        container::PreonContainerLayoutProvider
+        columns::PreonColumnsLayoutProvider, container::PreonContainerLayoutProvider,
+        rows::PreonRowsLayoutProvider, PreonLayout,
     },
-    events::{PreonEvent, PreonButtonState},
+    rendering::{PreonRenderPass, PreonShape},
+    style::{PreonBackground, PreonStyle},
+    types::{PreonAlignment, PreonColor, PreonRect, PreonVector},
+    PreonComponentHandle,
 };
 
-pub mod hbox;
-pub mod vbox;
-pub mod panel;
-pub mod label;
-pub mod static_texture;
 pub mod button;
+pub mod hbox;
+pub mod label;
+pub mod panel;
+pub mod static_texture;
+pub mod vbox;
 
 #[repr(transparent)]
 #[derive(Clone)]
@@ -34,202 +38,26 @@ impl<T: Clone> core::fmt::Debug for ExcludeFromDebug<T> {
 /// A UI component
 #[derive(Debug, Clone)]
 pub struct PreonComponent {
-    pub children: Vec<PreonComponent>,
+    pub parent: Option<PreonComponentHandle>,
+    pub children: Vec<PreonComponentHandle>,
     pub style: PreonStyle,
     pub text: String,
     pub inner_size: PreonVector<i32>,
     pub inner_position: PreonVector<i32>,
-    pub id: Option<String>,
-    pub id_lookup_cache: Vec<(String, Vec<u16>)>,
     pub mouse_events: bool,
 }
 
 impl PreonComponent {
     pub fn new() -> PreonComponent {
         PreonComponent {
+            parent: None,
             children: Vec::new(),
             style: PreonStyle::default(),
             text: String::new(),
             inner_size: PreonVector::zero(),
             inner_position: PreonVector::zero(),
-            id: None,
-            id_lookup_cache: Vec::new(),
             mouse_events: false,
         }
-    }
-
-    pub fn get_hovered_child(&mut self, position: PreonVector<i32>) -> Option<&mut PreonComponent> {
-        if !self.get_border_rect().contains_point(position) {
-            None
-        } else {
-            if self.mouse_events {
-                Some(self)
-            } else {
-                self.children
-                    .iter_mut()
-                    .find_map(|child| child.get_hovered_child(position))
-            }
-        }
-    }
-
-    fn find_child_by_id_recursive(&self, id: &String) -> Option<Vec<u16>> {
-        for (i, child) in self.children.iter().enumerate() {
-            if child.id.as_ref() == Some(id) {
-                return Some(vec![i as u16])
-            }
-            
-            if let Some(path) = child.find_child_by_id_recursive(id) {
-                let mut full_path = vec![i as u16];
-                full_path.extend(path);
-
-                return Some(full_path)
-            }
-        }
-
-        None
-    }
-
-    fn find_child_by_id(&self, id: &String) -> Option<Vec<u16>> {
-        self
-            .find_child_by_id_recursive(id)
-            .map(|mut path| { path.reverse(); path })
-            .and_then(|path| self.get_child_ref_recursive(path.as_slice()).map(|_| path))
-    }
-
-    fn get_child_path_by_id_cached(&self, id: &String) -> Option<Vec<u16>> {
-        self
-            .id_lookup_cache
-            .iter()
-            .rev()
-            .find_map(|item| if &item.0 == id { Some(item.1.clone()) } else { None })
-    }
-
-    pub fn get_child_ref_by_id(&mut self, id: impl ToString) -> Option<&PreonComponent> {
-        let id = &id.to_string();
-        
-        let path = self
-            .get_child_path_by_id_cached(id)
-            .or_else(|| self.find_child_by_id(id));
-        
-        if let Some(path) = path {
-            self.get_child_ref_recursive(&path[..])
-        } else {
-            if let Some(path) = self.find_child_by_id(id) {
-                self.id_lookup_cache.push((id.clone(), path.clone()));
-                self.get_child_ref_recursive(&path[..])
-            } else {
-                log::warn!("No component found with id {}", id);
-                None
-            }
-        }
-    }
-
-    pub fn get_child_ref_mut_by_id(&mut self, id: impl ToString) -> Option<&mut PreonComponent> {
-        let id = &id.to_string();
-
-        let path = self
-            .get_child_path_by_id_cached(id)
-            .or_else(|| self.find_child_by_id(id));
-        
-        if let Some(path) = path {
-            self.get_child_ref_mut_recursive(&path[..])
-        } else {
-            if let Some(path) = self.find_child_by_id(id) {
-                self.id_lookup_cache.push((id.clone(), path.clone()));
-                self.get_child_ref_mut_recursive(&path[..])
-            } else {
-                log::warn!("No component found with id {}", id);
-                None
-            }
-        }
-    }
-
-    fn get_child_ref_recursive(&self, path: &[u16]) -> Option<&PreonComponent> {
-        let mut _path = path.to_owned();
-        let index = _path.pop().unwrap();
-
-        if path.len() == 1 {
-            self.get_child_ref(index)
-        } else {
-            self.get_child_ref(index)
-                .and_then(|child| child.get_child_ref_recursive(&_path))
-        }
-    }
-
-    fn get_child_ref_mut_recursive(&mut self, path: &[u16]) -> Option<&mut PreonComponent> {
-        let mut _path = path.to_owned();
-        let index = _path.pop().unwrap();
-
-        if path.len() == 1 {
-            self.get_child_ref_mut(index)
-        } else {
-            self.get_child_ref_mut(index)
-                .and_then(|child| child.get_child_ref_mut_recursive(&_path))
-        }
-    }
-
-    pub unsafe fn get_child_raw_by_id(&mut self, id: impl ToString) -> Option<*mut PreonComponent> {
-        let id = &id.to_string();
-
-        let path = self
-            .get_child_path_by_id_cached(id)
-            .or_else(|| self.find_child_by_id(id));
-        
-        if let Some(path) = path {
-            self.get_child_raw_recursive(&path[..])
-        } else {
-            if let Some(path) = self.find_child_by_id(id) {
-                self.id_lookup_cache.push((id.clone(), path.clone()));
-                self.get_child_raw_recursive(&path[..])
-            } else {
-                log::warn!("No component found with id {}", id);
-                None
-            }
-        }
-    }
-
-    pub unsafe fn get_child_raw_recursive(&mut self, path: &[u16]) -> Option<*mut PreonComponent> {
-        let mut _path = path.to_owned();
-        let index = _path.pop().unwrap();
-
-        if path.len() == 1 {
-            self.get_child_raw(index)
-        } else {
-            self.get_child_ref_mut(index)
-                .and_then(|child| child.get_child_raw_recursive(&_path))
-        }
-    }
-
-    pub unsafe fn get_child_raw(&mut self, idx: u16) -> Option<*mut PreonComponent> {
-        self.children
-            .get_mut(idx as usize)
-            .map(|child| child as *mut PreonComponent)
-    }
-
-    pub fn get_child_ref(&self, idx: u16) -> Option<&PreonComponent> {
-        self.children
-            .get(idx as usize)
-    }
-
-    pub fn get_child_ref_mut(&mut self, idx: u16) -> Option<&mut PreonComponent> {
-        self.children
-            .get_mut(idx as usize)
-    }
-
-    pub fn add_child(&mut self, child: PreonComponent) {
-        self.children.push(child);
-    }
-
-    pub fn insert_child(&mut self, idx: u16, child: PreonComponent) {
-        self.children.insert(idx as usize, child);
-    }
-
-    pub fn remove_child(&mut self, idx: u16) {
-        self.children.remove(idx as usize);
-    }
-
-    pub fn clear_children(&mut self) {
-        self.children.clear();
     }
 
     #[inline(always)]
@@ -376,18 +204,10 @@ impl PreonComponent {
         self.set_inner_size_y(new_y - self.style.margin.y() - self.style.border.y());
     }
 
-    pub(crate) fn trigger_pressed(&mut self) -> Option<PreonEvent> {
-        if let Some(id) = self.id.as_ref() {
-            Some(PreonEvent::ComponentPressed(id.clone(), PreonButtonState::Pressed))
-        } else {
-            None
-        }
-    }
-
     pub(crate) fn layout(&mut self) {
         use crate::layout::PreonLayoutProvider;
 
-        for child in self.children.iter_mut() {
+        for &child in self.children.iter() {
             child.layout();
         }
 
@@ -397,7 +217,7 @@ impl PreonComponent {
             PreonLayout::Container => PreonContainerLayoutProvider::layout(self),
         }
 
-        for child in self.children.iter_mut() {
+        for &child in self.children.iter() {
             child.layout();
         }
     }
@@ -416,32 +236,36 @@ impl PreonComponent {
 
         for stage in stages {
             match stage {
-                PreonComponentRenderStage::Background { position, size } => match self.style.background {
-                    PreonBackground::Color(color) => pass.push(PreonShape::Rect {
-                        position,
-                        size,
-                        color,
-                        index: None,
-                        radius: self.style.corner_radius,
-                    }),
-                    PreonBackground::Image(ref image) => pass.push(PreonShape::Rect {
-                        position,
-                        size,
-                        color: PreonColor::TRANSPARENT_BLACK,
-                        index: Some(image.index()),
-                        radius: self.style.corner_radius,
-                    }),
-                    _ => (),
-                },
-                PreonComponentRenderStage::Foreground { position, size } => if !self.text.is_empty() {
-                    pass.push(PreonShape::Text {
-                        text_style: self.style.text_style.clone(),
-                        color: self.style.foreground_color,
-                        position,
-                        size,
-                        text: self.text.clone(),
-                    })
-                },
+                PreonComponentRenderStage::Background { position, size } => {
+                    match self.style.background {
+                        PreonBackground::Color(color) => pass.push(PreonShape::Rect {
+                            position,
+                            size,
+                            color,
+                            index: None,
+                            radius: self.style.corner_radius,
+                        }),
+                        PreonBackground::Image(ref image) => pass.push(PreonShape::Rect {
+                            position,
+                            size,
+                            color: PreonColor::TRANSPARENT_BLACK,
+                            index: Some(image.index()),
+                            radius: self.style.corner_radius,
+                        }),
+                        _ => (),
+                    }
+                }
+                PreonComponentRenderStage::Foreground { position, size } => {
+                    if !self.text.is_empty() {
+                        pass.push(PreonShape::Text {
+                            text_style: self.style.text_style.clone(),
+                            color: self.style.foreground_color,
+                            position,
+                            size,
+                            text: self.text.clone(),
+                        })
+                    }
+                }
             }
         }
 
@@ -537,7 +361,7 @@ impl PreonComponentBuilder {
     }
 
     pub fn with_child(&mut self, child: PreonComponent) -> &mut PreonComponentBuilder {
-        self.current_mut().children.push(child);        
+        self.current_mut().children.push(child);
         self
     }
 
@@ -545,7 +369,7 @@ impl PreonComponentBuilder {
         PreonStyle::inherit_from(&self.current().style)
     }
 
-    pub fn receive_events(&mut self, receive_events: bool) -> &mut PreonComponentBuilder  {
+    pub fn receive_events(&mut self, receive_events: bool) -> &mut PreonComponentBuilder {
         self.stack.last_mut().unwrap().mouse_events = receive_events;
         self
     }
